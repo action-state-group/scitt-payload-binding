@@ -1,0 +1,44 @@
+{
+  "id": "typed-ref-fail-02",
+  "description": "MUST-FAIL: textual equality trap. Two distinct artifact types produce the same 64-char hex digest by coincidence because their canonical forms are identical. A verifier MUST NOT treat equal hex strings as a match; it MUST recompute from the cited bytes under the declared type context. Bare hexadecimal equality alone is not a join.",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §6.1 ('The two values actually being compared must share an established comparison context. Bare hexadecimal equality alone is not a join. Equal-looking hex values computed under incompatible digest contexts are coincidental, not equivalent.')",
+  "must_fail": true,
+  "failure_reason": "digest_context_incompatible_equal_hex_is_not_a_join",
+  "common_digest": "28211009e28c3c09d8b52088b9a4b9ad26473bf2244b3d0ab469ca217b758558",
+  "common_canonical_form": "{\"color\":\"red\",\"size\":\"10\"}",
+  "artifact_a": {
+    "type": "artifact-a",
+    "registry_entry": {
+      "digest_context": "jcs-n; exclusion set {a_id}; 64-char lowercase hex"
+    },
+    "payload": {"a_id": null, "color": "red", "size": "10"},
+    "after_exclusion": {"color": "red", "size": "10"},
+    "derived_id": "28211009e28c3c09d8b52088b9a4b9ad26473bf2244b3d0ab469ca217b758558"
+  },
+  "artifact_b": {
+    "type": "artifact-b",
+    "registry_entry": {
+      "digest_context": "jcs-n; exclusion set {b_id, weight}; 64-char lowercase hex"
+    },
+    "payload": {"b_id": null, "color": "red", "size": "10", "weight": null},
+    "after_exclusion": {"color": "red", "size": "10"},
+    "derived_id": "28211009e28c3c09d8b52088b9a4b9ad26473bf2244b3d0ab469ca217b758558"
+  },
+  "typed_reference_claiming_artifact_a": {
+    "type": "artifact-a",
+    "digest_alg": "SHA-256",
+    "digest": "28211009e28c3c09d8b52088b9a4b9ad26473bf2244b3d0ab469ca217b758558"
+  },
+  "erroneous_verification": {
+    "mistake": "Verifier has artifact-B bytes in hand, observes artifact-B derived_id equals the carried digest, and concludes the reference is verified.",
+    "why_wrong": "The reference declared type 'artifact-a'. The verifier MUST recompute from the cited artifact using the digest context registered for 'artifact-a'. Artifact-B bytes under 'artifact-b' context coincidentally yield the same digest — that coincidence is not a join.",
+    "result": "FAIL"
+  },
+  "correct_verification": {
+    "step_1": "Resolve type 'artifact-a' from registry to get its digest context",
+    "step_2": "Obtain the actual artifact-a bytes",
+    "step_3": "Recompute artifact-a derived_id using 'artifact-a' context",
+    "step_4": "Compare recomputed value to typed_reference.digest",
+    "note": "If the verifier only possesses artifact-B bytes, it cannot verify this reference; the comparison context cannot be established."
+  }
+}

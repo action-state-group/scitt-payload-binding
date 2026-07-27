@@ -1,0 +1,40 @@
+{
+  "id": "typed-ref-pass-01",
+  "description": "PASS: typed digest reference verifies. The cited artifact digest is recomputed under its declared digest context and matches the carried digest.",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §6",
+  "cited_artifact": {
+    "payload_class": "authorization-doc",
+    "artifact_type_registry_entry": {
+      "name": "authorization-doc",
+      "digest_context": "jcs-n; exclusion set {doc_id}; 64-char lowercase hex",
+      "algorithm": "jcs-n",
+      "exclusion_set": ["doc_id"]
+    },
+    "payload": {
+      "doc_id": null,
+      "subject": "WS-42",
+      "scope": "temperature-write",
+      "issued_at": "2026-07-24T00:00:00Z"
+    },
+    "after_exclusion": {
+      "subject": "WS-42",
+      "scope": "temperature-write",
+      "issued_at": "2026-07-24T00:00:00Z"
+    },
+    "pre_image": "{\"issued_at\":\"2026-07-24T00:00:00Z\",\"scope\":\"temperature-write\",\"subject\":\"WS-42\"}",
+    "pre_image_bytes_hex": "7b226973737565645f6174223a22323032362d30372d32345430303a30303a30305a222c2273636f7065223a2274656d70657261747572652d7772697465222c227375626a656374223a2257532d3432227d",
+    "derived_id": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+  },
+  "typed_reference": {
+    "type": "authorization-doc",
+    "digest_alg": "SHA-256",
+    "digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+  },
+  "verification": {
+    "step_1": "Resolve artifact type 'authorization-doc' from registry to get digest context: jcs-n, exclusion set {doc_id}",
+    "step_2": "Apply exclusion set {doc_id}, normalize, JCS, SHA-256 of cited artifact payload",
+    "step_3": "Compare recomputed digest to typed_reference.digest",
+    "result": "PASS",
+    "recomputed_digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+  }
+}
