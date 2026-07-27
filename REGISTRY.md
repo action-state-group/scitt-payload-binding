@@ -14,6 +14,24 @@ Change controller: **Action State Group, Inc.** (interim) → **IETF** on
 publication. On working-group adoption, the provisional registry **moves with the
 document** to a repository of the working group's choosing (draft §11).
 
+**One registry home for the CPB document family.** These registries serve the
+entire CPB family — this document and its companions — and this is the single
+place any of them registers. Companion **mechanisms** stay in the companion
+documents as normative text and are never registry entries: selective
+disclosure, for example, is a transform that composes with any registered
+canonicalization algorithm, so it adds no algorithm entry; countersignature
+machinery likewise lives in its companion. A companion that introduces a new
+controlled **vocabulary** adds a **new registry here** — same home, same
+Specification-Required / PR-as-consent rule, same migration clause — rather than
+scattering per-companion registries (e.g. a future Relation Types registry for
+record relations: supersedes / confirms / corrects). A companion whose need is
+simply a new **artifact type** registers in the existing Artifact Type Registry
+(e.g. an erasure tombstone), adding no new structure. Per-companion registry
+scattering would break decomposable verification the same way per-profile
+invention of these facilities would — one registry home is the structural
+guarantee. The home moves **as a unit** through adoption: this repository today →
+the working group's repository on adoption → IANA at RFC publication.
+
 **How entries change — PR as consent.** The tables below change **only** by pull
 request with the named owner's approval. A canonicalization-algorithm or
 artifact-type entry enters the record only once its semantics are pinned in a
