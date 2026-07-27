@@ -50,6 +50,9 @@ a **Specification Required** policy with **immutable** entries:
 - **Canonicalization Algorithm Registry** (§11.1)
 - **Artifact Type Registry** (§11.2)
 
+The living **interim registries of record** — the current registered entries for
+both — are maintained in **[`REGISTRY.md`](REGISTRY.md)** until RFC publication.
+
 Proposed Artifact Type entries under discussion with their owners are tracked in
 [`spec/cpb-provisional-registry.md`](spec/cpb-provisional-registry.md) until each
 owner confirms. **Registry rule — PR as consent:** a registration is proposed by
