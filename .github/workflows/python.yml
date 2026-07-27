@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: Apache-2.0
+# Run the CPB reference library unit tests and ruff linter.
+# Path filter ensures the job only runs when lib/ or vectors/ change;
+# when neither has landed yet (before PR #2 merges) the job is skipped.
+name: python
+
+on:
+  push:
+    paths: ["lib/**", "vectors/**"]
+  pull_request:
+    paths: ["lib/**", "vectors/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # Skip until lib/ is present (PR #2 adds it); the path trigger activates
+    # on both lib/** and vectors/** so rebasing PR #2 shows green immediately.
+    if: ${{ hashFiles('lib/pyproject.toml') != '' }}
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "${{ matrix.python-version }}"
+
+      - name: install
+        working-directory: lib
+        run: pip install -e ".[dev]" "ruff>=0.4,<0.16"
+
+      - name: ruff
+        working-directory: lib
+        run: python -m ruff check .
+
+      - name: pytest
+        working-directory: lib
+        run: python -m pytest -q

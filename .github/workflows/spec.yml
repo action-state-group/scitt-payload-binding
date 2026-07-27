@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: Apache-2.0
+# Build the Internet-Draft from kramdown-rfc source and run idnits.
+name: spec
+
+on:
+  push:
+    paths: ["spec/**"]
+  pull_request:
+    paths: ["spec/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with: { ruby-version: "3.3" }
+
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+
+      - name: install toolchain
+        run: |
+          gem install kramdown-rfc
+          python -m pip install xml2rfc
+
+      - name: build draft (md → v3 xml → txt)
+        working-directory: spec
+        run: make XML2RFC=xml2rfc
+
+      - name: assert RFCXML v3
+        working-directory: spec
+        run: grep -q 'version="3"' draft-mih-sokolov-scitt-payload-binding-00.xml
+
+      - name: idnits
+        working-directory: spec
+        run: npx --yes @ietf-tools/idnits draft-mih-sokolov-scitt-payload-binding-00.txt || true
