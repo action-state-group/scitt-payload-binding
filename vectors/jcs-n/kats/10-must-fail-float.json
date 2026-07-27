@@ -1,0 +1,11 @@
+{
+  "id": "jcs-n-kat-10",
+  "description": "MUST-FAIL: A JSON floating-point number in a digest-bearing field is prohibited. Implementations MUST reject this input rather than produce a non-reproducible digest.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1 ('monetary and quantity values ... MUST be exact decimal strings, not JSON floating-point numbers')",
+  "must_fail": true,
+  "failure_reason": "float_in_digest_bearing_field",
+  "input": {"amount": 12.50, "currency": "USD"},
+  "exclusion_set": [],
+  "note": "The value 12.50 is a JSON float. Conforming implementations MUST NOT compute a digest for this input; they MUST signal an error instead. The same quantity MUST be encoded as the exact decimal string \"12.50\"."
+}

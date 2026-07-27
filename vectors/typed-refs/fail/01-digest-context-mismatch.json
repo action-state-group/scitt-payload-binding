@@ -1,0 +1,38 @@
+{
+  "id": "typed-ref-fail-01",
+  "description": "MUST-FAIL: digest context mismatch. The verifier applies the wrong exclusion set when recomputing the cited artifact digest. The recomputed value does not match the carried digest.",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §6.1 ('The verifier MUST confirm that the identifier carried by the reference is consistent with the established context. It MUST then recompute the referenced artifact digest under that context and compare.')",
+  "must_fail": true,
+  "failure_reason": "recomputed_digest_mismatch",
+  "cited_artifact": {
+    "payload_class": "authorization-doc",
+    "artifact_type_registry_entry": {
+      "name": "authorization-doc",
+      "digest_context": "jcs-n; exclusion set {doc_id}; 64-char lowercase hex",
+      "algorithm": "jcs-n",
+      "exclusion_set": ["doc_id"]
+    },
+    "payload": {
+      "doc_id": null,
+      "subject": "WS-42",
+      "scope": "temperature-write",
+      "issued_at": "2026-07-24T00:00:00Z"
+    },
+    "correct_derived_id": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+  },
+  "typed_reference": {
+    "type": "authorization-doc",
+    "digest_alg": "SHA-256",
+    "digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+  },
+  "erroneous_verification": {
+    "mistake": "Verifier applies wrong exclusion set (empty set instead of {doc_id})",
+    "wrong_exclusion_set": [],
+    "wrong_pre_image": "{\"doc_id\":null,\"issued_at\":\"2026-07-24T00:00:00Z\",\"scope\":\"temperature-write\",\"subject\":\"WS-42\"}",
+    "wrong_recomputed_digest": "INDETERMINATE (null normalizes away — doc_id=null is removed by normalization even without exclusion, but implementations that skip exclusion and include non-null doc_ids would produce a divergent digest)",
+    "result": "FAIL"
+  },
+  "correct_verification": {
+    "note": "Verifier MUST apply exclusion set {doc_id} as declared by the artifact type registry entry before recomputing. Not by guessing from the payload shape."
+  }
+}

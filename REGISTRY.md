@@ -60,6 +60,12 @@ CANONICAL-DIGEST values. Registration template: **Name**, **Description**,
 | `jcs-n` | RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex | draft-mih-sokolov-scitt-payload-binding | Registered |
 | `cde-n` | CDE/dCBOR normalization; SHA-256 | draft-mih-sokolov-scitt-payload-binding | **Reserved** (defined in a subsequent revision) |
 
+Conformance vectors: [`vectors/jcs-n/`](vectors/jcs-n/) — the canonical test suite
+for algorithm `jcs-n`, covering Known-Answer Tests (including the E3 boundary
+group: null, empty-array, empty-object, and absent field all normalize to the
+same canonical form), derived-identifier construction, and typed-reference
+verification cases including MUST-FAIL cases.
+
 ## Artifact Type Registry
 
 Records the artifact types that may appear in the `type` field of a typed digest

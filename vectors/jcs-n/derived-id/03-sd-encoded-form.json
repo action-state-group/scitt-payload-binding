@@ -1,0 +1,45 @@
+{
+  "id": "derived-id-03",
+  "description": "SD-encoded form hook: when selective disclosure is in use, the derived identifier MUST be computed over the SD-encoded form, not the plaintext payload. The _sd array holds hashes of disclosed claims; _sd_alg names the hash algorithm.",
+  "algorithm": "jcs-n",
+  "payload_class": "example-action-record",
+  "exclusion_set": ["record_id"],
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §4 ('When selective disclosure is in use, the derived identifier MUST be computed over the SD-encoded form of the payload, not the plaintext payload.')",
+  "sd_encoded_payload": {
+    "record_id": null,
+    "_sd": [
+      "abc123hash_of_station_and_celsius_and_timestamp",
+      "def456hash_of_scope"
+    ],
+    "_sd_alg": "sha-256",
+    "action": "write"
+  },
+  "plaintext_payload_for_reference": {
+    "record_id": null,
+    "station_id": "WS-42",
+    "celsius": "21.3",
+    "timestamp": "2026-07-24T00:00:00Z",
+    "scope": "temperature-write",
+    "action": "write"
+  },
+  "after_exclusion": {
+    "_sd": [
+      "abc123hash_of_station_and_celsius_and_timestamp",
+      "def456hash_of_scope"
+    ],
+    "_sd_alg": "sha-256",
+    "action": "write"
+  },
+  "normalized": {
+    "_sd": [
+      "abc123hash_of_station_and_celsius_and_timestamp",
+      "def456hash_of_scope"
+    ],
+    "_sd_alg": "sha-256",
+    "action": "write"
+  },
+  "pre_image": "{\"_sd\":[\"abc123hash_of_station_and_celsius_and_timestamp\",\"def456hash_of_scope\"],\"_sd_alg\":\"sha-256\",\"action\":\"write\"}",
+  "pre_image_bytes_hex": "7b225f7364223a5b22616263313233686173685f6f665f73746174696f6e5f616e645f63656c736975735f616e645f74696d657374616d70222c22646566343536686173685f6f665f73636f7065225d2c225f73645f616c67223a227368612d323536222c22616374696f6e223a227772697465227d",
+  "derived_id": "033e6406b4162f6d975c152a3e696d95882b8c545692a425a6ccfe5b23456724",
+  "note": "The derived_id here differs from what would result from the plaintext payload. The canonical form for SD-encoded payloads includes _sd hashes and _sd_alg, which replace the original claim values. A profile MUST declare non-eligible for selective disclosure any field that the profile own verifier requires to evaluate the binding."
+}

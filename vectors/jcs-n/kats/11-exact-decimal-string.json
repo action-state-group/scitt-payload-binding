@@ -1,0 +1,12 @@
+{
+  "id": "jcs-n-kat-11",
+  "description": "Exact decimal string for monetary value: the correct encoding that MUST be used instead of a float.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1",
+  "input": {"amount": "12.50", "currency": "USD"},
+  "exclusion_set": [],
+  "normalized": {"amount": "12.50", "currency": "USD"},
+  "pre_image": "{\"amount\":\"12.50\",\"currency\":\"USD\"}",
+  "pre_image_bytes_hex": "7b22616d6f756e74223a2231322e3530222c2263757272656e6379223a22555344227d",
+  "digest": "3470d8bfb0a63aefba8cfae8ecbc3c09d07875a9a9880eb40d43116e058e2685"
+}

@@ -1,0 +1,41 @@
+{
+  "id": "typed-ref-fail-04",
+  "description": "MUST-FAIL: identifier inconsistent with context. The typed reference claims type 'authorization-doc' (whose digest context requires exclusion set {doc_id}), but the carried digest was computed WITHOUT applying the declared exclusion set. The verifier recomputes under the correct context and finds no match.",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §6.1 ('The verifier MUST confirm that the identifier carried by the reference is consistent with the established context. ... If the complete comparison context cannot be established, if the identifier carried by the reference is inconsistent with that context, ... the verifier MUST NOT report the typed reference as verified.')",
+  "must_fail": true,
+  "failure_reason": "identifier_inconsistent_with_context",
+  "cited_artifact": {
+    "type": "authorization-doc",
+    "registry_entry": {
+      "digest_context": "jcs-n; exclusion set {doc_id}; 64-char lowercase hex",
+      "exclusion_set": ["doc_id"]
+    },
+    "payload": {
+      "doc_id": "secret-id-123",
+      "subject": "WS-42",
+      "scope": "temperature-write",
+      "issued_at": "2026-07-24T00:00:00Z"
+    }
+  },
+  "typed_reference_with_wrong_digest": {
+    "type": "authorization-doc",
+    "digest_alg": "SHA-256",
+    "digest": "24880099b02979f9b7dc90e36ce5f3c1d878ec85423e4d1f1981c578ef7adbab",
+    "note": "This digest was computed WITHOUT applying the exclusion set {doc_id}. The pre-image included doc_id."
+  },
+  "erroneous_pre_image_that_produced_wrong_digest": "{\"doc_id\":\"secret-id-123\",\"issued_at\":\"2026-07-24T00:00:00Z\",\"scope\":\"temperature-write\",\"subject\":\"WS-42\"}",
+  "verification": {
+    "step_1": "Resolve type 'authorization-doc' from registry: exclusion set = {doc_id}",
+    "step_2": "Apply exclusion set: remove doc_id from payload",
+    "correct_after_exclusion": {
+      "subject": "WS-42",
+      "scope": "temperature-write",
+      "issued_at": "2026-07-24T00:00:00Z"
+    },
+    "step_3": "Normalize, JCS, SHA-256",
+    "correct_pre_image": "{\"issued_at\":\"2026-07-24T00:00:00Z\",\"scope\":\"temperature-write\",\"subject\":\"WS-42\"}",
+    "recomputed_digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb",
+    "step_4": "Compare: recomputed 0c837d01... != carried 24880099... — MISMATCH",
+    "result": "FAIL"
+  }
+}
