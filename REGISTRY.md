@@ -41,6 +41,21 @@ behalf. Proposed entries under discussion with their owners are tracked
 separately in [`spec/cpb-provisional-registry.md`](spec/cpb-provisional-registry.md)
 until confirmed; they enter the tables here on merge.
 
+**Registration rules for new entries.** Two requirements apply to every entry
+regardless of registration type:
+
+1. **A new entry MUST resolve to a specific normative reference.** Naming an
+   algorithm family is not declaring a digest context: the cited text must pin the
+   exact algorithm version and encoding. (Motivation: RFC 8785 §3 is the minimum
+   required specificity for a JCS-based algorithm; citing only "JCS" leaves the
+   hash, encoding, and normalization steps undeclared.)
+
+2. **A required conformance vector set MUST be two-sided — positive vectors with
+   pinned expected values AND negative (MUST-FAIL) vectors.** Negatives-only
+   cannot detect an implementation that is too strict (rejecting valid inputs);
+   positives-only cannot detect an implementation that accepts malformed inputs.
+   Both sides are required to make a conformance claim.
+
 **Descriptive, not generative.** This file is DESCRIPTIVE of the registries
 defined normatively in the Internet-Draft; it never generates new semantics. The
 draft (§11) is normative; this file is the living interim record.
@@ -59,6 +74,17 @@ CANONICAL-DIGEST values. Registration template: **Name**, **Description**,
 |---|---|---|---|
 | `jcs-n` | RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex | draft-mih-sokolov-scitt-payload-binding | Registered |
 | `cde-n` | CDE/dCBOR normalization; SHA-256 | draft-mih-sokolov-scitt-payload-binding | **Reserved** (defined in a subsequent revision) |
+
+**jcs-n implementation note — Unicode normalisation boundary.** jcs-n applies
+no Unicode normalisation. An object whose key contains decomposed code points
+(e.g., U+0041 U+030A, Latin A + combining ring above) produces a different
+canonical byte sequence than the same key in NFC form (U+00C5, precomposed
+Å), and therefore a different digest. A profile that applies NFC normalisation
+before or after member-sort MUST declare the normalisation step explicitly;
+the digest context it registers will differ from jcs-n's. This boundary is
+exercised by conformance vectors `jcs-n-kat-12` (PASS) and
+`jcs-n-nfc-contrast-01` (informative contrast); no previously published test
+corpus covers this case (Joel Hillier, SCITT list, 2026-07-27).
 
 ## Artifact Type Registry
 

@@ -1,0 +1,19 @@
+{
+  "id": "jcs-n-kat-12",
+  "description": "NFC boundary — PASS: jcs-n preserves decomposed code points as-is. Key U+0041 U+030A (A + combining ring above) is two UTF-16 code units; jcs-n sorts it after 'B' (one code unit) and serialises the raw bytes, producing a different digest than an NFC-normalising construction. Motivated by Joel Hillier's on-list finding (2026-07-27): no published corpus exercises this boundary.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1; RFC 8785 §3.2.3",
+  "input": {
+    "Å": "v1",
+    "B": "v2"
+  },
+  "exclusion_set": [],
+  "normalized": {
+    "Å": "v1",
+    "B": "v2"
+  },
+  "pre_image": "{\"B\":\"v2\",\"Å\":\"v1\"}",
+  "pre_image_bytes_hex": "7b2242223a227632222c2241cc8a223a227631227d",
+  "digest": "4b8369081c0ebe849688109bdf92a03e46f99e0398cfa540a9ea8f7d6c19629d",
+  "note": "The key U+0041 U+030A (A + U+030A combining ring above, decomposed 'Å') is 2 UTF-16 code units; RFC 8785 §3.2.3 sorts by (UTF-16-length, UTF-16-code-units), so 'B' (len 1) sorts before this key (len 2). jcs-n leaves the code points unchanged; the UTF-8 encoding of U+030A is 0xCC 0x8A, giving pre_image_bytes_hex ending ...41cc8a.... See jcs-n-nfc-contrast-01 for the contrast digest a normalising profile would produce."
+}
