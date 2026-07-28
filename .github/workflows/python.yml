@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Run the CPB reference library unit tests and ruff linter.
-# Path filter ensures the job only runs when lib/ or vectors/ change;
-# when neither has landed yet (before PR #2 merges) the job is skipped.
+# Triggers on lib/ or vectors/ changes; a post-checkout guard skips test
+# steps when lib/ is absent (before PR #2 merges) without failing the job.
 name: python
 
 on:
@@ -16,27 +16,38 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    # Skip until lib/ is present (PR #2 adds it); the path trigger activates
-    # on both lib/** and vectors/** so rebasing PR #2 shows green immediately.
-    if: ${{ hashFiles('lib/pyproject.toml') != '' }}
     strategy:
       matrix:
         python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
 
+      - name: check lib present
+        id: guard
+        run: |
+          if [ -f lib/pyproject.toml ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "lib/ not present — skipping python tests (pre-PR-#2)"
+          fi
+
       - uses: actions/setup-python@v5
+        if: steps.guard.outputs.present == 'true'
         with:
           python-version: "${{ matrix.python-version }}"
 
       - name: install
+        if: steps.guard.outputs.present == 'true'
         working-directory: lib
         run: pip install -e ".[dev]" "ruff>=0.4,<0.16"
 
       - name: ruff
+        if: steps.guard.outputs.present == 'true'
         working-directory: lib
         run: python -m ruff check .
 
       - name: pytest
+        if: steps.guard.outputs.present == 'true'
         working-directory: lib
         run: python -m pytest -q
