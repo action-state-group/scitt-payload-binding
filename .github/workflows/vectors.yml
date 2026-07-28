@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+# Verify every pinned vector: recompute pre_image → bytes → digest and reject
+# any mismatch. No dependencies beyond Python stdlib. Runs on every vectors/**
+# change — a hand-authored vector that was never run is not a vector.
+name: vectors
+
+on:
+  push:
+    paths: ["vectors/**", ".github/check_vectors.py"]
+  pull_request:
+    paths: ["vectors/**", ".github/check_vectors.py"]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check all vector digests
+        run: python .github/check_vectors.py vectors/
