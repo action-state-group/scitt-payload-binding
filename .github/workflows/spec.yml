@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-# Build the Internet-Draft from kramdown-rfc source and run idnits.
+# Build the Internet-Draft from kramdown-rfc source and verify the tracked
+# .xml / .txt artifacts are not stale: build to temp outputs and diff against
+# the committed files so a no-op make cannot silently pass stale artifacts.
 name: spec
 
 on:
@@ -28,14 +30,24 @@ jobs:
           gem install kramdown-rfc
           python -m pip install xml2rfc
 
-      - name: build draft (md → v3 xml → txt)
+      - name: build draft to temp + diff against tracked artifacts
         working-directory: spec
-        run: make XML2RFC=xml2rfc
+        run: |
+          DRAFT="draft-mih-sokolov-scitt-payload-binding-00"
+          mkdir -p _ci_build
+          kramdown-rfc "$DRAFT.md" > _ci_build/.draft.v2.xml
+          xml2rfc --v2v3 _ci_build/.draft.v2.xml -o _ci_build/"$DRAFT.xml"
+          xml2rfc --text --v3 _ci_build/"$DRAFT.xml" -o _ci_build/"$DRAFT.txt"
+          rm -f _ci_build/.draft.v2.xml
+          diff "$DRAFT.xml" _ci_build/"$DRAFT.xml" \
+            || { echo "STALE: $DRAFT.xml does not match fresh build — run 'make' locally and commit"; exit 1; }
+          diff "$DRAFT.txt" _ci_build/"$DRAFT.txt" \
+            || { echo "STALE: $DRAFT.txt does not match fresh build — run 'make' locally and commit"; exit 1; }
 
       - name: assert RFCXML v3
         working-directory: spec
-        run: grep -q 'version="3"' draft-mih-sokolov-scitt-payload-binding-00.xml
+        run: grep -q 'version="3"' _ci_build/draft-mih-sokolov-scitt-payload-binding-00.xml
 
       - name: idnits
         working-directory: spec
-        run: npx --yes @ietf-tools/idnits draft-mih-sokolov-scitt-payload-binding-00.txt || true
+        run: npx --yes @ietf-tools/idnits _ci_build/draft-mih-sokolov-scitt-payload-binding-00.txt || true

@@ -30,7 +30,16 @@ def _jcs_sort_key(k: str) -> bytes:
 
 
 def _normalize(obj: object) -> object:
-    """Remove null, empty-array, and empty-object members bottom-up (jcs-n §3.1 E3)."""
+    """Remove null, empty-array, and empty-object members bottom-up (jcs-n §3.1 E3).
+
+    Array *elements* are not object members — they stay in the array even when
+    they normalize to {}.  But the elements themselves are recursed so that any
+    null/empty members *inside* them are removed.
+    """
+    if isinstance(obj, list):
+        # Recurse into each element; the element stays in the list regardless
+        # of its normalized value (array elements are not members).
+        return [_normalize(item) for item in obj]
     if not isinstance(obj, dict):
         return obj
     result: dict[str, object] = {}
@@ -43,7 +52,16 @@ def _normalize(obj: object) -> object:
 
 
 def _jcs(obj: object) -> str:
-    """RFC 8785 canonical JSON with keys sorted per §3.2.3."""
+    """RFC 8785 canonical JSON with keys sorted per §3.2.3.
+
+    jcs-n rejects floats and integers outside the safe range so that the
+    runner catches invalid payloads rather than silently producing a canonical
+    form that diverges from a conforming implementation:
+      - floats: always rejected (jcs-n payload must use integer numeric values)
+      - |n| >= 2^53: unsafe integer — cannot be exactly represented in IEEE 754
+      - |n| >= 1e21: Python json.dumps diverges from JCS here (Python: full
+        decimal digits; JCS: scientific notation, e.g. 1e+21)
+    """
     if isinstance(obj, dict):
         sorted_k = sorted(obj.keys(), key=_jcs_sort_key)
         pairs = [
@@ -51,7 +69,24 @@ def _jcs(obj: object) -> str:
             for k in sorted_k
         ]
         return "{" + ",".join(pairs) + "}"
-    # Delegate to json.dumps for strings, numbers, booleans, null, arrays
+    # bool must be checked before int (bool is a subclass of int in Python)
+    if not isinstance(obj, bool) and isinstance(obj, int):
+        n = abs(obj)
+        if n >= 10 ** 21:
+            raise ValueError(
+                f"integer >= 1e21: Python json.dumps produces full decimal digits "
+                f"but JCS requires scientific notation for this value: {obj!r}"
+            )
+        if n >= 1 << 53:
+            raise ValueError(
+                f"unsafe integer (|n| >= 2^53): cannot be exactly represented "
+                f"in IEEE 754 double; jcs-n forbids these: {obj!r}"
+            )
+    if isinstance(obj, float):
+        raise ValueError(
+            f"float not allowed in jcs-n payloads: {obj!r}"
+        )
+    # Delegate to json.dumps for strings, booleans, null, safe integers, arrays
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
 
 
@@ -67,10 +102,62 @@ def jcs_n_pre_image(
 
 
 # ---------------------------------------------------------------------------
+# Self-tests (run at start of every check_vectors invocation)
+# ---------------------------------------------------------------------------
+
+def _run_self_tests() -> None:
+    """Regression assertions for known-buggy edge cases.  Exits non-zero on failure."""
+    errors: list[str] = []
+
+    # Fix 2 regression: _normalize must recurse into list elements.
+    # {'outer': [{'x': None}]} → {'outer': [{}]}  (null member removed inside
+    # the element; the element {} stays in the array).
+    result = _normalize({"outer": [{"x": None}]})
+    expected = {"outer": [{}]}
+    if result != expected:
+        errors.append(
+            f"SELF-TEST FAIL: _normalize array-element recursion\n"
+            f"  got:      {result!r}\n"
+            f"  expected: {expected!r}"
+        )
+
+    # Fix 3: _jcs must reject floats, unsafe integers, and 1e21-boundary integers.
+    def _expect_reject(value: object, label: str) -> None:
+        try:
+            _jcs({"k": value})
+            errors.append(f"SELF-TEST FAIL: _jcs should have rejected {label}: {value!r}")
+        except ValueError:
+            pass  # expected
+
+    _expect_reject(1.5,            "float")
+    _expect_reject(float("inf"),   "float inf")
+    _expect_reject(1 << 53,        "unsafe integer 2^53")
+    _expect_reject(-(1 << 53),     "unsafe integer -2^53")
+    _expect_reject(10 ** 21,       "integer >= 1e21")
+    _expect_reject(-(10 ** 21),    "integer <= -1e21")
+
+    # Fix 3: safe-integer boundary must be ACCEPTED.
+    try:
+        _jcs({"k": (1 << 53) - 1})
+        _jcs({"k": 0})
+        _jcs({"k": -((1 << 53) - 1)})
+    except ValueError as exc:
+        errors.append(f"SELF-TEST FAIL: _jcs rejected safe integer: {exc}")
+
+    if errors:
+        print("SELF-TEST FAILURES:")
+        for e in errors:
+            print(e)
+        sys.exit(1)
+
+
+# ---------------------------------------------------------------------------
 # Checker
 # ---------------------------------------------------------------------------
 
 def check_vectors(root: Path) -> int:
+    _run_self_tests()
+
     passed = skipped = failed = 0
     errors: list[str] = []
 

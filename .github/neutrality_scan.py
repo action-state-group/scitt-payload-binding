@@ -18,10 +18,12 @@ Secret schema (JSON):
   - word        : matched case-insensitively at word boundaries (low-collision
                   short names that must not false-positive inside other words)
   - allow_phrases: already-public sentences that legitimately carry a token; a
-                  match is exempt only when it is part of such a phrase carried
-                  on the same line (narrow — keyed on the phrase, not the file).
+                  match is exempt ONLY when it falls inside the span of such a
+                  phrase on the same line — not every occurrence of the token on
+                  the line (two-occurrence fix: track spans, not just presence).
 
 Usage: python .github/neutrality_scan.py [ROOT=.]
+       python .github/neutrality_scan.py --self-test
 Exit 0 = clean; 1 = reserved vocabulary found (prints file:line); 2 = misconfig.
 """
 from __future__ import annotations
@@ -66,13 +68,34 @@ def _load_config() -> tuple[re.Pattern[str], tuple[str, ...]]:
 
 
 def _line_offenders(line: str, pattern: re.Pattern[str], allow: tuple[str, ...]) -> list[str]:
-    carried = [p for p in allow if p in line.lower()]
+    """Return reserved-vocabulary hits in *line* that are NOT inside an allow-phrase span.
+
+    Each allow-phrase match creates a character span [start, end) over the
+    lowercased line.  A vocabulary hit is exempt only when its entire span falls
+    inside one of those allow-phrase spans.  Two occurrences of the same term on
+    one line are therefore handled correctly: one inside a phrase → exempt, one
+    outside → flagged.
+    """
+    line_lower = line.lower()
+
+    # Collect all allow-phrase spans (case-insensitive, over lowercased line).
+    allow_spans: list[tuple[int, int]] = []
+    for phrase in allow:
+        start = 0
+        while True:
+            pos = line_lower.find(phrase, start)
+            if pos < 0:
+                break
+            allow_spans.append((pos, pos + len(phrase)))
+            start = pos + 1  # allow overlapping phrase matches
+
     hits: list[str] = []
     for m in pattern.finditer(line):
-        token = m.group(0)
-        if any(token.lower() in p for p in carried):
+        ms, me = m.start(), m.end()
+        # Exempt only if this hit's span is fully contained within an allow span.
+        if any(s <= ms and me <= e for s, e in allow_spans):
             continue
-        hits.append(token)
+        hits.append(m.group(0))
     return hits
 
 
@@ -106,8 +129,56 @@ def scan(root: Path, pattern: re.Pattern[str], allow: tuple[str, ...]) -> list[s
     return offenders
 
 
+def _run_self_tests() -> None:
+    """Anton two-occurrence test: span-based allow-phrase exemption.
+
+    One occurrence of the term inside the allow-phrase span → exempt.
+    One occurrence outside → flagged.  Both on the same line.
+    """
+    errors: list[str] = []
+    pattern = re.compile(r"reserved", re.IGNORECASE)
+    allow: tuple[str, ...] = ("use of reserved keyword",)
+
+    # Occurrence entirely outside any allow-phrase → must be flagged.
+    line1 = "reserved word found here"
+    hits1 = _line_offenders(line1, pattern, allow)
+    if hits1 != ["reserved"]:
+        errors.append(
+            f"two-occurrence test 1 failed: expected ['reserved'], got {hits1!r}"
+        )
+
+    # Occurrence inside the allow-phrase → must be exempt.
+    line2 = "see use of reserved keyword in docs"
+    hits2 = _line_offenders(line2, pattern, allow)
+    if hits2 != []:
+        errors.append(
+            f"two-occurrence test 2 failed: expected [], got {hits2!r}"
+        )
+
+    # Two occurrences on the same line: one inside the phrase (exempt), one outside (flagged).
+    line3 = "reserved is bad but use of reserved keyword is documented"
+    hits3 = _line_offenders(line3, pattern, allow)
+    if len(hits3) != 1 or hits3[0].lower() != "reserved":
+        errors.append(
+            f"two-occurrence test 3 failed: expected exactly one 'reserved', got {hits3!r}"
+        )
+
+    if errors:
+        print("NEUTRALITY SELF-TEST FAILURES:")
+        for e in errors:
+            print(f"  {e}")
+        raise SystemExit(1)
+
+    print("neutrality self-test: OK (span-based allow-phrase exemption)")
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
+
+    if argv and argv[0] == "--self-test":
+        _run_self_tests()
+        return 0
+
     root = Path(argv[0]) if argv else Path(".")
     pattern, allow = _load_config()
     offenders = scan(root, pattern, allow)
