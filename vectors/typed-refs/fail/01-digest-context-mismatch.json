@@ -1,7 +1,7 @@
 {
   "id": "typed-ref-fail-01",
   "description": "MUST-FAIL: digest context mismatch. The verifier applies the wrong exclusion set when recomputing the cited artifact digest. The recomputed value does not match the carried digest.",
-  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §6.1 ('The verifier MUST confirm that the identifier carried by the reference is consistent with the established context. It MUST then recompute the referenced artifact digest under that context and compare.')",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 \u00a76.1 ('The verifier MUST confirm that the identifier carried by the reference is consistent with the established context. It MUST then recompute the referenced artifact digest under that context and compare.')",
   "must_fail": true,
   "failure_reason": "recomputed_digest_mismatch",
   "cited_artifact": {
@@ -10,10 +10,12 @@
       "name": "authorization-doc",
       "digest_context": "jcs-n; exclusion set {doc_id}; 64-char lowercase hex",
       "algorithm": "jcs-n",
-      "exclusion_set": ["doc_id"]
+      "exclusion_set": [
+        "doc_id"
+      ]
     },
     "payload": {
-      "doc_id": null,
+      "doc_id": "secret-id-123",
       "subject": "WS-42",
       "scope": "temperature-write",
       "issued_at": "2026-07-24T00:00:00Z"
@@ -28,9 +30,10 @@
   "erroneous_verification": {
     "mistake": "Verifier applies wrong exclusion set (empty set instead of {doc_id})",
     "wrong_exclusion_set": [],
-    "wrong_pre_image": "{\"doc_id\":null,\"issued_at\":\"2026-07-24T00:00:00Z\",\"scope\":\"temperature-write\",\"subject\":\"WS-42\"}",
-    "wrong_recomputed_digest": "INDETERMINATE (null normalizes away — doc_id=null is removed by normalization even without exclusion, but implementations that skip exclusion and include non-null doc_ids would produce a divergent digest)",
-    "result": "FAIL"
+    "wrong_pre_image": "{\"doc_id\":\"secret-id-123\",\"issued_at\":\"2026-07-24T00:00:00Z\",\"scope\":\"temperature-write\",\"subject\":\"WS-42\"}",
+    "wrong_recomputed_digest": "24880099b02979f9b7dc90e36ce5f3c1d878ec85423e4d1f1981c578ef7adbab",
+    "result": "FAIL",
+    "note": "The wrong pre_image includes doc_id (not excluded); this produces a different digest than the correct pre_image (which applies the exclusion set and removes doc_id). A verifier that skips the declared exclusion set will compute 24880099... and incorrectly conclude a mismatch on the wrong side."
   },
   "correct_verification": {
     "note": "Verifier MUST apply exclusion set {doc_id} as declared by the artifact type registry entry before recomputing. Not by guessing from the payload shape."
