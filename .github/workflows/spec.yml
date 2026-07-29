@@ -52,7 +52,10 @@ jobs:
             sed 's/<date year="[^"]*" month="[^"]*" day="[^"]*"\/>/<date\/>/g'
           }
           strip_txt() {
-            sed 's/Expires:* [0-9][0-9]* [A-Za-z][A-Za-z]* [0-9][0-9][0-9][0-9]/Expires NORM/g'
+            # Normalize all "DD Month YYYY" occurrences: the creation date,
+            # "Expires: DD Month YYYY" header, "expire on DD Month YYYY" prose,
+            # and page-footer "Expires DD Month YYYY" are all build-day-derived.
+            sed 's/[0-9][0-9]* [A-Za-z][A-Za-z]* [0-9][0-9][0-9][0-9]/DATE_NORM/g'
           }
           diff <(strip_xml < "$DRAFT.xml") <(strip_xml < _ci_build/"$DRAFT.xml") \
             || { echo "STALE: $DRAFT.xml is out of date — run 'make' locally and commit"; exit 1; }
