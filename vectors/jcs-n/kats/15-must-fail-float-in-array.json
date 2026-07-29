@@ -1,0 +1,11 @@
+{
+  "id": "jcs-n-kat-15",
+  "description": "MUST-FAIL: float inside an array. jcs-n validation MUST recurse into array elements; delegating arrays to json.dumps bypasses numeric validation entirely. Regression vector for the array-bypass bug (Fix 1, round 2: _jcs lacked a list branch and fell through to json.dumps, silently accepting floats/unsafe-ints/>=1e21 nested in lists).",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1",
+  "must_fail": true,
+  "failure_reason": "float_in_digest_bearing_field",
+  "input": {"vals": [1.5]},
+  "exclusion_set": [],
+  "note": "The float 1.5 is nested inside an array. A conforming implementation MUST signal an error rather than serialize it. An implementation that delegates arrays to json.dumps will silently produce a digest, violating the spec."
+}
