@@ -16,26 +16,39 @@ For must_fail vectors — each MUST match at least one category (enforced):
   C. Typed-ref erroneous_verification: 'wrong_pre_image' + 'wrong_recomputed_digest'
      -> verify wrong_pre_image -> SHA-256 = wrong_recomputed_digest.
   D. Derived-id mismatch: 'correct_derived_id' + 'carried_id'
-     -> assert they differ.
-  E. Profile-independence scenario: 'scenario.authorization_doc' with 'derived_id'
-     -> recompute derived_id from payload; verify equals the typed-ref digest in
-       decision_record.payload.authorization.digest.
+     -> recompute from full_payload (exclusion_set applied); assert recomputed ==
+        correct_derived_id AND recomputed != carried_id.
+  E. Profile-independence scenario: 'failure_reason' == 'profile_independence_violation'
+     -> INFORMATIVE: behavioral prohibition cannot be tested programmatically.
+        Structural consistency of vector data is checked via _check_informative_vector;
+        these vectors are NOT counted as MUST-FAIL exercised (separate 'informative' counter).
   F. Common-canonical-form trap: 'common_canonical_form' + 'common_digest'
-     -> verify SHA-256(common_canonical_form.encode('utf-8')) == common_digest.
+     -> verify SHA-256(common_canonical_form) == common_digest; assert artifact_a.type !=
+        artifact_b.type (incompatibility is real); recompute both artifact canonical forms
+        and verify each equals common_canonical_form.
   G. Cited-artifact derived-id: 'cited_artifact.correct_derived_id_bare_hex'
      -> recompute jcs_n from cited_artifact.payload (using registry exclusion_set
-       if present); verify == correct_derived_id_bare_hex.
+        if present); verify == correct_derived_id_bare_hex; assert typed_reference.digest
+        != correct_derived_id_bare_hex (carried representation is REJECTED).
   H. Top-level erroneous pre-image: 'erroneous_pre_image_that_produced_wrong_digest'
      -> verify erroneous pre-image -> SHA-256 = typed_reference_with_wrong_digest.digest;
-       verify verification.correct_pre_image -> SHA-256 = verification.recomputed_digest.
+        verify verification.correct_pre_image -> SHA-256 = verification.recomputed_digest;
+        assert wrong_digest != recomputed_digest (inequality is real).
 
 A must_fail vector matching NONE of the above is a hard failure -- 'ran_any_check' is
 enforced.  A bare {'must_fail': true} fails the suite.
+
+Mutation-probe self-test: for every fired category (except exempt ones), the suite
+auto-generates a condition-removed mutant and asserts the checker FLIPS to failure on
+it.  A category that passes its mutant is reported ASSERTION-FREE and fails CI.
+Every future category MUST register a mutant generator in _MUTANT_GENERATORS or be
+added to _MUTANT_EXEMPT_CATEGORIES, or the suite will refuse to count it as exercised.
 
 A pinned vector that was never run is not a vector.
 """
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import sys
@@ -116,6 +129,127 @@ def _sha256_hex(s: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Informative-vector helpers (Category E)
+# ---------------------------------------------------------------------------
+
+_INFORMATIVE_FAILURE_REASONS = frozenset({"profile_independence_violation"})
+
+
+def _check_informative_vector(v: dict, vid: str) -> list[str]:
+    """Structural consistency check for informative behavioral vectors.
+
+    Category E documents behavioral anti-patterns (cross-profile field access)
+    that cannot be tested programmatically: a mock non-conforming verifier would
+    be a separate implementation artifact outside the checker's scope.  We verify
+    the vector's own data is internally consistent but do NOT count these as
+    MUST-FAIL exercised.
+    """
+    errs: list[str] = []
+    scenario = v.get("scenario", {})
+    auth_doc = scenario.get("authorization_doc", {})
+    if auth_doc and "derived_id" in auth_doc and "payload" in auth_doc:
+        try:
+            computed = jcs_n_pre_image(auth_doc["payload"])
+            got = hashlib.sha256(computed.encode("utf-8")).hexdigest()
+            if got != auth_doc["derived_id"]:
+                errs.append(
+                    f"authorization_doc.derived_id mismatch: "
+                    f"expected {auth_doc['derived_id']}, got {got}"
+                )
+            carried_digest = (
+                scenario.get("decision_record", {})
+                .get("payload", {})
+                .get("authorization", {})
+                .get("digest")
+            )
+            if carried_digest and got != carried_digest:
+                errs.append(
+                    "authorization_doc.derived_id != decision_record authorization.digest"
+                )
+        except Exception as exc:
+            errs.append(f"informative structural check raised: {exc!r}")
+    return errs
+
+
+# ---------------------------------------------------------------------------
+# Mutation-probe infrastructure
+# ---------------------------------------------------------------------------
+
+_MUTANT_EXEMPT_CATEGORIES = frozenset({
+    "C",  # Data-integrity check; condition-removed mutant passes without semantic change.
+})
+
+
+def _mutant_A(v: dict) -> dict | None:
+    m = copy.deepcopy(v)
+    m["input"] = {}
+    return m
+
+
+def _mutant_B(v: dict) -> dict | None:
+    m = copy.deepcopy(v)
+    if "jcs_n_correct_pre_image_bytes_hex" not in m or "nfc_contrast_pre_image_bytes_hex" not in m:
+        return None
+    m["jcs_n_correct_pre_image_bytes_hex"], m["nfc_contrast_pre_image_bytes_hex"] = (
+        m["nfc_contrast_pre_image_bytes_hex"],
+        m["jcs_n_correct_pre_image_bytes_hex"],
+    )
+    m["jcs_n_correct_digest"], m["nfc_contrast_digest"] = (
+        m.get("nfc_contrast_digest"),
+        m.get("jcs_n_correct_digest"),
+    )
+    return m
+
+
+def _mutant_D(v: dict) -> dict | None:
+    m = copy.deepcopy(v)
+    m["carried_id"] = m.get("correct_derived_id", "0" * 64)
+    return m
+
+
+def _mutant_F(v: dict) -> dict | None:
+    m = copy.deepcopy(v)
+    if "artifact_b" not in m or "type" not in m.get("artifact_a", {}):
+        return None
+    m.setdefault("artifact_a", {})["type"] = m["artifact_b"].get("type")
+    return m
+
+
+def _mutant_G(v: dict) -> dict | None:
+    m = copy.deepcopy(v)
+    cited = m.get("cited_artifact", {})
+    bare_hex = cited.get("correct_derived_id_bare_hex", "")
+    ref = (
+        m.get("typed_reference_with_wrong_representation")
+        or m.get("typed_reference_with_wrong_digest")
+    )
+    if ref and bare_hex:
+        ref["digest"] = bare_hex
+        return m
+    return None
+
+
+def _mutant_H(v: dict) -> dict | None:
+    m = copy.deepcopy(v)
+    recomputed = m.get("verification", {}).get("recomputed_digest", "")
+    ref = m.get("typed_reference_with_wrong_digest", {})
+    if recomputed and ref:
+        ref["digest"] = recomputed
+        return m
+    return None
+
+
+_MUTANT_GENERATORS: dict[str, object] = {
+    "A": _mutant_A,
+    "B": _mutant_B,
+    "D": _mutant_D,
+    "F": _mutant_F,
+    "G": _mutant_G,
+    "H": _mutant_H,
+}
+
+
+# ---------------------------------------------------------------------------
 # must_fail vector exerciser (defined before _run_self_tests for forward reference)
 # ---------------------------------------------------------------------------
 
@@ -123,17 +257,24 @@ def _exercise_must_fail(
     v: dict,
     vid: str,
     exclusion_set: list[str],
+    *,
+    _probe_mutants: bool = True,
 ) -> tuple[bool, list[str]]:
     """Exercise a must_fail vector.  Returns (all_ok, error_messages).
 
     Categories are non-exclusive.  A vector triggering NONE is a hard failure.
+
+    _probe_mutants=False is used internally for recursive mutant checks to
+    prevent infinite recursion.
     """
     vec_errors: list[str] = []
     ran_any_check = False
+    categories_fired: list[str] = []
 
     # A. Algorithm-rejection vectors
     if "input" in v and "jcs_n_correct_digest" not in v and "pre_image" not in v:
         ran_any_check = True
+        categories_fired.append("A")
         try:
             jcs_n_pre_image(v["input"], exclusion_set or None)
             vec_errors.append(
@@ -145,6 +286,7 @@ def _exercise_must_fail(
     # B. NFC-contrast
     if "jcs_n_correct_digest" in v:
         ran_any_check = True
+        categories_fired.append("B")
         if "jcs_n_correct_pre_image_bytes_hex" in v:
             correct_bytes = bytes.fromhex(v["jcs_n_correct_pre_image_bytes_hex"])
             got = hashlib.sha256(correct_bytes).hexdigest()
@@ -180,6 +322,7 @@ def _exercise_must_fail(
     ev = v.get("erroneous_verification", {})
     if "wrong_pre_image" in ev and "wrong_recomputed_digest" in ev:
         ran_any_check = True
+        categories_fired.append("C")
         got = _sha256_hex(ev["wrong_pre_image"])
         if got != ev["wrong_recomputed_digest"]:
             vec_errors.append(
@@ -188,47 +331,39 @@ def _exercise_must_fail(
                 f"  got:      {got}"
             )
 
-    # D. Derived-id mismatch: correct_derived_id must differ from carried_id
+    # D. Derived-id mismatch: recompute from full_payload, assert == correct_derived_id AND != carried_id
     if "correct_derived_id" in v and "carried_id" in v:
         ran_any_check = True
-        if v["correct_derived_id"] == v["carried_id"]:
-            vec_errors.append(
-                f"correct_derived_id == carried_id -- vector claims mismatch but "
-                f"values are identical: {v['correct_derived_id']!r}"
-            )
-
-    # E. Profile-independence scenario: recompute authorization_doc derived_id
-    scenario = v.get("scenario", {})
-    auth_doc = scenario.get("authorization_doc", {})
-    if auth_doc and "derived_id" in auth_doc and "payload" in auth_doc:
-        ran_any_check = True
-        try:
-            computed = jcs_n_pre_image(auth_doc["payload"])
-            got = hashlib.sha256(computed.encode("utf-8")).hexdigest()
-            if got != auth_doc["derived_id"]:
+        categories_fired.append("D")
+        full_payload = v.get("full_payload")
+        excl = v.get("exclusion_set") or []
+        if full_payload is not None:
+            try:
+                computed = jcs_n_pre_image(full_payload, excl or None)
+                got = _sha256_hex(computed)
+                if got != v["correct_derived_id"]:
+                    vec_errors.append(
+                        f"correct_derived_id does not match recomputed from full_payload\n"
+                        f"  expected: {v['correct_derived_id']}\n"
+                        f"  got:      {got}"
+                    )
+                elif got == v["carried_id"]:
+                    vec_errors.append(
+                        f"recomputed derived_id == carried_id — no mismatch demonstrated: {got!r}"
+                    )
+            except Exception as exc:
+                vec_errors.append(f"Category D: jcs_n_pre_image raised: {exc!r}")
+        else:
+            if v["correct_derived_id"] == v["carried_id"]:
                 vec_errors.append(
-                    f"authorization_doc.derived_id mismatch\n"
-                    f"  expected: {auth_doc['derived_id']}\n"
-                    f"  got:      {got}"
+                    "correct_derived_id == carried_id — values identical "
+                    "(add full_payload to vector for real recomputation)"
                 )
-            carried_digest = (
-                scenario.get("decision_record", {})
-                .get("payload", {})
-                .get("authorization", {})
-                .get("digest")
-            )
-            if carried_digest and got != carried_digest:
-                vec_errors.append(
-                    f"authorization_doc.derived_id != decision_record authorization.digest\n"
-                    f"  derived_id:           {got}\n"
-                    f"  authorization.digest: {carried_digest}"
-                )
-        except Exception as exc:
-            vec_errors.append(f"profile-independence scenario: jcs_n_pre_image raised: {exc!r}")
 
-    # F. Common-canonical-form trap: verify SHA-256 of pinned canonical form
+    # F. Common-canonical-form trap: verify digest AND type incompatibility AND both canonical forms
     if "common_canonical_form" in v and "common_digest" in v:
         ran_any_check = True
+        categories_fired.append("F")
         got = _sha256_hex(v["common_canonical_form"])
         if got != v["common_digest"]:
             vec_errors.append(
@@ -236,29 +371,65 @@ def _exercise_must_fail(
                 f"  expected: {v['common_digest']}\n"
                 f"  got:      {got}"
             )
+        art_a = v.get("artifact_a", {})
+        art_b = v.get("artifact_b", {})
+        if art_a and art_b:
+            if art_a.get("type") == art_b.get("type"):
+                vec_errors.append(
+                    f"artifact_a.type == artifact_b.type ({art_a.get('type')!r}) — "
+                    f"no type incompatibility demonstrated"
+                )
+            for art_key in ("artifact_a", "artifact_b"):
+                art = v.get(art_key, {})
+                if "payload" in art:
+                    art_excl: list[str] = art.get("registry_entry", {}).get("exclusion_set") or []
+                    try:
+                        art_computed = jcs_n_pre_image(art["payload"], art_excl or None)
+                        if art_computed != v["common_canonical_form"]:
+                            vec_errors.append(
+                                f"{art_key} canonical form != common_canonical_form\n"
+                                f"  expected: {v['common_canonical_form']!r}\n"
+                                f"  got:      {art_computed!r}"
+                            )
+                    except Exception as exc:
+                        vec_errors.append(f"{art_key}: jcs_n_pre_image raised: {exc!r}")
 
-    # G. Cited-artifact derived-id: recompute from payload
+    # G. Cited-artifact derived-id: recompute AND assert carried representation is REJECTED
     cited = v.get("cited_artifact", {})
     if "correct_derived_id_bare_hex" in cited and "payload" in cited:
         ran_any_check = True
+        categories_fired.append("G")
         reg_excl: list[str] = cited.get("registry_entry", {}).get("exclusion_set") or []
         try:
             computed = jcs_n_pre_image(cited["payload"], reg_excl or None)
-            got = hashlib.sha256(computed.encode("utf-8")).hexdigest()
+            got = _sha256_hex(computed)
             if got != cited["correct_derived_id_bare_hex"]:
                 vec_errors.append(
                     f"cited_artifact.correct_derived_id_bare_hex mismatch\n"
                     f"  expected: {cited['correct_derived_id_bare_hex']}\n"
                     f"  got:      {got}"
                 )
+            ref_digest = (
+                v.get("typed_reference_with_wrong_representation", {}).get("digest")
+                or v.get("typed_reference_with_wrong_digest", {}).get("digest")
+            )
+            if ref_digest is not None and ref_digest == cited["correct_derived_id_bare_hex"]:
+                vec_errors.append(
+                    f"typed reference digest == correct_derived_id_bare_hex — "
+                    f"no representation mismatch demonstrated: {ref_digest!r}"
+                )
         except Exception as exc:
             vec_errors.append(f"cited_artifact derived-id: jcs_n_pre_image raised: {exc!r}")
 
-    # H. Top-level erroneous pre-image (identifier-inconsistent-with-context)
+    # H. Top-level erroneous pre-image: verify both SHA-256 AND assert wrong != recomputed
     erroneous_pre = v.get("erroneous_pre_image_that_produced_wrong_digest")
     if erroneous_pre is not None:
         ran_any_check = True
+        categories_fired.append("H")
         wrong_digest = v.get("typed_reference_with_wrong_digest", {}).get("digest")
+        verification = v.get("verification", {})
+        correct_pre = verification.get("correct_pre_image")
+        recomputed_digest = verification.get("recomputed_digest")
         if wrong_digest:
             got = _sha256_hex(erroneous_pre)
             if got != wrong_digest:
@@ -267,9 +438,6 @@ def _exercise_must_fail(
                     f"  expected: {wrong_digest}\n"
                     f"  got:      {got}"
                 )
-        verification = v.get("verification", {})
-        correct_pre = verification.get("correct_pre_image")
-        recomputed_digest = verification.get("recomputed_digest")
         if correct_pre and recomputed_digest:
             got = _sha256_hex(correct_pre)
             if got != recomputed_digest:
@@ -278,6 +446,10 @@ def _exercise_must_fail(
                     f"  expected: {recomputed_digest}\n"
                     f"  got:      {got}"
                 )
+        if wrong_digest and recomputed_digest and wrong_digest == recomputed_digest:
+            vec_errors.append(
+                f"wrong_digest == recomputed_digest — no inequality demonstrated: {wrong_digest!r}"
+            )
 
     # Enforcement: a vector matching none of the above is a hard failure.
     if not ran_any_check:
@@ -286,6 +458,30 @@ def _exercise_must_fail(
             "no executable assertion; add a recognized failure-kind field or "
             "reclassify as informative"
         )
+
+    # Mutation probes: for each fired category, assert checker FLIPS on condition-removed mutant.
+    if _probe_mutants:
+        for cat in categories_fired:
+            if cat in _MUTANT_EXEMPT_CATEGORIES:
+                continue
+            gen = _MUTANT_GENERATORS.get(cat)
+            if gen is None:
+                vec_errors.append(
+                    f"ASSERTION-FREE: no mutant generator for Category {cat} — "
+                    f"register one in _MUTANT_GENERATORS or add to _MUTANT_EXEMPT_CATEGORIES"
+                )
+                continue
+            mutant = gen(v)
+            if mutant is None:
+                continue
+            mutant_ok, _ = _exercise_must_fail(
+                mutant, f"{vid}[mutant-{cat}]", exclusion_set, _probe_mutants=False
+            )
+            if mutant_ok:
+                vec_errors.append(
+                    f"ASSERTION-FREE: Category {cat} passed its condition-removed mutant "
+                    f"({vid}[mutant-{cat}]) — the check does not test rejection"
+                )
 
     return (not vec_errors), vec_errors
 
@@ -356,7 +552,7 @@ def _run_self_tests() -> None:
 def check_vectors(root: Path) -> int:
     _run_self_tests()
 
-    passed = skipped = failed = 0
+    passed = skipped = failed = informative = 0
     errors: list[str] = []
 
     for vec_path in sorted(root.rglob("*.json")):
@@ -372,6 +568,16 @@ def check_vectors(root: Path) -> int:
         exclusion_set: list[str] = v.get("exclusion_set", [])
 
         if v.get("must_fail"):
+            if v.get("failure_reason") in _INFORMATIVE_FAILURE_REASONS:
+                errs = _check_informative_vector(v, vid)
+                if errs:
+                    for e in errs:
+                        errors.append(f"FAIL {vid} (informative structural): {e}")
+                    failed += 1
+                else:
+                    informative += 1
+                continue
+
             ok, vec_errors = _exercise_must_fail(v, vid, exclusion_set)
             if ok:
                 passed += 1
@@ -431,7 +637,10 @@ def check_vectors(root: Path) -> int:
 
         passed += 1
 
-    print(f"vectors: {passed} pass/exercised, {skipped} no-check (skipped), {failed} FAILED")
+    print(
+        f"vectors: {passed} pass/exercised, {informative} informative, "
+        f"{skipped} no-check (skipped), {failed} FAILED"
+    )
     for err in errors:
         print(err)
     return 1 if errors else 0
