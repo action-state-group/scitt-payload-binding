@@ -160,6 +160,15 @@ def _run_self_tests() -> None:
     except ValueError as exc:
         errors.append(f"SELF-TEST FAIL: _jcs rejected safe integer: {exc}")
 
+    # A bare must_fail vector (no category A/B/C fields) must be a hard failure,
+    # not a silent pass.
+    ok, _errs = _exercise_must_fail({"must_fail": True}, "bare-must_fail-self-test", [])
+    if ok:
+        errors.append(
+            "SELF-TEST FAIL: bare {'must_fail': true} vector returned ok=True "
+            "— ran_any_check guard not enforced"
+        )
+
     if errors:
         print("SELF-TEST FAILURES:")
         for e in errors:
@@ -253,6 +262,14 @@ def _exercise_must_fail(
                 f"  expected: {ev['wrong_recomputed_digest']}\n"
                 f"  got:      {got}"
             )
+
+    if not ran_any_check:
+        vec_errors.append(
+            "must_fail vector matched no check category (A/B/C) — "
+            "it exercised no assertions; add 'jcs_n_correct_digest', "
+            "'erroneous_verification', or a bare 'input' without "
+            "'jcs_n_correct_digest'/'pre_image' to make it an algorithm-rejection vector"
+        )
 
     return (not vec_errors), vec_errors
 
