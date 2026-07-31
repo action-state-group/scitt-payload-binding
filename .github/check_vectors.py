@@ -16,8 +16,10 @@ For must_fail vectors — each MUST match at least one category (enforced):
   C. Typed-ref erroneous_verification: 'wrong_pre_image' + 'wrong_recomputed_digest'
      -> verify wrong_pre_image -> SHA-256 = wrong_recomputed_digest.
   D. Derived-id mismatch: 'correct_derived_id' + 'carried_id'
-     -> recompute from full_payload (exclusion_set applied); assert recomputed ==
-        correct_derived_id AND recomputed != carried_id.
+     -> REQUIRES full_payload (missing full_payload is a hard failure -- a bare string
+        comparison of correct_derived_id vs. carried_id certifies nothing); recompute
+        from full_payload (exclusion_set applied); assert recomputed == correct_derived_id
+        AND recomputed != carried_id.
   E. Profile-independence scenario: 'failure_reason' == 'profile_independence_violation'
      -> INFORMATIVE: behavioral prohibition cannot be tested programmatically.
         REQUIRES both the decision/auth-document join (scenario.authorization_doc +
@@ -389,7 +391,14 @@ def _exercise_must_fail(
         categories_fired.append("D")
         full_payload = v.get("full_payload")
         excl = v.get("exclusion_set") or []
-        if full_payload is not None:
+        if full_payload is None:
+            vec_errors.append(
+                "Category D vector missing full_payload — correct_derived_id cannot be "
+                "independently recomputed, so neither ID is grounded in an artifact and "
+                "no mismatch can be demonstrated (a bare string comparison certifies "
+                "nothing)"
+            )
+        else:
             try:
                 computed = jcs_n_pre_image(full_payload, excl or None)
                 got = _sha256_hex(computed)
@@ -405,12 +414,6 @@ def _exercise_must_fail(
                     )
             except Exception as exc:
                 vec_errors.append(f"Category D: jcs_n_pre_image raised: {exc!r}")
-        else:
-            if v["correct_derived_id"] == v["carried_id"]:
-                vec_errors.append(
-                    "correct_derived_id == carried_id — values identical "
-                    "(add full_payload to vector for real recomputation)"
-                )
 
     # F. Common-canonical-form trap: verify digest AND type incompatibility AND both canonical forms
     if "common_canonical_form" in v and "common_digest" in v:
@@ -728,6 +731,23 @@ def _run_self_tests() -> None:
             "SELF-TEST FAIL: Category G accepted a different-but-valid bare-hex digest "
             "as a representation mismatch -- it only checks content inequality, not "
             "representation validity"
+        )
+
+    # Round-6 (tyche-dev inline P1 on 6bc55ed): Category D must require full_payload --
+    # a bare correct_derived_id/carried_id string comparison with no full_payload
+    # certifies nothing, since neither ID is grounded in an independently recomputed
+    # artifact.
+    d_no_payload = {
+        "must_fail": True,
+        "correct_derived_id": "1" * 64,
+        "carried_id": "0" * 64,
+    }
+    ok, _errs = _exercise_must_fail(d_no_payload, "self-test-d-no-payload", [])
+    if ok:
+        errors.append(
+            "SELF-TEST FAIL: Category D vector with correct_derived_id/carried_id but "
+            "no full_payload returned ok=True -- missing-recomputation-input guard not "
+            "enforced"
         )
 
     # P1-3: a hollow E record, and a real E vector with non_conforming_verifier_behavior
