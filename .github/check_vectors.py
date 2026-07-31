@@ -20,20 +20,30 @@ For must_fail vectors — each MUST match at least one category (enforced):
         correct_derived_id AND recomputed != carried_id.
   E. Profile-independence scenario: 'failure_reason' == 'profile_independence_violation'
      -> INFORMATIVE: behavioral prohibition cannot be tested programmatically.
-        Structural consistency of vector data is checked via _check_informative_vector;
-        these vectors are NOT counted as MUST-FAIL exercised (separate 'informative' counter).
+        REQUIRES both the decision/auth-document join (scenario.authorization_doc +
+        scenario.decision_record) AND the explicit non_conforming_verifier_behavior.violation
+        + conforming_alternative.action.  A hollow record missing either side is a hard
+        failure, not informative.  These vectors are NOT counted as MUST-FAIL exercised
+        (separate 'informative' counter).
   F. Common-canonical-form trap: 'common_canonical_form' + 'common_digest'
-     -> verify SHA-256(common_canonical_form) == common_digest; assert artifact_a.type !=
+     -> verify SHA-256(common_canonical_form) == common_digest; REQUIRES complete typed
+        artifact_a + artifact_b (each with 'type' and 'payload'); assert artifact_a.type !=
         artifact_b.type (incompatibility is real); recompute both artifact canonical forms
         and verify each equals common_canonical_form.
   G. Cited-artifact derived-id: 'cited_artifact.correct_derived_id_bare_hex'
      -> recompute jcs_n from cited_artifact.payload (using registry exclusion_set
-        if present); verify == correct_derived_id_bare_hex; assert typed_reference.digest
-        != correct_derived_id_bare_hex (carried representation is REJECTED).
+        if present); verify == correct_derived_id_bare_hex; REQUIRES a carried
+        typed_reference_with_wrong_representation/typed_reference_with_wrong_digest.digest;
+        assert it is REJECTED as a representation -- not just unequal in content, but
+        actually failing the declared bare 64-char lowercase-hex grammar (a different but
+        syntactically-valid bare-hex digest is a content mismatch, not a representation
+        mismatch, and does NOT satisfy this category).
   H. Top-level erroneous pre-image: 'erroneous_pre_image_that_produced_wrong_digest'
-     -> verify erroneous pre-image -> SHA-256 = typed_reference_with_wrong_digest.digest;
-        verify verification.correct_pre_image -> SHA-256 = verification.recomputed_digest;
-        assert wrong_digest != recomputed_digest (inequality is real).
+     -> REQUIRES typed_reference_with_wrong_digest.digest AND verification.correct_pre_image
+        + verification.recomputed_digest; verify erroneous pre-image -> SHA-256 =
+        typed_reference_with_wrong_digest.digest; verify verification.correct_pre_image ->
+        SHA-256 = verification.recomputed_digest; assert wrong_digest != recomputed_digest
+        (inequality is real).
 
 A must_fail vector matching NONE of the above is a hard failure -- 'ran_any_check' is
 enforced.  A bare {'must_fail': true} fails the suite.
@@ -43,6 +53,10 @@ auto-generates a condition-removed mutant and asserts the checker FLIPS to failu
 it.  A category that passes its mutant is reported ASSERTION-FREE and fails CI.
 Every future category MUST register a mutant generator in _MUTANT_GENERATORS or be
 added to _MUTANT_EXEMPT_CATEGORIES, or the suite will refuse to count it as exercised.
+A registered generator that returns None is ALSO a hard ASSERTION-FREE failure -- it
+never silently "covers" the category; a generator refusing to build a mutant proves
+nothing, so every category's real check requires its complete invariant inputs to
+guarantee a mutant can always be built.
 
 A pinned vector that was never run is not a vector.
 """
@@ -51,8 +65,12 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
+
+
+_BARE_HEX_64_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 # ---------------------------------------------------------------------------
@@ -143,11 +161,23 @@ def _check_informative_vector(v: dict, vid: str) -> list[str]:
     be a separate implementation artifact outside the checker's scope.  We verify
     the vector's own data is internally consistent but do NOT count these as
     MUST-FAIL exercised.
+
+    A record is REQUIRED to carry BOTH sides of the behavioral documentation --
+    the decision/auth-document join AND the explicit non-conforming behavior
+    (with its conforming alternative) -- or it does not demonstrate anything and
+    must NOT be counted informative.  A hollow {'must_fail': true,
+    'failure_reason': ...} record with no supporting data is a hard failure here,
+    not a free pass.
     """
     errs: list[str] = []
     scenario = v.get("scenario", {})
     auth_doc = scenario.get("authorization_doc", {})
-    if auth_doc and "derived_id" in auth_doc and "payload" in auth_doc:
+    if not auth_doc or "derived_id" not in auth_doc or "payload" not in auth_doc:
+        errs.append(
+            "informative vector missing scenario.authorization_doc.derived_id/payload "
+            "-- the decision/auth-document join cannot be checked"
+        )
+    else:
         try:
             computed = jcs_n_pre_image(auth_doc["payload"])
             got = hashlib.sha256(computed.encode("utf-8")).hexdigest()
@@ -162,12 +192,34 @@ def _check_informative_vector(v: dict, vid: str) -> list[str]:
                 .get("authorization", {})
                 .get("digest")
             )
-            if carried_digest and got != carried_digest:
+            if not carried_digest:
+                errs.append(
+                    "informative vector missing scenario.decision_record.payload."
+                    "authorization.digest -- the decision/auth-document join cannot "
+                    "be checked"
+                )
+            elif got != carried_digest:
                 errs.append(
                     "authorization_doc.derived_id != decision_record authorization.digest"
                 )
         except Exception as exc:
             errs.append(f"informative structural check raised: {exc!r}")
+
+    behavior = v.get("non_conforming_verifier_behavior")
+    if not behavior or not behavior.get("violation"):
+        errs.append(
+            "informative vector missing non_conforming_verifier_behavior.violation "
+            "-- the explicit non-conforming behavior must be documented, not implied "
+            "by failure_reason alone"
+        )
+
+    alternative = v.get("conforming_alternative")
+    if not alternative or not alternative.get("action"):
+        errs.append(
+            "informative vector missing conforming_alternative.action -- the "
+            "conforming alternative must be documented alongside the violation"
+        )
+
     return errs
 
 
@@ -373,7 +425,14 @@ def _exercise_must_fail(
             )
         art_a = v.get("artifact_a", {})
         art_b = v.get("artifact_b", {})
-        if art_a and art_b:
+        if not art_a or not art_b or "type" not in art_a or "type" not in art_b or \
+                "payload" not in art_a or "payload" not in art_b:
+            vec_errors.append(
+                "Category F vector missing required artifact_a/artifact_b (with "
+                "type and payload) — the type-incompatibility invariant cannot be "
+                "demonstrated without both complete typed artifacts"
+            )
+        else:
             if art_a.get("type") == art_b.get("type"):
                 vec_errors.append(
                     f"artifact_a.type == artifact_b.type ({art_a.get('type')!r}) — "
@@ -381,18 +440,17 @@ def _exercise_must_fail(
                 )
             for art_key in ("artifact_a", "artifact_b"):
                 art = v.get(art_key, {})
-                if "payload" in art:
-                    art_excl: list[str] = art.get("registry_entry", {}).get("exclusion_set") or []
-                    try:
-                        art_computed = jcs_n_pre_image(art["payload"], art_excl or None)
-                        if art_computed != v["common_canonical_form"]:
-                            vec_errors.append(
-                                f"{art_key} canonical form != common_canonical_form\n"
-                                f"  expected: {v['common_canonical_form']!r}\n"
-                                f"  got:      {art_computed!r}"
-                            )
-                    except Exception as exc:
-                        vec_errors.append(f"{art_key}: jcs_n_pre_image raised: {exc!r}")
+                art_excl: list[str] = art.get("registry_entry", {}).get("exclusion_set") or []
+                try:
+                    art_computed = jcs_n_pre_image(art["payload"], art_excl or None)
+                    if art_computed != v["common_canonical_form"]:
+                        vec_errors.append(
+                            f"{art_key} canonical form != common_canonical_form\n"
+                            f"  expected: {v['common_canonical_form']!r}\n"
+                            f"  got:      {art_computed!r}"
+                        )
+                except Exception as exc:
+                    vec_errors.append(f"{art_key}: jcs_n_pre_image raised: {exc!r}")
 
     # G. Cited-artifact derived-id: recompute AND assert carried representation is REJECTED
     cited = v.get("cited_artifact", {})
@@ -409,15 +467,37 @@ def _exercise_must_fail(
                     f"  expected: {cited['correct_derived_id_bare_hex']}\n"
                     f"  got:      {got}"
                 )
-            ref_digest = (
-                v.get("typed_reference_with_wrong_representation", {}).get("digest")
-                or v.get("typed_reference_with_wrong_digest", {}).get("digest")
+            ref = (
+                v.get("typed_reference_with_wrong_representation")
+                or v.get("typed_reference_with_wrong_digest")
             )
-            if ref_digest is not None and ref_digest == cited["correct_derived_id_bare_hex"]:
+            if not ref or "digest" not in ref:
                 vec_errors.append(
-                    f"typed reference digest == correct_derived_id_bare_hex — "
-                    f"no representation mismatch demonstrated: {ref_digest!r}"
+                    "Category G vector missing typed_reference_with_wrong_representation."
+                    "digest / typed_reference_with_wrong_digest.digest — the "
+                    "representation-mismatch invariant cannot be demonstrated without "
+                    "a carried typed reference"
                 )
+            else:
+                ref_digest = ref["digest"]
+                # The declared representation for a resolved artifact type is bare
+                # 64-char lowercase hex (registry_entry.digest_context).  Category G
+                # tests that the carried representation itself is REJECTED, not merely
+                # that its content differs — a syntactically-valid bare-hex digest that
+                # simply carries different content is a content mismatch, not a
+                # representation mismatch, and must NOT satisfy this category.
+                if ref_digest == cited["correct_derived_id_bare_hex"]:
+                    vec_errors.append(
+                        f"typed reference digest == correct_derived_id_bare_hex — "
+                        f"no mismatch demonstrated: {ref_digest!r}"
+                    )
+                elif _BARE_HEX_64_RE.match(ref_digest):
+                    vec_errors.append(
+                        f"typed reference digest {ref_digest!r} is a syntactically valid "
+                        f"bare 64-char lowercase-hex representation — it differs only in "
+                        f"content, not representation; Category G requires the carried "
+                        f"representation itself to be invalid (e.g. prefixed/non-bare form)"
+                    )
         except Exception as exc:
             vec_errors.append(f"cited_artifact derived-id: jcs_n_pre_image raised: {exc!r}")
 
@@ -430,7 +510,14 @@ def _exercise_must_fail(
         verification = v.get("verification", {})
         correct_pre = verification.get("correct_pre_image")
         recomputed_digest = verification.get("recomputed_digest")
-        if wrong_digest:
+        if not wrong_digest or not correct_pre or not recomputed_digest:
+            vec_errors.append(
+                "Category H vector missing required typed_reference_with_wrong_digest."
+                "digest and/or verification.correct_pre_image/recomputed_digest — the "
+                "erroneous-vs-correct pre-image invariant cannot be demonstrated without "
+                "the complete correct-side fields"
+            )
+        else:
             got = _sha256_hex(erroneous_pre)
             if got != wrong_digest:
                 vec_errors.append(
@@ -438,7 +525,6 @@ def _exercise_must_fail(
                     f"  expected: {wrong_digest}\n"
                     f"  got:      {got}"
                 )
-        if correct_pre and recomputed_digest:
             got = _sha256_hex(correct_pre)
             if got != recomputed_digest:
                 vec_errors.append(
@@ -446,10 +532,10 @@ def _exercise_must_fail(
                     f"  expected: {recomputed_digest}\n"
                     f"  got:      {got}"
                 )
-        if wrong_digest and recomputed_digest and wrong_digest == recomputed_digest:
-            vec_errors.append(
-                f"wrong_digest == recomputed_digest — no inequality demonstrated: {wrong_digest!r}"
-            )
+            if wrong_digest == recomputed_digest:
+                vec_errors.append(
+                    f"wrong_digest == recomputed_digest — no inequality demonstrated: {wrong_digest!r}"
+                )
 
     # Enforcement: a vector matching none of the above is a hard failure.
     if not ran_any_check:
@@ -473,6 +559,13 @@ def _exercise_must_fail(
                 continue
             mutant = gen(v)
             if mutant is None:
+                vec_errors.append(
+                    f"ASSERTION-FREE: mutant generator for Category {cat} returned None "
+                    f"({vid}) — a generator that refuses to build a mutant proves nothing; "
+                    f"the vector must carry the category's complete invariant inputs so a "
+                    f"condition-removed mutant can be built and probed, or the generator "
+                    f"must be fixed to build one from this shape"
+                )
                 continue
             mutant_ok, _ = _exercise_must_fail(
                 mutant, f"{vid}[mutant-{cat}]", exclusion_set, _probe_mutants=False
@@ -536,6 +629,142 @@ def _run_self_tests() -> None:
         errors.append(
             "SELF-TEST FAIL: bare {'must_fail': true} vector returned ok=True "
             "-- ran_any_check guard not enforced"
+        )
+
+    # --- Anton round-5 P1s: the mutation framework is itself verification code. ---
+
+    # P1-1: synthetic vectors for F/G/H that fire the category but lack the fields
+    # a mutant generator needs must HARD-ERROR, not silently pass via a None mutant.
+    synth_f_no_artifacts = {
+        "must_fail": True,
+        "failure_reason": "common_canonical_form_trap",
+        "common_canonical_form": '{"a":1}',
+        "common_digest": _sha256_hex('{"a":1}'),
+    }
+    ok, _errs = _exercise_must_fail(synth_f_no_artifacts, "self-test-f-no-artifacts", [])
+    if ok:
+        errors.append(
+            "SELF-TEST FAIL: Category F vector with common form/digest but no artifacts "
+            "returned ok=True -- None-mutant / missing-invariant-inputs guard not enforced"
+        )
+
+    g_cited_payload = {"x": 1}
+    g_bare_hex_no_ref = _sha256_hex(jcs_n_pre_image(g_cited_payload))
+    synth_g_no_typed_ref = {
+        "must_fail": True,
+        "failure_reason": "representation_mismatch",
+        "cited_artifact": {
+            "payload": g_cited_payload,
+            "correct_derived_id_bare_hex": g_bare_hex_no_ref,
+        },
+    }
+    ok, _errs = _exercise_must_fail(synth_g_no_typed_ref, "self-test-g-no-typed-ref", [])
+    if ok:
+        errors.append(
+            "SELF-TEST FAIL: Category G vector with cited payload/digest but no typed "
+            "reference returned ok=True -- None-mutant / missing-invariant-inputs guard "
+            "not enforced"
+        )
+
+    synth_h_no_correct_side = {
+        "must_fail": True,
+        "failure_reason": "erroneous_pre_image",
+        "erroneous_pre_image_that_produced_wrong_digest": "some-wrong-preimage",
+    }
+    ok, _errs = _exercise_must_fail(synth_h_no_correct_side, "self-test-h-no-correct-side", [])
+    if ok:
+        errors.append(
+            "SELF-TEST FAIL: Category H vector with erroneous preimage/digest but no "
+            "correct-side fields returned ok=True -- None-mutant / missing-invariant-"
+            "inputs guard not enforced"
+        )
+
+    # P1-1b: generator-refusal backstop -- a registered generator returning None must
+    # hard-error the mutation probe even when the vector's own real check passes.
+    # Isolated from category-specific field tightening via a temporary stub generator.
+    d_vector = {
+        "must_fail": True,
+        "correct_derived_id": _sha256_hex(jcs_n_pre_image({"k": "v"})),
+        "carried_id": "0" * 64,
+        "full_payload": {"k": "v"},
+    }
+    _orig_d_gen = _MUTANT_GENERATORS.get("D")
+    _MUTANT_GENERATORS["D"] = lambda v: None
+    try:
+        ok, _errs = _exercise_must_fail(copy.deepcopy(d_vector), "self-test-generator-refusal", [])
+    finally:
+        if _orig_d_gen is not None:
+            _MUTANT_GENERATORS["D"] = _orig_d_gen
+        else:
+            del _MUTANT_GENERATORS["D"]
+    if ok:
+        errors.append(
+            "SELF-TEST FAIL: a registered mutant generator returning None was silently "
+            "skipped instead of hard-erroring the mutation probe"
+        )
+
+    # P1-2: Category G must reject the declared REPRESENTATION, not just any different
+    # content.  A different-but-syntactically-valid bare-hex digest is a content
+    # mismatch, not a representation mismatch, and must NOT satisfy Category G.
+    g_payload = {"doc_id": None, "subject": "WS-1"}
+    g_bare_hex = _sha256_hex(jcs_n_pre_image(g_payload))
+    base_g_vector = {
+        "must_fail": True,
+        "failure_reason": "representation_mismatch",
+        "cited_artifact": {"payload": g_payload, "correct_derived_id_bare_hex": g_bare_hex},
+        "typed_reference_with_wrong_representation": {"digest": "sha256:" + g_bare_hex},
+    }
+    ok, errs = _exercise_must_fail(copy.deepcopy(base_g_vector), "self-test-g-base", [])
+    if not ok:
+        errors.append(
+            f"SELF-TEST FAIL: a real representation-mismatch G vector was rejected: {errs!r}"
+        )
+    different_valid_hex = "a" * 64 if g_bare_hex != "a" * 64 else "b" * 64
+    mutant_g = copy.deepcopy(base_g_vector)
+    mutant_g["typed_reference_with_wrong_representation"]["digest"] = different_valid_hex
+    ok, _errs = _exercise_must_fail(mutant_g, "self-test-g-valid-hex-content-mutant", [])
+    if ok:
+        errors.append(
+            "SELF-TEST FAIL: Category G accepted a different-but-valid bare-hex digest "
+            "as a representation mismatch -- it only checks content inequality, not "
+            "representation validity"
+        )
+
+    # P1-3: a hollow E record, and a real E vector with non_conforming_verifier_behavior
+    # stripped out, must NOT be counted informative.
+    hollow_e = {"must_fail": True, "failure_reason": "profile_independence_violation"}
+    errs = _check_informative_vector(hollow_e, "self-test-hollow-e")
+    if not errs:
+        errors.append(
+            "SELF-TEST FAIL: hollow E record ({'must_fail': true, 'failure_reason': "
+            "'profile_independence_violation'}) with no scenario/behavior data was "
+            "counted informative"
+        )
+
+    e_auth_payload = {"doc_id": None, "subject": "WS-1"}
+    e_auth_digest = _sha256_hex(jcs_n_pre_image(e_auth_payload))
+    full_e_vector = {
+        "must_fail": True,
+        "failure_reason": "profile_independence_violation",
+        "scenario": {
+            "decision_record": {"payload": {"authorization": {"digest": e_auth_digest}}},
+            "authorization_doc": {"payload": e_auth_payload, "derived_id": e_auth_digest},
+        },
+        "non_conforming_verifier_behavior": {"violation": "..."},
+        "conforming_alternative": {"action": "..."},
+    }
+    errs = _check_informative_vector(copy.deepcopy(full_e_vector), "self-test-e-full")
+    if errs:
+        errors.append(
+            f"SELF-TEST FAIL: a complete, conforming E vector was rejected: {errs!r}"
+        )
+    stripped_e_vector = copy.deepcopy(full_e_vector)
+    del stripped_e_vector["non_conforming_verifier_behavior"]
+    errs = _check_informative_vector(stripped_e_vector, "self-test-e-stripped-behavior")
+    if not errs:
+        errors.append(
+            "SELF-TEST FAIL: E vector with non_conforming_verifier_behavior removed was "
+            "still counted informative"
         )
 
     if errors:
