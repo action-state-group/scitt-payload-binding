@@ -5,10 +5,13 @@ import pytest
 from cpb import (
     ArtifactTypeRegistryEntry,
     ContextMismatchError,
+    DigestAlgorithmMismatchError,
     RepresentationMismatchError,
     TypedRef,
     TypedRefError,
+    hex_to_raw,
     make_typed_ref,
+    raw_to_hex,
     verify_typed_ref,
 )
 from cpb.canonicalize import canonical_digest
@@ -140,3 +143,104 @@ def test_typed_ref_textual_equality_trap():
     different_payload = {"a_id": None, "color": "blue", "size": "99"}
     with pytest.raises(ContextMismatchError):
         verify_typed_ref(ref_a, different_payload, entry_a)
+
+
+def test_typed_ref_recomputed_digest_mismatch_wrong_exclusion_set():
+    """typed-ref-fail-01: a verifier that applies the WRONG exclusion set
+    (omitting the registry-declared one) must not silently accept the
+    resulting recomputation. Round-2 gap: this vector (failure_reason
+    'recomputed_digest_mismatch') was loaded but never selected by any
+    filter in this file, so it was never actually run against the library."""
+    vectors = load_vectors("typed-refs/fail")
+    v = next((x for x in vectors if x.get("failure_reason") == "recomputed_digest_mismatch"), None)
+    assert v is not None, "typed-ref-fail-01 (recomputed_digest_mismatch) not found"
+
+    cited = v["cited_artifact"]
+    ref = TypedRef(**_typed_ref_fields(v["typed_reference"]))
+
+    # The vector's carried digest verifies under the CORRECT (registry) context.
+    correct_entry = _entry_from_cited(cited)
+    assert verify_typed_ref(ref, cited["payload"], correct_entry) == cited["correct_derived_id"]
+
+    # A verifier that applies the wrong exclusion set (per the vector's own
+    # erroneous_verification.wrong_exclusion_set) must raise, not match.
+    wrong_exclusion_set = frozenset(v["erroneous_verification"]["wrong_exclusion_set"])
+    wrong_entry = ArtifactTypeRegistryEntry(
+        name=cited["artifact_type_registry_entry"]["name"],
+        exclusion_set=wrong_exclusion_set,
+    )
+    with pytest.raises(ContextMismatchError):
+        verify_typed_ref(ref, cited["payload"], wrong_entry)
+
+
+def test_typed_ref_digest_alg_mismatch_rejected():
+    """Round-2 Blocker 1: verify_typed_ref must enforce digest_alg. A
+    reference labeled with a hash algorithm other than the one this
+    artifact type's registered canonicalization algorithm actually uses
+    (jcs-n => SHA-256) must be rejected -- even when the digest value
+    itself would otherwise match under the correct context."""
+    payload = {
+        "doc_id": None,
+        "subject": "WS-42",
+        "scope": "temperature-write",
+        "issued_at": "2026-07-24T00:00:00Z",
+    }
+    entry = ArtifactTypeRegistryEntry(
+        name="authorization-doc",
+        exclusion_set=frozenset(["doc_id"]),
+    )
+    correct_digest = canonical_digest(payload, entry.exclusion_set)
+
+    # Positive: digest_alg matching the registered algorithm's hash (SHA-256) verifies.
+    ref_correct = TypedRef(type="authorization-doc", digest_alg="SHA-256", digest=correct_digest)
+    assert verify_typed_ref(ref_correct, payload, entry) == correct_digest
+
+    # Negative: a SHA-512-labeled reference to the same digest value must NOT
+    # verify under a jcs-n/SHA-256 context.
+    ref_mislabeled = TypedRef(type="authorization-doc", digest_alg="SHA-512", digest=correct_digest)
+    with pytest.raises(DigestAlgorithmMismatchError):
+        verify_typed_ref(ref_mislabeled, payload, entry)
+
+
+def test_typed_ref_raw_representation_boundary():
+    """Round-2 Blocker 2: raw octets and hex are distinct, non-interchangeable
+    representations (§4.1) -- not two spellings of one 'bare_hex' concept.
+    A hex string is REJECTED where 'raw' (bytes) is declared, and a bytes
+    object is REJECTED where 'bare_hex' (str) is declared, even when one is
+    exactly the decoding of the other."""
+    payload = {
+        "doc_id": None,
+        "subject": "WS-42",
+        "scope": "temperature-write",
+        "issued_at": "2026-07-24T00:00:00Z",
+    }
+    hex_entry = ArtifactTypeRegistryEntry(name="authorization-doc", exclusion_set=frozenset(["doc_id"]))
+    raw_entry = ArtifactTypeRegistryEntry(
+        name="authorization-doc", exclusion_set=frozenset(["doc_id"]), representation="raw",
+    )
+    digest_hex = canonical_digest(payload, hex_entry.exclusion_set)
+    digest_raw = hex_to_raw(digest_hex)
+
+    # Positive: raw bytes verify under a 'raw' registry entry.
+    ref_raw = TypedRef(type="authorization-doc", digest_alg="SHA-256", digest=digest_raw)
+    assert verify_typed_ref(ref_raw, payload, raw_entry) == digest_hex
+
+    # Positive: the hex str verifies under a 'bare_hex' registry entry.
+    ref_hex = TypedRef(type="authorization-doc", digest_alg="SHA-256", digest=digest_hex)
+    assert verify_typed_ref(ref_hex, payload, hex_entry) == digest_hex
+
+    # Boundary negative: the hex str of the CORRECT digest is rejected where
+    # 'raw' is declared -- content is right, representation is wrong.
+    ref_hex_as_raw = TypedRef(type="authorization-doc", digest_alg="SHA-256", digest=digest_hex)
+    with pytest.raises(RepresentationMismatchError):
+        verify_typed_ref(ref_hex_as_raw, payload, raw_entry)
+
+    # Boundary negative: the raw bytes of the CORRECT digest are rejected
+    # where 'bare_hex' is declared.
+    ref_raw_as_hex = TypedRef(type="authorization-doc", digest_alg="SHA-256", digest=digest_raw)
+    with pytest.raises(RepresentationMismatchError):
+        verify_typed_ref(ref_raw_as_hex, payload, hex_entry)
+
+    # Explicit conversions round-trip.
+    assert hex_to_raw(raw_to_hex(digest_raw)) == digest_raw
+    assert raw_to_hex(hex_to_raw(digest_hex)) == digest_hex

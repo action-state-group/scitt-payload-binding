@@ -23,8 +23,11 @@ from .typed_ref import (
     TypedRefError,
     ContextMismatchError,
     RepresentationMismatchError,
+    DigestAlgorithmMismatchError,
     make_typed_ref,
     verify_typed_ref,
+    hex_to_raw,
+    raw_to_hex,
 )
 
 __all__ = [
@@ -42,6 +45,9 @@ __all__ = [
     "TypedRefError",
     "ContextMismatchError",
     "RepresentationMismatchError",
+    "DigestAlgorithmMismatchError",
     "make_typed_ref",
     "verify_typed_ref",
+    "hex_to_raw",
+    "raw_to_hex",
 ]
