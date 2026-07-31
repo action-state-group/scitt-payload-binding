@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: Apache-2.0
+# Neutrality gate — pre-merge check that this public repo carries none of the
+# reserved vocabulary. The reserved-term list is NOT in this repository; it is
+# supplied at run time via the NEUTRALITY_TERMS repository secret.
+# .github/neutrality_scan.py is pure matching logic parameterized by that
+# secret, and is fail-closed: a missing secret fails the job rather than
+# passing silently.
+#
+# Steven: set the NEUTRALITY_TERMS repository secret (Settings → Secrets →
+# Actions) to the same JSON payload used in the other public repos. This gate
+# is a no-op until the secret is configured.
+#
+# To make this a required pre-merge gate, enable branch protection on `main`
+# and require the "neutrality" status check (repo Settings → Branches).
+# Note: GitHub withholds secrets from FORK pull requests by design; this gate
+# is effective for same-repo (maintainer) PRs.
+name: neutrality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  neutrality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Reserved-vocabulary neutrality scan (term list from secret)
+        env:
+          NEUTRALITY_TERMS: ${{ secrets.NEUTRALITY_TERMS }}
+        run: python .github/neutrality_scan.py .

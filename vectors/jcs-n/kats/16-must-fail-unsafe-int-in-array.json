@@ -1,0 +1,11 @@
+{
+  "id": "jcs-n-kat-16",
+  "description": "MUST-FAIL: unsafe integer (2^53) inside an array. jcs-n forbids integers |n| >= 2^53 because they cannot be exactly represented in IEEE 754 double; an implementation MUST reject them even when nested in arrays. Regression vector for the array-bypass bug (Fix 1, round 2).",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1",
+  "must_fail": true,
+  "failure_reason": "unsafe_integer_in_digest_bearing_field",
+  "input": {"vals": [9007199254740992]},
+  "exclusion_set": [],
+  "note": "9007199254740992 = 2^53, the first integer not exactly representable as an IEEE 754 double. An implementation that delegates arrays to json.dumps will silently serialize it, producing a non-interoperable digest."
+}

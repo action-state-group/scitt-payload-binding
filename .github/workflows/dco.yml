@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: Apache-2.0
+# DCO sign-off gate — every commit in a pull request must carry a
+# "Signed-off-by: Name <email>" trailer (git commit -s).
+# This replaces dependence on the hosted probot DCO app.
+name: dco
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check DCO sign-off on every commit in the PR
+        run: |
+          MISSING=0
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          for sha in $(git log --format='%H' "$BASE..$HEAD"); do
+            body=$(git log -1 --format='%B' "$sha")
+            if ! printf '%s' "$body" | grep -qiE '^Signed-off-by: .+ <.+>'; then
+              echo "MISSING DCO: $sha  $(git log -1 --format='%s' "$sha")"
+              MISSING=1
+            fi
+          done
+          if [ "$MISSING" -eq 1 ]; then
+            echo ""
+            echo "All commits must include a 'Signed-off-by: Name <email>' line."
+            echo "Fix with:  git commit -s --amend  (then force-push, or rebase -i)"
+            exit 1
+          fi
+          echo "DCO OK: all commits carry Signed-off-by."

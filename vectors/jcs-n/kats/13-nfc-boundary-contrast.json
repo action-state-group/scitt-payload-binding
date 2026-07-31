@@ -1,0 +1,18 @@
+{
+  "id": "jcs-n-nfc-contrast-01",
+  "description": "NFC boundary — INFORMATIVE contrast: an NFC-normalising construction applied to the same input as jcs-n-kat-12 produces a DIFFERENT digest. jcs-n is NOT NFC-normalising; this fixture documents what a buggy or intentionally-normalising profile would compute, so implementations can detect the deviation. Marked must_fail to exclude from the jcs-n pass suite.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1",
+  "must_fail": true,
+  "failure_reason": "nfc_normalisation_deviation",
+  "input": {
+    "Å": "v1",
+    "B": "v2"
+  },
+  "exclusion_set": [],
+  "jcs_n_correct_digest": "0b985be82ae90bcbbbafc977962796b317195d17f2b700fbb37a588abfd097bf",
+  "jcs_n_correct_pre_image_bytes_hex": "7b2241cc8a223a227631222c2242223a227632227d",
+  "nfc_contrast_digest": "54818123cf4543fa25a44f576281513cd8cdfbfbde7cfc270c735d4bf875a5a0",
+  "nfc_contrast_pre_image_bytes_hex": "7b2242223a227632222c22c385223a227631227d",
+  "note": "NFC(U+0041 U+030A) = U+00C5 (LATIN CAPITAL LETTER A WITH RING ABOVE, precomposed). Normalisation changes BOTH the member order AND the byte encoding: jcs-n (no normalisation): U+0041 < U+0042 => decomposed key sorts FIRST => pre_image 7b2241cc8a... (digest 0b985be8...); NFC-normalised: U+00C5 > U+0042 => B sorts FIRST => pre_image 7b2242...c385... (nfc_contrast_digest 54818123...). A profile that normalises MUST declare its normalisation form and the point in the pipeline where it is applied; failing to declare produces a digest context that cannot be deterministically reproduced. Marked must_fail to exclude from the jcs-n pass suite."
+}

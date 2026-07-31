@@ -1,0 +1,19 @@
+{
+  "id": "jcs-n-kat-12",
+  "description": "NFC boundary PASS: jcs-n preserves decomposed code points as-is and applies RFC 8785 §3.2.3 code-unit-by-code-unit ordering (no length-first rule). Key U+0041 U+030A (A + combining ring above) has first code unit U+0041, which is LESS THAN U+0042 (B), so the decomposed key sorts FIRST. Motivated by Joel Hillier on-list finding (2026-07-27): no published corpus exercises this boundary.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1; RFC 8785 §3.2.3",
+  "input": {
+    "Å": "v1",
+    "B": "v2"
+  },
+  "exclusion_set": [],
+  "normalized": {
+    "Å": "v1",
+    "B": "v2"
+  },
+  "pre_image": "{\"Å\":\"v1\",\"B\":\"v2\"}",
+  "pre_image_bytes_hex": "7b2241cc8a223a227631222c2242223a227632227d",
+  "digest": "0b985be82ae90bcbbbafc977962796b317195d17f2b700fbb37a588abfd097bf",
+  "note": "RFC 8785 §3.2.3 compares UTF-16 code units left-to-right (lexicographic, no length-first rule). U+0041 < U+0042, so the decomposed key (U+0041 U+030A) sorts before B. UTF-8 encoding of U+030A is 0xCC 0x8A, giving pre_image_bytes_hex 7b2241cc8a... (decomposed key first). See jcs-n-nfc-contrast-01: NFC normalization changes BOTH member order AND bytes."
+}

@@ -1,0 +1,17 @@
+{
+  "id": "jcs-n-kat-14",
+  "description": "Normalization recurses into array elements: a null member inside an array element dict is removed, leaving {}. Array elements are not object members — they stay in the array even when they normalize to {}. Regression vector for the early-return bug where _normalize did not recurse into lists.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1 E3",
+  "input": {
+    "outer": [{"x": null}]
+  },
+  "exclusion_set": [],
+  "normalized": {
+    "outer": [{}]
+  },
+  "pre_image": "{\"outer\":[{}]}",
+  "pre_image_bytes_hex": "7b226f75746572223a5b7b7d5d7d",
+  "digest": "0a6882b675261e619246fc9d2d00a7bece51816631eb001674bf3911d49867db",
+  "note": "The element {x: null} normalizes to {} (null member removed). The resulting {} stays in the array because array elements are not object members and are never pruned by E3. The outer key survives because [{}] is not the empty array []."
+}
