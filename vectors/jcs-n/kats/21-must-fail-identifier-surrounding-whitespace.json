@@ -1,0 +1,26 @@
+{
+  "id": "jcs-n-kat-21",
+  "description": "MUST-FAIL: identifier grammar, surrounding spaces. Same clause pair as kat-20 (section 4.1 grammar, section 6.1 consistency, section 4 recomputation): a hex digest padded with spaces is not a 64-character lowercase hex string, and a verifier MUST NOT trim before comparing. Split from the trailing-newline vector on purpose: an implementation may tolerate one whitespace class and not the other, and a combined vector would not say which.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 sections 4, 4.1, 6.1",
+  "must_fail": true,
+  "failure_reason": "representation_mismatch_surrounding_whitespace",
+  "cited_artifact": {
+    "payload": {
+      "action": "read",
+      "resource": "sensor-7"
+    },
+    "registry_entry": {
+      "name": "cpb-day2-artifact",
+      "algorithm": "jcs-n",
+      "exclusion_set": [],
+      "representation": "bare_hex",
+      "digest_context": "jcs-n; empty exclusion set; 64-char lowercase hex"
+    },
+    "correct_derived_id_bare_hex": "2f9bba43e30273e2e87c7ef659a0f36f1e11f8e0c10489afe4d267c996505c37"
+  },
+  "typed_reference_with_wrong_representation": {
+    "digest": " 2f9bba43e30273e2e87c7ef659a0f36f1e11f8e0c10489afe4d267c996505c37 "
+  },
+  "note": "Leading-tab padding (U+0009) fails for the identical reason; kept out of this vector so each whitespace class stays separately attributable."
+}

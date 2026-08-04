@@ -1,0 +1,15 @@
+{
+  "id": "jcs-n-kat-18",
+  "description": "UTF-16 key-order fork, minimal pair. U+1F600 GRINNING FACE (UTF-16 D83D DE00) vs U+FB33 HEBREW LETTER DALET WITH DAGESH (UTF-16 FB33). RFC 8785 section 3.2.3 sorts member names on UTF-16 code units: the emoji sorts FIRST (D83D < FB33) although its code point is higher (U+1F600 > U+FB33). Every prior corpus name is BMP, where the two orders coincide, so no earlier vector can distinguish a code-point-sorting implementation from a conforming one.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 section 3.1 step 2; RFC 8785 section 3.2.3",
+  "input": {
+    "😀": 1,
+    "דּ": 2
+  },
+  "exclusion_set": [],
+  "pre_image": "{\"😀\":1,\"דּ\":2}",
+  "pre_image_bytes_hex": "7b22f09f9880223a312c22efacb3223a327d",
+  "digest": "2aa3f5086e32bb90ce39c508a6f40fd72e792684f130d0f3b896ea191368f1e3",
+  "note": "A code-point-sorting implementation emits the members in the reverse order, pre-image bytes 7b22efacb3223a322c22f09f9880223a317d, digest 96c4e1b26f2ef1f5f03e115d3128f9306830bf5eaf2d523c0f7551d3424e4937 -- exactly the UTF-32 order RFC 8785 section 3.2.3 names as incompatible. No member is null, an empty array, or an empty object, so jcs-n normalization is the identity and the same digest serves jcs-s."
+}
