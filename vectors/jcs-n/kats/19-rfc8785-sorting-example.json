@@ -1,0 +1,20 @@
+{
+  "id": "jcs-n-kat-19",
+  "description": "The seven-member sorting example of RFC 8785 section 3.2.3, verbatim. Under the conforming UTF-16-code-unit order the emoji key sorts between U+20AC and U+FB33; under a code-point sort it moves to the end. Included because it is the RFC's own witness for the ordering rule, so a reader need not take kat-18's minimal pair on trust.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 section 3.1 step 2; RFC 8785 section 3.2.3",
+  "input": {
+    "€": "Euro Sign",
+    "\r": "Carriage Return",
+    "דּ": "Hebrew Letter Dalet With Dagesh",
+    "1": "One",
+    "😀": "Emoji: Grinning Face",
+    "": "Control",
+    "ö": "Latin Small Letter O With Diaeresis"
+  },
+  "exclusion_set": [],
+  "pre_image": "{\"\\r\":\"Carriage Return\",\"1\":\"One\",\"\":\"Control\",\"ö\":\"Latin Small Letter O With Diaeresis\",\"€\":\"Euro Sign\",\"😀\":\"Emoji: Grinning Face\",\"דּ\":\"Hebrew Letter Dalet With Dagesh\"}",
+  "pre_image_bytes_hex": "7b225c72223a2243617272696167652052657475726e222c2231223a224f6e65222c22c280223a22436f6e74726f6c222c22c3b6223a224c6174696e20536d616c6c204c6574746572204f205769746820446961657265736973222c22e282ac223a224575726f205369676e222c22f09f9880223a22456d6f6a693a204772696e6e696e672046616365222c22efacb3223a22486562726577204c65747465722044616c6574205769746820446167657368227d",
+  "digest": "5e321556d22018a9656991a9e94f77ec175fa193e52a2429d312f8419ec8b08c",
+  "note": "A code-point-sorting implementation moves the emoji member to the end, digest b69a6569f17e935ad787fd9b1ef01b5f66d84c6cb220c1ed9466b46512cd7fd2. All values are strings, so the vector is valid jcs-n input; normalization is the identity and the same digest serves jcs-s."
+}

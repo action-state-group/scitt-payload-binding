@@ -1,0 +1,26 @@
+{
+  "id": "jcs-n-kat-20",
+  "description": "MUST-FAIL: identifier grammar, trailing newline. Section 4.1 declares the bare representation to be a 64-character lowercase hex string and states the listed representations are distinct and not interchangeable; section 6.1 requires a verifier that finds the carried identifier inconsistent with the established context to NOT report the reference as verified. A 65-character string whose last character is U+000A is not a 64-character lowercase hex string: the verifier MUST reject it, not strip the newline and compare the remainder. Only a MUST-FAIL vector can discriminate here -- a tolerant verifier accepts every input a strict verifier accepts.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 sections 4, 4.1, 6.1",
+  "must_fail": true,
+  "failure_reason": "representation_mismatch_trailing_newline",
+  "cited_artifact": {
+    "payload": {
+      "action": "read",
+      "resource": "sensor-7"
+    },
+    "registry_entry": {
+      "name": "cpb-day2-artifact",
+      "algorithm": "jcs-n",
+      "exclusion_set": [],
+      "representation": "bare_hex",
+      "digest_context": "jcs-n; empty exclusion set; 64-char lowercase hex"
+    },
+    "correct_derived_id_bare_hex": "2f9bba43e30273e2e87c7ef659a0f36f1e11f8e0c10489afe4d267c996505c37"
+  },
+  "typed_reference_with_wrong_representation": {
+    "digest": "2f9bba43e30273e2e87c7ef659a0f36f1e11f8e0c10489afe4d267c996505c37\n"
+  },
+  "note": "The first 64 characters are the correct digest; the realistic provenance is an identifier read from a file written by a shell redirect. This vector is also the regression test for the checker's own identifier grammar: with a ^...$ anchored pattern Python's $ matches before a trailing newline, so the checker itself would classify this carried representation as syntactically valid bare hex. The pattern must be anchored with backslash-A and backslash-Z."
+}

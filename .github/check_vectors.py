@@ -72,7 +72,9 @@ import sys
 from pathlib import Path
 
 
-_BARE_HEX_64_RE = re.compile(r"^[0-9a-f]{64}$")
+# \A...\Z, not ^...$: Python's $ also matches immediately before a trailing
+# newline, so a ^...$ pattern accepts "<64 hex chars>\n" as bare hex.
+_BARE_HEX_64_RE = re.compile(r"\A[0-9a-f]{64}\Z")
 
 
 # ---------------------------------------------------------------------------
