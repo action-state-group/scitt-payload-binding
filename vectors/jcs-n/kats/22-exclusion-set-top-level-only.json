@@ -1,0 +1,14 @@
+{
+  "id": "jcs-n-kat-22",
+  "description": "Exclusion-set field matching is top-level only: an excluded name occurring again inside a nested object is NOT stripped. Pins the current canonical_digest() behavior (lib/cpb/canonicalize.py) so a recursive-stripping implementation forks on this vector. Falsification test proposed by Anton Sokolov in PR #2 review; see issue for the interop-fork risk this closes.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §4 ('exclusion set ... matched against the top-level member names of the payload only')",
+  "input": {"id": "x", "sub": {"id": "y"}},
+  "exclusion_set": ["id"],
+  "after_exclusion": {"sub": {"id": "y"}},
+  "normalized": {"sub": {"id": "y"}},
+  "pre_image": "{\"sub\":{\"id\":\"y\"}}",
+  "pre_image_bytes_hex": "7b22737562223a7b226964223a2279227d7d",
+  "digest": "1fa18622ca9a754310d22ba32ce52e5e9d4f77c2226567727aeb9dedd66e9fa7",
+  "note": "The top-level 'id' is stripped; the nested 'sub.id' survives because exclusion-set matching does not recurse. A recursive-stripping implementation would also remove sub.id, leaving sub={} which normalization then removes entirely, producing sha256(\"{}\") = 44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a instead -- a digest fork on any payload nesting an excluded field name (e.g. a chain field that plausibly nests)."
+}
