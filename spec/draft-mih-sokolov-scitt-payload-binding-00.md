@@ -235,6 +235,7 @@ Algorithm Registry ({{iana-alg}}) are:
 |---|---|---|
 | jcs-n | JCS + absent-field normalization; SHA-256; lowercase hex output | {{algo-jcs-n}} |
 | cde-n | CDE/dCBOR normalization; SHA-256 | {{algo-cde-n}} (pending) |
+| as-transmitted | No canonicalization; digest over a byte sequence fixed by a cited named production in the container format; SHA-256; lowercase hex | {{algo-as-transmitted}} |
 
 Entries in the Canonicalization Algorithm Registry are immutable: new
 behavior requires a new entry, never a retroactive edit to an existing one.
@@ -290,6 +291,46 @@ input, with no coordination beyond the specification; see Appendix C.
 
 Algorithm `cde-n` is reserved for a CDE/dCBOR canonicalization suite. Its
 definition will be specified in a subsequent revision of this document.
+
+## Algorithm as-transmitted {#algo-as-transmitted}
+
+Algorithm `as-transmitted` applies no canonicalization. The digest pre-image
+is the exact octet sequence already fixed by the container format or
+cryptographic envelope carrying the payload -- for example, the signing input
+over which a signature was computed. The signature (or other format-defined
+byte-fixing) is what makes those bytes authoritative; re-canonicalizing them
+would be redundant at best and would break the very binding that makes the
+bytes authoritative at worst.
+
+Because there is no canonicalization step, `as-transmitted` has no field set
+and no exclusion set. An artifact type entry that declares `as-transmitted`
+as its canonicalization algorithm MUST instead state a byte-boundary
+selector in place of a field set: a normative reference plus the name that
+referenced specification gives to the exact byte sequence in question. Two
+examples of a valid selector:
+
+* `RFC 7515 §5.1, JWS Signing Input` -- the octets a JWS signature is
+  computed over.
+* `RFC 9052 §4.4, Sig_structure` -- the octets a COSE_Sign1 signature is
+  computed over.
+
+A selector that is not a cited named production is prose, not a selector,
+and this registry exists to eliminate exactly that kind of ambiguity: an
+artifact type MUST NOT register `as-transmitted` on the strength of an
+uncited description such as "the payload bytes." If the container
+specification carrying the artifact does not itself name the exact byte
+sequence as a discrete production, the artifact type MUST NOT use
+`as-transmitted` -- it registers a canonicalization algorithm instead, one
+that defines the pre-image construction from first principles.
+
+The CANONICAL-DIGEST of a byte sequence B identified by the declared
+byte-boundary selector is:
+
+~~~
+CANONICAL-DIGEST(as-transmitted, B) = lowercase_hex(SHA-256(B))
+~~~
+
+Digest: SHA-256, lowercase hex, matching `jcs-n`.
 
 # The Derived Identifier {#derived-id}
 
@@ -649,6 +690,13 @@ Initial contents:
 |---|---|---|
 | jcs-n | RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex | This document |
 | cde-n | CDE/dCBOR normalization; SHA-256 | This document (reserved; subsequent revision) |
+| as-transmitted | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; lowercase hex | This document |
+
+An artifact type entry MUST NOT register `as-transmitted` without a
+byte-boundary selector that cites a named production in the container
+specification ({{algo-as-transmitted}}). Without that selector, an
+`as-transmitted` entry states nothing: there is no field set, no exclusion
+set, and no canonicalization to fall back on for the pre-image construction.
 
 ## Artifact Type Registry {#iana-art}
 
