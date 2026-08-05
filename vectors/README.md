@@ -53,12 +53,40 @@ Each vector is a self-contained JSON object. Common fields:
 | jcs-n-kat-09 | `{"id":null,"b":"x","a":"y"}` excl `{id}` | `7951deff...` |
 | jcs-n-kat-10 | MUST-FAIL: float in digest-bearing field | — |
 | jcs-n-kat-11 | `{"amount":"12.50","currency":"USD"}` | `3470d8bf...` |
+| jcs-n-kat-12 | `{"Å":"v1","B":"v2"}` (key is NFD-decomposed `A`+combining-ring) | `0b985be8...` |
+| jcs-n-nfc-contrast-01 | MUST-FAIL: same input as kat-12 under an NFC-normalising construction — different member order and digest | — |
+| jcs-n-kat-14 | `{"outer":[{"x":null}]}` (array elements are not object members; E3 does not prune into arrays) | `0a6882b6...` |
+| jcs-n-kat-15 | MUST-FAIL: float nested inside an array | — |
+| jcs-n-kat-16 | MUST-FAIL: unsafe integer (2^53) nested inside an array | — |
+| jcs-n-kat-17 | MUST-FAIL: integer ≥ 10^21 nested inside an array | — |
+| jcs-n-kat-18 | `{"😀":1,"דּ":2}` (UTF-16 code-unit sort order, minimal pair) | `2aa3f508...` |
+| jcs-n-kat-19 | RFC 8785 §3.2.3's seven-member sorting example, verbatim | `5e321556...` |
+| jcs-n-kat-20 | MUST-FAIL: typed-ref digest with a trailing newline (representation mismatch) | — |
+| jcs-n-kat-21 | MUST-FAIL: typed-ref digest with surrounding whitespace (representation mismatch) | — |
+| jcs-n-kat-22 | `{"id":"x","sub":{"id":"y"}}` excl `{id}` — exclusion-set matching is top-level only | `1fa18622...` |
 
-**E3 boundary group** (KATs 02–06): null, empty array, empty object, absent
-field, and nested-null all produce the same canonical form `{"b":"x"}` and
-the same digest `b00eaa75...`. This demonstrates the byte construction the
-spec states in §3.1: jcs-n defines the byte outcome after absent-field
-normalization; the semantic equivalence decision belongs to the payload class.
+**E3 boundary group** (KATs 02–07): null, empty array, empty object, absent
+field, nested-null, and nested-empty-array (bottom-up) all produce the same
+canonical form `{"b":"x"}` and the same digest `b00eaa75...`. This
+demonstrates the byte construction the spec states in §3.1: jcs-n defines the
+byte outcome after absent-field normalization; the semantic equivalence
+decision belongs to the payload class.
+
+**NFC boundary pair** (KAT 12 / nfc-contrast-01): the key in both vectors is
+the NFD-decomposed sequence `A` (U+0041) + COMBINING RING ABOVE (U+030A),
+which Unicode NFC normalization would fold into the precomposed `Å`
+(U+00C5). `jcs-n` performs no NFC normalization, so kat-12 pins the digest
+for the decomposed key as-is. nfc-contrast-01 is a MUST-FAIL vector: it pins
+the different digest (and different member order, since normalization also
+changes the UTF-16 sort key) that a would-be NFC-normalizing implementation
+would produce for the same input, so that class of deviation is caught.
+
+**Exclusion-set depth** (KAT 22): `canonical_digest` matches exclusion-set
+field names against the top-level members of the payload only (§4); a field
+of the same name nested inside a member's value is not removed. KAT 22 pins
+this behavior for `{"id":"x","sub":{"id":"y"}}` excluding `{id}` — the
+top-level `id` is stripped but `sub.id` survives. A recursive-stripping
+implementation forks on this vector.
 
 ## Derived identifier summary
 

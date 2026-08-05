@@ -277,6 +277,9 @@ CANONICAL-DIGEST(jcs-n, P) =
     lowercase_hex(SHA-256(JCS(normalize(P minus exclusion_set))))
 ~~~
 
+The exclusion set is matched against the top-level member names of P only;
+a member of the same name nested inside a member's value is not removed.
+
 This algorithm is Suite 1 of this profile. The four codebases demonstrating
 byte agreement at IETF 126 all used `jcs-n` in shared, declared contexts; all
 are valid under `jcs-n` without modification. Independently written
