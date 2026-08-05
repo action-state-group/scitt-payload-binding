@@ -277,9 +277,6 @@ CANONICAL-DIGEST(jcs-n, P) =
     lowercase_hex(SHA-256(JCS(normalize(P minus exclusion_set))))
 ~~~
 
-The exclusion set is matched against the top-level member names of P only;
-a member of the same name nested inside a member's value is not removed.
-
 This algorithm is Suite 1 of this profile. The four codebases demonstrating
 byte agreement at IETF 126 all used `jcs-n` in shared, declared contexts; all
 are valid under `jcs-n` without modification. Independently written
@@ -310,6 +307,13 @@ Fields excluded are those that either contain the derived identifier itself
 other records in a chain (to keep the content-address stable regardless of
 what later chains to this record). The exclusion set is normative for the
 payload class; a verifier MUST apply the same exclusion set as the producer.
+
+Exclusion is applied to the top-level members of the payload object only. A
+name in the exclusion set that also occurs as a member name at a deeper
+nesting level MUST be retained at that deeper level; a verifier that removes
+it recursively will compute a different identifier and MUST NOT do so.
+Exclusion sets in this revision select top-level members by name; they do
+not express paths.
 
 A producer MAY carry the derived identifier as a field in the payload.
 A verifier MUST recompute the identifier from the payload bytes and the
