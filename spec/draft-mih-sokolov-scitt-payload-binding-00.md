@@ -667,19 +667,29 @@ another instance. Each digest context is independent: it states its own
 canonicalization algorithm (which MAY differ per context, and MAY be an
 identity algorithm such as `as-transmitted` when one is registered in the
 Canonicalization Algorithm Registry) and its own field set, exclusion set,
-domain separation, pre-image encoding, and representation, as that
-algorithm requires. A single-context artifact type is the degenerate case
-of this template, not a different template.
+domain separation, pre-image encoding, profile version, and representation,
+as that algorithm requires. A single-context artifact type is the
+degenerate case of this template, not a different template.
 
 Registration template:
 
-* Name: A short ASCII identifier.
+* Name: A short ASCII identifier. For a CPB-bound profile, this Name is
+  the registered profile label that a citing composition profile treats
+  as a protocol input; CPB takes no separate IANA action to register
+  profile labels beyond registering this artifact type.
 * Digest Contexts: One or more digest contexts. Each digest context states:
   * Purpose: a label drawn from the purpose-label vocabulary below,
     distinguishing this context from any other digest context the same
     artifact type registers.
+  * Profile version: the version of the profile or specification that
+    defines this digest context, or `N/A` if the artifact type's
+    reference does not itself distinguish profile versions (for example,
+    a type identifier that names a type but not a version).
   * Canonicalization algorithm: the algorithm name from {{iana-alg}} (MAY
-    be `as-transmitted`).
+    be `as-transmitted`). This token also pins the digest context's hash
+    algorithm and output representation, recorded once in the cited
+    Canonicalization Algorithm Registry entry ({{iana-alg}}) rather than
+    restated per artifact type.
   * Field set: the field set selected for this context ({{derived-id}}).
     When the canonicalization algorithm is an identity algorithm with no
     field set (such as `as-transmitted`), this element is instead the
@@ -714,12 +724,21 @@ registries in this section:
 | `identifier` | The digest context that computes the artifact's derived identifier ({{derived-id}}): the artifact's primary content-address. |
 | `equivalence` | A digest context, distinct from `identifier`, computed over a declared field subset, used to determine whether two artifacts represent the same underlying content or action. |
 
-This is CPB's first published definition of this namespace. If a companion
-specification has already defined purpose labels for the same kind of
-distinction at another layer, the two vocabularies MUST be reconciled into
-one, per the single-namespace rule above, before either ships; neither this
+This is CPB's first published definition of this namespace; neither this
 document nor a companion may register a second purpose-label vocabulary
 that overlaps this one in meaning.
+
+A CPB purpose label is orthogonal to, not competing with, any role a
+companion composition profile assigns a digest within a cross-document
+join (for example, roles such as `subject`, `authority-reference`, or
+`receipt-payload`). The purpose label describes a digest context's
+function within its own artifact type; a join role describes which slot
+in a multi-document binding that same digest fills. The two axes are
+independent, and a single digest may carry one label from each at once —
+for example, an artifact's `identifier` digest context ({{iana-art}}) may
+simultaneously be the `subject` of a composition join. Neither vocabulary
+constrains the other, and neither document needs to adopt the other's
+terms.
 
 Resolving which digest context of a multi-context artifact type a given
 typed digest reference ({{typed-refs}}) targets is outside this section's
@@ -735,6 +754,8 @@ Reference: {{I-D.mih-scitt-agent-action-capsule}}
 
 Digest context (`identifier`):
 
+* Profile version: N/A — draft-mih-scitt-agent-action-capsule does not
+  currently register more than one profile version in this registry.
 * Canonicalization algorithm: `jcs-n`
 * Field set: all capsule fields
 * Exclusion set: {capsule_id, chain}
