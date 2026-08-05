@@ -789,6 +789,41 @@ def _run_self_tests() -> None:
             "still counted informative"
         )
 
+    # cpb-vectors-runner-mustfail: Category C (fail-01-style erroneous_verification) is
+    # the one category listed in _MUTANT_EXEMPT_CATEGORIES, so it gets no automatic
+    # condition-removed mutant probe when real vectors are checked. Without a dedicated
+    # guard, a future regression that weakens or drops the wrong_pre_image ->
+    # wrong_recomputed_digest recompute would go undetected -- a pinned digest nobody
+    # recomputes is not verified, it's just asserted. This mirrors the real
+    # typed-ref-fail-01 vector shape and probes both sides directly.
+    c_wrong_pre_image = (
+        '{"doc_id":"secret-id-123","issued_at":"2026-07-24T00:00:00Z",'
+        '"scope":"temperature-write","subject":"WS-42"}'
+    )
+    c_vector = {
+        "must_fail": True,
+        "failure_reason": "recomputed_digest_mismatch",
+        "erroneous_verification": {
+            "wrong_pre_image": c_wrong_pre_image,
+            "wrong_recomputed_digest": _sha256_hex(c_wrong_pre_image),
+        },
+    }
+    ok, errs = _exercise_must_fail(copy.deepcopy(c_vector), "self-test-c-base", [])
+    if not ok:
+        errors.append(
+            f"SELF-TEST FAIL: a real Category C (fail-01 style) vector with a "
+            f"correctly-recomputed wrong_recomputed_digest was rejected: {errs!r}"
+        )
+    mutant_c = copy.deepcopy(c_vector)
+    mutant_c["erroneous_verification"]["wrong_recomputed_digest"] = "0" * 64
+    ok, _errs = _exercise_must_fail(mutant_c, "self-test-c-corrupted-digest-mutant", [])
+    if ok:
+        errors.append(
+            "SELF-TEST FAIL: Category C accepted a wrong_recomputed_digest that does "
+            "not match SHA-256(wrong_pre_image) -- the pinned digest is not actually "
+            "being recomputed and verified against the library"
+        )
+
     if errors:
         print("SELF-TEST FAILURES:")
         for e in errors:
