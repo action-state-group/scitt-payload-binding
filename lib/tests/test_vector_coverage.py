@@ -128,6 +128,28 @@ def _handle_identifier_inconsistent_with_context(v: dict) -> None:
         verify_typed_ref(ref, cited["payload"], entry)
 
 
+def _handle_representation_mismatch_identifier_whitespace(v: dict) -> None:
+    """jcs-n-kat-20/21: identifier grammar, trailing newline / surrounding
+    whitespace. The carried digest is padded (a 65+ char string), which is
+    not a 64-char lowercase hex string per section 4.1 -- the verifier MUST
+    reject it, not strip whitespace and compare the remainder."""
+    cited = v["cited_artifact"]
+    reg = cited["registry_entry"]
+    entry = ArtifactTypeRegistryEntry(
+        name=reg["name"],
+        algorithm=reg["algorithm"],
+        exclusion_set=frozenset(reg["exclusion_set"]),
+        representation=reg["representation"],
+    )
+    ref = TypedRef(
+        type=reg["name"],
+        digest_alg="SHA-256",
+        digest=v["typed_reference_with_wrong_representation"]["digest"],
+    )
+    with pytest.raises(RepresentationMismatchError):
+        verify_typed_ref(ref, cited["payload"], entry)
+
+
 def _handle_nfc_normalisation_deviation(v: dict) -> None:
     """jcs-n-nfc-contrast-01: informative. jcs-n does NOT normalise; the
     library's actual output must land on the non-normalising (correct) side,
@@ -162,6 +184,8 @@ _HANDLERS = {
     "recomputed_digest_mismatch": _handle_recomputed_digest_mismatch,
     "digest_context_incompatible_equal_hex_is_not_a_join": _handle_textual_equality_trap,
     "representation_mismatch": _handle_representation_mismatch,
+    "representation_mismatch_trailing_newline": _handle_representation_mismatch_identifier_whitespace,
+    "representation_mismatch_surrounding_whitespace": _handle_representation_mismatch_identifier_whitespace,
     "identifier_inconsistent_with_context": _handle_identifier_inconsistent_with_context,
     "nfc_normalisation_deviation": _handle_nfc_normalisation_deviation,
     "profile_independence_violation": _handle_profile_independence_violation,
