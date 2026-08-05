@@ -235,7 +235,7 @@ Algorithm Registry ({{iana-alg}}) are:
 |---|---|---|
 | jcs-n | JCS + absent-field normalization; SHA-256; lowercase hex output | {{algo-jcs-n}} |
 | cde-n | CDE/dCBOR normalization; SHA-256 | {{algo-cde-n}} (pending) |
-| as-transmitted | No canonicalization; digest over a byte sequence fixed by a cited named production in the container format; SHA-256; lowercase hex | {{algo-as-transmitted}} |
+| as-transmitted | No canonicalization; digest over a byte sequence fixed by a cited named production in the container format; SHA-256; 64-character lowercase hex | {{algo-as-transmitted}} |
 
 Entries in the Canonicalization Algorithm Registry are immutable: new
 behavior requires a new entry, never a retroactive edit to an existing one.
@@ -330,7 +330,9 @@ byte-boundary selector is:
 CANONICAL-DIGEST(as-transmitted, B) = lowercase_hex(SHA-256(B))
 ~~~
 
-Digest: SHA-256, lowercase hex, matching `jcs-n`.
+Digest: SHA-256, 64-character lowercase hex, matching `jcs-n`. These are
+stated explicitly here as part of this entry, not inherited silently from
+the generic CANONICAL-DIGEST definition ({{conventions}}).
 
 # The Derived Identifier {#derived-id}
 
@@ -475,6 +477,12 @@ the referenced artifact type's registry entry, keyed by the `type` field;
 the `digest_alg` field names only the hash algorithm. The canonicalization
 context of the cited artifact is resolved from the artifact-type registry
 entry, not from the `digest_alg` field.
+
+`digest_alg` is REQUIRED even though every algorithm registered in
+{{iana-alg}} today names the same hash, SHA-256: it is the field that lets
+a future Canonicalization Algorithm Registry entry using a different hash
+land as a new token without a breaking change to this wire format, rather
+than being decorative because only one value is legal now.
 
 The verifier MUST confirm that the identifier carried by the reference is
 consistent with the established context. It MUST then recompute the
@@ -677,6 +685,12 @@ choosing.
 This registry records the canonicalization algorithms that may be used to
 compute CANONICAL-DIGEST values.
 
+Each entry pins its canonicalization steps, its hash function, and its
+output representation together as a single immutable triple, so that
+changing any one of the three requires registering a new token rather than
+reinterpreting an existing one — otherwise a token such as `jcs-n` would
+silently come to mean more than its name states.
+
 Registration template:
 
 * Name: A short ASCII identifier suitable for use in protocol fields.
@@ -690,7 +704,7 @@ Initial contents:
 |---|---|---|
 | jcs-n | RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex | This document |
 | cde-n | CDE/dCBOR normalization; SHA-256 | This document (reserved; subsequent revision) |
-| as-transmitted | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; lowercase hex | This document |
+| as-transmitted | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex | This document |
 
 An artifact type entry MUST NOT register `as-transmitted` without a
 byte-boundary selector that cites a named production in the container
