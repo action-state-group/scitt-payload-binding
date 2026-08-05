@@ -323,7 +323,23 @@ requires in order to evaluate the binding.
 Representation is normative and must be declared by the payload class.
 The following representations are distinct and not interchangeable:
 
-* Bare 64-character lowercase hex string (e.g., `"0b4da06b..."`).
+* Bare 64-character lowercase hex string (e.g., `"0b4da06b..."`). A bare
+  hexadecimal string consists of exactly 64 characters, each one of the
+  sixteen lowercase hexadecimal digit characters `0` through `9` and `a`
+  through `f`. A string that is shorter or longer than 64 characters, that
+  contains an uppercase hexadecimal digit (`A` through `F`), or that
+  contains any character outside this set, is not a valid bare hexadecimal
+  representation. This grammar is stated as prose, not as a regular
+  expression: a regular-expression anchor such as `^...$` does not mean
+  the same thing across implementation languages -- in some regular
+  expression engines `$` matches immediately before a trailing newline as
+  well as at the true end of the string, which would silently accept an
+  otherwise-invalid value carrying a trailing newline. A conformance test
+  or implementation MAY use a regular expression to enforce this grammar,
+  but the expression MUST use start-of-string and end-of-string anchors
+  whose engine-specific semantics are verified not to match a trailing
+  newline (for example, `\A` and `\z`, not `^` and `$`, in engines where
+  those differ).
 * Prefixed text string (e.g., `"sha256:0b4da06b..."`).
 * Raw 32-byte octet sequence.
 
@@ -436,6 +452,17 @@ The verifier MUST confirm that the identifier carried by the reference is
 consistent with the established context. It MUST then recompute the
 referenced artifact's digest under that context and compare the recomputed
 digest with the digest carried by the reference.
+
+The comparison of a carried `digest_alg` value against the hash algorithm
+named by the established digest context MUST be an exact-byte comparison
+of the two ASCII strings. A verifier MUST NOT case-fold either value, MUST
+NOT apply an alias table mapping one algorithm name to another (for
+example, treating `"sha256"` and `"SHA-256"` as the same string because
+they name the same hash function), and MUST NOT apply any other
+normalization before comparing. A `digest_alg` value that differs from the
+established context's algorithm name by case or by a known alias is a
+mismatch, not a match under a relaxed rule; the verifier MUST treat it as
+it treats any other established-context mismatch under this section.
 
 The citing record's own derived-identifier context need NOT be compatible
 with the referenced artifact's digest context; those contexts govern
