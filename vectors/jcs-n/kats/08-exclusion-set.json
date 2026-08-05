@@ -1,0 +1,14 @@
+{
+  "id": "jcs-n-kat-08",
+  "description": "Exclusion set applied before normalization: excluded field is removed before any normalization or JCS.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1 ('Apply this normalization after the exclusion set is removed')",
+  "input": {"id": "abc123", "b": "x", "a": "y"},
+  "exclusion_set": ["id"],
+  "after_exclusion": {"b": "x", "a": "y"},
+  "normalized": {"b": "x", "a": "y"},
+  "pre_image": "{\"a\":\"y\",\"b\":\"x\"}",
+  "pre_image_bytes_hex": "7b2261223a2279222c2262223a2278227d",
+  "digest": "7951deff61d4304af5863a13c2ef570ffc96f1d8df5fb3214743dc9953b8aeea",
+  "note": "Digest equals jcs-n-kat-01: the excluded field does not affect the canonical form."
+}

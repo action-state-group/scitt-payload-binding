@@ -86,6 +86,12 @@ exercised by conformance vectors `jcs-n-kat-12` (PASS) and
 `jcs-n-nfc-contrast-01` (informative contrast); no previously published test
 corpus covers this case (Joel Hillier, SCITT list, 2026-07-27).
 
+Conformance vectors: [`vectors/jcs-n/`](vectors/jcs-n/) — the canonical test suite
+for algorithm `jcs-n`, covering Known-Answer Tests (including the E3 boundary
+group: null, empty-array, empty-object, and absent field all normalize to the
+same canonical form), derived-identifier construction, and typed-reference
+verification cases including MUST-FAIL cases.
+
 ## Artifact Type Registry
 
 Records the artifact types that may appear in the `type` field of a typed digest

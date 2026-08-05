@@ -1,0 +1,13 @@
+{
+  "id": "jcs-n-kat-05",
+  "description": "Field is absent from the input. Part of the E3 boundary set.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1",
+  "input": {"b": "x"},
+  "exclusion_set": [],
+  "normalized": {"b": "x"},
+  "pre_image": "{\"b\":\"x\"}",
+  "pre_image_bytes_hex": "7b2262223a2278227d",
+  "digest": "b00eaa755722bc692ce5f689bf1803497c9fa37bc557ba17ef211e10d6b368d9",
+  "note": "Digest equals jcs-n-kat-02, 03, 04. The spec states: 'The semantic equivalence among JSON null, an empty array, an empty object, and the absence of a field is a payload-class (profile) decision; jcs-n defines only the byte construction after the profile declared normalization has been applied.'"
+}

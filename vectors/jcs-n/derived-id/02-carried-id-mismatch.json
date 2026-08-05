@@ -1,0 +1,19 @@
+{
+  "id": "derived-id-02",
+  "description": "MUST-FAIL: carried derived identifier does not match the recomputed value. Verifier MUST treat this as a defect.",
+  "algorithm": "jcs-n",
+  "payload_class": "temperature-record",
+  "exclusion_set": ["record_id"],
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §4 ('If the recomputed value does not match the carried value, the verifier MUST treat this as a defect in the record.')",
+  "must_fail": true,
+  "failure_reason": "carried_id_mismatch",
+  "full_payload": {
+    "station_id": "WS-42",
+    "timestamp": "2026-07-24T00:00:00Z",
+    "celsius": "21.3",
+    "record_id": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "correct_derived_id": "1009a072df7fc0bfc6fcf49ca2f194067f6c0136c871a88d4fbd66a13361c1d1",
+  "carried_id": "0000000000000000000000000000000000000000000000000000000000000000",
+  "note": "The carried record_id does not match the recomputed derived identifier. Verifier MUST report this as a defect."
+}

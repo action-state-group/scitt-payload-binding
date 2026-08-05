@@ -1,0 +1,26 @@
+{
+  "id": "jcs-n-kat-09",
+  "description": "Exclusion and normalization produce the same result regardless of order for top-level exclusion sets: removing a null field by exclusion or by normalization yields identical canonical bytes. This vector does not distinguish which operation ran first \u2014 it confirms the combined outcome.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 \u00a73.1 and \u00a74",
+  "input": {
+    "id": null,
+    "b": "x",
+    "a": "y"
+  },
+  "exclusion_set": [
+    "id"
+  ],
+  "after_exclusion": {
+    "b": "x",
+    "a": "y"
+  },
+  "normalized": {
+    "b": "x",
+    "a": "y"
+  },
+  "pre_image": "{\"a\":\"y\",\"b\":\"x\"}",
+  "pre_image_bytes_hex": "7b2261223a2279222c2262223a2278227d",
+  "digest": "7951deff61d4304af5863a13c2ef570ffc96f1d8df5fb3214743dc9953b8aeea",
+  "note": "For top-level exclusion sets, exclusion and normalization commute: the order is unobservable in the output (removing 'id' by exclusion vs removing it because id=null are both equivalent). The digest equals jcs-n-kat-08: whether the excluded field is null or non-null does not matter; it is always stripped first."
+}

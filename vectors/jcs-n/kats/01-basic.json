@@ -1,0 +1,12 @@
+{
+  "id": "jcs-n-kat-01",
+  "description": "Basic: two members, no normalization needed; JCS sorts keys by UTF-16 code units.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1",
+  "input": {"b": "x", "a": "y"},
+  "exclusion_set": [],
+  "normalized": {"b": "x", "a": "y"},
+  "pre_image": "{\"a\":\"y\",\"b\":\"x\"}",
+  "pre_image_bytes_hex": "7b2261223a2279222c2262223a2278227d",
+  "digest": "7951deff61d4304af5863a13c2ef570ffc96f1d8df5fb3214743dc9953b8aeea"
+}

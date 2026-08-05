@@ -1,0 +1,16 @@
+{
+  "id": "jcs-n-kat-06",
+  "description": "Bottom-up normalization: nested null causes parent object to become empty, which is then removed by its own parent.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1 step 1 ('bottom-up and recursively')",
+  "input": {"a": {"c": null}, "b": "x"},
+  "exclusion_set": [],
+  "normalization_steps": [
+    {"step": 1, "result": {"a": {}, "b": "x"}, "note": "Inner: c=null removed, a becomes {}"},
+    {"step": 2, "result": {"b": "x"}, "note": "Outer: a={} removed"}
+  ],
+  "normalized": {"b": "x"},
+  "pre_image": "{\"b\":\"x\"}",
+  "pre_image_bytes_hex": "7b2262223a2278227d",
+  "digest": "b00eaa755722bc692ce5f689bf1803497c9fa37bc557ba17ef211e10d6b368d9"
+}

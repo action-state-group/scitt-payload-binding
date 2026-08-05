@@ -1,0 +1,40 @@
+{
+  "id": "profile-independence-fail-01",
+  "description": "MUST-FAIL: non-conforming profile. A non-conforming Profile-A verifier reaches inside Profile-B internal fields to evaluate the binding — violating profile independence. This breaks decomposable verification.",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §8 ('A payload profile MUST NOT impose requirements on the internal structure or field values of another payload profile.')",
+  "must_fail": true,
+  "failure_reason": "profile_independence_violation",
+  "scenario": {
+    "decision_record": {
+      "payload_class": "decision-record",
+      "payload": {
+        "record_id": null,
+        "action": "write",
+        "authorization": {
+          "type": "authorization-doc",
+          "digest_alg": "SHA-256",
+          "digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+        }
+      }
+    },
+    "authorization_doc": {
+      "payload_class": "authorization-doc",
+      "payload": {
+        "doc_id": null,
+        "subject": "WS-42",
+        "scope": "temperature-write",
+        "issued_at": "2026-07-24T00:00:00Z"
+      },
+      "derived_id": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+    }
+  },
+  "non_conforming_verifier_behavior": {
+    "violation": "Profile-A verifier requires that the authorization-doc has scope='temperature-write' and subject='WS-42' as a condition of verifying the decision-record binding.",
+    "why_wrong": "Profile-A MUST NOT impose requirements on the internal structure or field values of Profile-B (authorization-doc). Profile-A may only use the typed reference to establish content binding. Whether the authorization-doc's scope and subject satisfy any access-control policy belongs to the authorization-doc profile semantics or the consuming application — not to decision-record binding verification.",
+    "consequence": "A new authorization-doc profile version that renames 'scope' to 'permission_scope' would silently break all non-conforming Profile-A verifiers, defeating the independence guarantee. Conforming verifiers remain unaffected because they do not read inside Profile-B fields."
+  },
+  "conforming_alternative": {
+    "action": "Profile-A verifier verifies only that authorization.digest matches the recomputed derived identifier of the authorization-doc bytes. Scope/subject evaluation is delegated to the authorization-doc profile verifier or the consuming application, separately.",
+    "result": "PASS for the CPB binding layer"
+  }
+}
