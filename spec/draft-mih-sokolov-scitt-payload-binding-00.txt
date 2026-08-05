@@ -954,20 +954,20 @@ Mih & Sokolov           Expires 10 February 2027               [Page 17]
 Internet-Draft          Canonical Payload Binding            August 2026
 
 
-       +=============+=============================================+
-       | Label       | Meaning                                     |
-       +=============+=============================================+
-       | identifier  | The digest context that computes the        |
-       |             | artifact's derived identifier (Section 4):  |
-       |             | the artifact's primary content-address.     |
-       +-------------+---------------------------------------------+
-       | equivalence | A digest context, distinct from identifier, |
-       |             | computed over a declared field subset to    |
-       |             | test whether two artifacts represent the    |
-       |             | same underlying content or action.          |
-       +-------------+---------------------------------------------+
+      +=============+==============================================+
+      | Label       | Meaning                                      |
+      +=============+==============================================+
+      | identifier  | The digest context that computes the         |
+      |             | artifact's derived identifier (Section 4):   |
+      |             | the artifact's primary content-address.      |
+      +-------------+----------------------------------------------+
+      | equivalence | A digest context, distinct from identifier,  |
+      |             | computed over a declared field subset, used  |
+      |             | to determine whether two artifacts represent |
+      |             | the same underlying content or action.       |
+      +-------------+----------------------------------------------+
 
-                                  Table 4
+                                 Table 4
 
    This is CPB's first published definition of this namespace.  If a
    companion specification has already defined purpose labels for the

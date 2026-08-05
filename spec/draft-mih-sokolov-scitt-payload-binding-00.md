@@ -712,7 +712,7 @@ registries in this section:
 | Label | Meaning |
 |---|---|
 | `identifier` | The digest context that computes the artifact's derived identifier ({{derived-id}}): the artifact's primary content-address. |
-| `equivalence` | A digest context, distinct from `identifier`, computed over a declared field subset to test whether two artifacts represent the same underlying content or action. |
+| `equivalence` | A digest context, distinct from `identifier`, computed over a declared field subset, used to determine whether two artifacts represent the same underlying content or action. |
 
 This is CPB's first published definition of this namespace. If a companion
 specification has already defined purpose labels for the same kind of
