@@ -47,6 +47,31 @@ For must_fail vectors — each MUST match at least one category (enforced):
         SHA-256 = verification.recomputed_digest; assert wrong_digest != recomputed_digest
         (inequality is real).
 
+  I. Assembled pre-image, member mapping undeclared: 'implementation_a' + 'implementation_b'
+     + 'declared_digest_context'
+     -> REQUIRES declared_digest_context.member_mapping to be absent or null (that absence
+        IS the condition under test; a vector carrying a mapping proves the opposite thing
+        and is a hard failure).  REQUIRES source_object + selected_source_paths, and each
+        implementation to carry assembled/pre_image/pre_image_bytes_hex/digest.  Recompute
+        jcs_n over each 'assembled' and verify it equals that side's pinned pre_image, hex
+        and digest; assert the two pre_images AND the two digests differ (the fork is real);
+        assert BOTH assembled objects carry exactly the multiset of values found at
+        selected_source_paths in source_object, each once and nothing else -- that is what
+        makes both of them conforming readings of the SAME declared field set, and without
+        it the vector would only show that two different objects hash differently.
+     SCOPE, stated so it is not mistaken for more: the conforming-reading test is against
+        the vector's own selected_source_paths, NOT against a parse of the prose in
+        declared_digest_context.field_set, which is free text this checker does not read.
+        It also compares TOP-LEVEL member values, so it treats flat assembly as given and
+        would reject a nesting-preserving reading of the same field set.
+
+  J. Member-mapping derivation: 'declared_digest_context.member_mapping' non-null
+     -> REQUIRES source_object + 'input'.  Applies the mapping to source_object and asserts
+        the derived object equals 'input' exactly.  Runs for PASS vectors too, so the
+        "sufficient declaration" half of a pair is executed rather than asserted in prose;
+        a mapping naming an absent source path, writing a pre-image path twice, or yielding
+        a different object is a hard failure.
+
 A must_fail vector matching NONE of the above is a hard failure -- 'ran_any_check' is
 enforced.  A bare {'must_fail': true} fails the suite.
 
@@ -295,6 +320,21 @@ def _mutant_H(v: dict) -> dict | None:
     return None
 
 
+def _mutant_I(v: dict) -> dict | None:
+    m = copy.deepcopy(v)
+    impl_a = m.get("implementation_a")
+    impl_b = m.get("implementation_b")
+    if not impl_a or not impl_b:
+        return None
+    # Collapse B onto A: the declared field set now DOES fix the bytes, so the
+    # vector demonstrates nothing and the checker must flip to failure.
+    for key in ("assembled", "pre_image", "pre_image_bytes_hex", "digest"):
+        if key not in impl_a:
+            return None
+        impl_b[key] = copy.deepcopy(impl_a[key])
+    return m
+
+
 _MUTANT_GENERATORS: dict[str, object] = {
     "A": _mutant_A,
     "B": _mutant_B,
@@ -302,7 +342,81 @@ _MUTANT_GENERATORS: dict[str, object] = {
     "F": _mutant_F,
     "G": _mutant_G,
     "H": _mutant_H,
+    "I": _mutant_I,
 }
+
+
+def _apply_member_mapping(source: dict, mapping: dict) -> dict:
+    """Derive the assembled pre-image object from a source object and a mapping.
+
+    The mapping is a function from source paths to pre-image paths, plus
+    constants that are not source fields at all.  Applying it must yield exactly
+    one object, which is the whole point of declaring it.
+    """
+    out: dict = {}
+    for field in mapping.get("fields", []):
+        value = _resolve_source_path(source, field["source_path"])
+        cur = out
+        segs = field["preimage_path"].split(".")
+        for seg in segs[:-1]:
+            cur = cur.setdefault(seg, {})
+        if segs[-1] in cur:
+            raise ValueError(f"mapping writes {field['preimage_path']!r} twice")
+        cur[segs[-1]] = value
+    for const in mapping.get("constants", []):
+        cur = out
+        segs = const["preimage_path"].split(".")
+        for seg in segs[:-1]:
+            cur = cur.setdefault(seg, {})
+        if segs[-1] in cur:
+            raise ValueError(f"mapping writes {const['preimage_path']!r} twice")
+        cur[segs[-1]] = const["value"]
+    return out
+
+
+def _check_member_mapping_derivation(v: dict) -> list[str]:
+    """Category J: a declared member mapping MUST derive the vector's `input`.
+
+    Without this, a vector could declare a mapping naming a nonexistent source
+    path, or one producing a different object, and still pass every other check
+    -- the declaration would be prose the suite never reads.
+    """
+    ctx = v.get("declared_digest_context") or {}
+    mapping = ctx.get("member_mapping")
+    if not mapping:
+        return []
+    source = v.get("source_object")
+    if not isinstance(source, dict):
+        return ["declared member_mapping but no source_object to apply it to"]
+    if "input" not in v:
+        return ["declared member_mapping but no `input` to derive"]
+    try:
+        derived = _apply_member_mapping(source, mapping)
+    except KeyError as exc:
+        return [f"member_mapping names a source path absent from source_object: {exc}"]
+    except Exception as exc:
+        return [f"member_mapping could not be applied: {exc!r}"]
+    if _jcs(derived) != _jcs(v["input"]):
+        return [
+            "applying member_mapping to source_object does not yield `input`\n"
+            f"  derived: {_jcs(derived)}\n"
+            f"  input:   {_jcs(v['input'])}"
+        ]
+    return []
+
+
+def _resolve_source_path(obj: dict, path: str):
+    """Resolve a dotted source path ('_meta.binding') against a source object.
+
+    Raises KeyError if any segment is missing, so a vector naming a path the
+    source object does not have is a hard failure rather than a silent skip.
+    """
+    cur = obj
+    for seg in path.split("."):
+        if not isinstance(cur, dict) or seg not in cur:
+            raise KeyError(path)
+        cur = cur[seg]
+    return cur
 
 
 # ---------------------------------------------------------------------------
@@ -456,6 +570,91 @@ def _exercise_must_fail(
                         )
                 except Exception as exc:
                     vec_errors.append(f"{art_key}: jcs_n_pre_image raised: {exc!r}")
+
+    # I. Assembled pre-image with no declared member mapping
+    if "implementation_a" in v and "implementation_b" in v and "declared_digest_context" in v:
+        ran_any_check = True
+        categories_fired.append("I")
+        ctx = v.get("declared_digest_context") or {}
+        source_object = v.get("source_object")
+        selected = v.get("selected_source_paths")
+
+        if ctx.get("member_mapping") is not None:
+            vec_errors.append(
+                "Category I vector declares a member_mapping — the absence of the "
+                "mapping IS the condition under test, so a vector carrying one "
+                "demonstrates the opposite property"
+            )
+        if not isinstance(source_object, dict) or not selected:
+            vec_errors.append(
+                "Category I vector missing source_object/selected_source_paths — "
+                "without them there is no way to check that both implementations "
+                "satisfy the SAME declared field set"
+            )
+        else:
+            try:
+                want = sorted(
+                    _jcs(_resolve_source_path(source_object, p)) for p in selected
+                )
+            except KeyError as exc:
+                want = None
+                vec_errors.append(
+                    f"selected_source_paths names a path absent from source_object: {exc}"
+                )
+
+            sides = {}
+            for side in ("implementation_a", "implementation_b"):
+                impl = v.get(side) or {}
+                missing = [
+                    k for k in ("assembled", "pre_image", "pre_image_bytes_hex", "digest")
+                    if k not in impl
+                ]
+                if missing:
+                    vec_errors.append(f"{side} missing required field(s): {missing}")
+                    continue
+                try:
+                    computed = _jcs(impl["assembled"])
+                except Exception as exc:
+                    vec_errors.append(f"{side}: jcs raised: {exc!r}")
+                    continue
+                if computed != impl["pre_image"]:
+                    vec_errors.append(
+                        f"{side} pre_image != recomputed canonical form\n"
+                        f"  expected: {impl['pre_image']!r}\n"
+                        f"  got:      {computed!r}"
+                    )
+                if computed.encode("utf-8").hex() != impl["pre_image_bytes_hex"]:
+                    vec_errors.append(f"{side} pre_image_bytes_hex does not encode pre_image")
+                got = _sha256_hex(computed)
+                if got != impl["digest"]:
+                    vec_errors.append(
+                        f"{side} digest mismatch\n"
+                        f"  expected: {impl['digest']}\n  got:      {got}"
+                    )
+                if want is not None:
+                    have = sorted(_jcs(m) for m in impl["assembled"].values())
+                    if have != want:
+                        vec_errors.append(
+                            f"{side} does not carry exactly the selected source values, "
+                            f"each once and nothing else — it is not a conforming reading "
+                            f"of the declared field set, so the fork it shows is not the "
+                            f"one this category is about"
+                        )
+                sides[side] = impl
+
+            if len(sides) == 2:
+                a_impl, b_impl = sides["implementation_a"], sides["implementation_b"]
+                if a_impl["pre_image"] == b_impl["pre_image"]:
+                    vec_errors.append(
+                        "implementation_a.pre_image == implementation_b.pre_image — "
+                        "no divergence demonstrated; the declared field set does fix "
+                        "the bytes for this pair"
+                    )
+                if a_impl["digest"] == b_impl["digest"]:
+                    vec_errors.append(
+                        "implementation_a.digest == implementation_b.digest — no digest "
+                        "fork demonstrated"
+                    )
 
     # G. Cited-artifact derived-id: recompute AND assert carried representation is REJECTED
     cited = v.get("cited_artifact", {})
@@ -824,6 +1023,31 @@ def _run_self_tests() -> None:
             "being recomputed and verified against the library"
         )
 
+    # Category J: a mapping that does not derive `input` MUST be rejected.
+    _j_good = {
+        "declared_digest_context": {"member_mapping": {
+            "fields": [{"source_path": "a.b", "preimage_path": "x"}],
+            "constants": [{"preimage_path": "k", "value": "v"}],
+        }},
+        "source_object": {"a": {"b": 1}},
+        "input": {"x": 1, "k": "v"},
+    }
+    if _check_member_mapping_derivation(_j_good):
+        errors.append("SELF-TEST FAIL: a correct member_mapping derivation was rejected")
+    _j_bad = copy.deepcopy(_j_good)
+    _j_bad["declared_digest_context"]["member_mapping"]["fields"][0]["preimage_path"] = "WRONG"
+    if not _check_member_mapping_derivation(_j_bad):
+        errors.append(
+            "SELF-TEST FAIL: a member_mapping that does not derive `input` was accepted "
+            "-- Category J is assertion-free"
+        )
+    _j_absent = copy.deepcopy(_j_good)
+    _j_absent["declared_digest_context"]["member_mapping"]["fields"][0]["source_path"] = "a.nope"
+    if not _check_member_mapping_derivation(_j_absent):
+        errors.append(
+            "SELF-TEST FAIL: a member_mapping naming an absent source path was accepted"
+        )
+
     if errors:
         print("SELF-TEST FAILURES:")
         for e in errors:
@@ -852,6 +1076,16 @@ def check_vectors(root: Path) -> int:
 
         vid = v.get("id", str(vec_path))
         exclusion_set: list[str] = v.get("exclusion_set", [])
+
+        # J. Member-mapping derivation.  Runs for ANY vector (pass or must_fail)
+        # that declares a mapping, so the "here is the sufficient declaration"
+        # half of a pair is executed rather than asserted in prose.
+        map_errs = _check_member_mapping_derivation(v)
+        if map_errs:
+            for e in map_errs:
+                errors.append(f"FAIL {vid} (member-mapping derivation): {e}")
+            failed += 1
+            continue
 
         if v.get("must_fail"):
             if v.get("failure_reason") in _INFORMATIVE_FAILURE_REASONS:

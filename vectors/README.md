@@ -16,11 +16,29 @@ payload classes (`temperature-record`, `authorization-doc`, `decision-record`,
 vectors/
   jcs-n/kats/           Known-Answer Tests for Algorithm jcs-n (§3.1)
   jcs-n/derived-id/     Derived identifier construction (§4)
+  jcs-n/assembled-preimage/    Assembled pre-images: member mapping (§4, §13.2)
   typed-refs/pass/      Typed digest reference verification — PASS cases (§6)
   typed-refs/fail/      Typed digest reference verification — MUST-FAIL cases (§6)
   profile-independence/pass/   Profile independence — conforming cases (§8)
   profile-independence/fail/   Profile independence — non-conforming MUST-FAIL cases (§8)
 ```
+
+## Assembled pre-images — family summary
+
+Some payload classes bind neither the payload nor the payload minus an
+exclusion set, but an object **assembled** from selected source fields. For
+those, the algorithm plus the selected field set does not determine the
+pre-image: the assembled object's member names and nesting are chosen by the
+producer and are part of the bytes.
+
+| ID | What it pins | Digest |
+|---|---|---|
+| jcs-n-assembled-01 | MUST-FAIL: two conforming readings of one declared field set produce different pre-images, differing only in one member name | `9707290f…` vs `7dd1096d…` |
+| jcs-n-assembled-02 | The sufficient declaration: a `member_mapping` from source paths to pre-image paths, plus declared constants, from which exactly one pre-image is derivable | `9a43989d…` |
+
+`jcs-n-assembled-02` is executed, not asserted: Category J in
+`.github/check_vectors.py` applies the declared mapping to the source object and
+requires the result to equal the vector's `input` exactly.
 
 ## Vector format
 

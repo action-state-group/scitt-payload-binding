@@ -176,7 +176,58 @@ def _handle_profile_independence_violation(v: dict) -> None:
     assert recomputed == auth_doc["derived_id"]
 
 
+def _handle_assembled_preimage_member_mapping_undeclared(v: dict) -> None:
+    """jcs-n-assembled-01: a declared field set does not determine the pre-image.
+
+    Executable form of the defect: both implementations carry exactly the values
+    found at the declared source paths, each once and nothing else, so each is a
+    conforming reading of the same declaration -- and the reference library
+    derives a different identifier from each. The library is correct in both
+    cases; it is the declaration that fails to pick one.
+    """
+    ctx = v["declared_digest_context"]
+    assert ctx.get("member_mapping") is None, (
+        "the absence of a member mapping is the condition under test"
+    )
+
+    source = v["source_object"]
+
+    def _resolve(path: str):
+        cur = source
+        for seg in path.split("."):
+            cur = cur[seg]
+        return cur
+
+    # Compare values canonically, not by repr(): dict repr follows insertion
+    # order, so two equal objects that differ only in key order would compare
+    # unequal and the assertion would pass for the wrong reason.
+    def _canon(value) -> str:
+        return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+    selected = sorted(_canon(_resolve(p)) for p in v["selected_source_paths"])
+
+    digests = []
+    for side in ("implementation_a", "implementation_b"):
+        assembled = v[side]["assembled"]
+        # Each side is a conforming reading: same values, once each, nothing else.
+        assert sorted(_canon(m) for m in assembled.values()) == selected, (
+            f"{side} is not a conforming reading of the declared field set"
+        )
+        got = canonical_digest(assembled)
+        assert got == v[side]["digest"], (
+            f"{side} digest drifted from the pinned value: {got} != {v[side]['digest']}"
+        )
+        digests.append(got)
+
+    assert digests[0] != digests[1], (
+        "no fork demonstrated: the declared field set did fix the bytes here"
+    )
+
+
 _HANDLERS = {
+    "assembled_preimage_member_mapping_undeclared": (
+        _handle_assembled_preimage_member_mapping_undeclared
+    ),
     "float_in_digest_bearing_field": _handle_float_in_digest_bearing_field,
     "unsafe_integer_in_digest_bearing_field": _handle_unsafe_integer_in_digest_bearing_field,
     "integer_formatting_divergence": _handle_integer_formatting_divergence,
