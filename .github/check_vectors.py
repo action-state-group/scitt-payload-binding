@@ -51,16 +51,16 @@ For must_fail vectors — each MUST match at least one category (enforced):
      + 'declared_digest_context'
      -> REQUIRES declared_digest_context.member_mapping to be absent or null (that absence
         IS the condition under test; a vector carrying a mapping proves the opposite thing
-        and is a hard failure).  REQUIRES source_object + selected_source_paths, and each
+        and is a hard failure).  REQUIRES source_object + selected_source_pointers, and each
         implementation to carry assembled/pre_image/pre_image_bytes_hex/digest.  Recompute
         jcs_n over each 'assembled' and verify it equals that side's pinned pre_image, hex
         and digest; assert the two pre_images AND the two digests differ (the fork is real);
         assert BOTH assembled objects carry exactly the multiset of values found at
-        selected_source_paths in source_object, each once and nothing else -- that is what
+        selected_source_pointers in source_object, each once and nothing else -- that is what
         makes both of them conforming readings of the SAME declared field set, and without
         it the vector would only show that two different objects hash differently.
      SCOPE, stated so it is not mistaken for more: the conforming-reading test is against
-        the vector's own selected_source_paths, NOT against a parse of the prose in
+        the vector's own selected_source_pointers, NOT against a parse of the prose in
         declared_digest_context.field_set, which is free text this checker does not read.
         It also compares TOP-LEVEL member values, so it treats flat assembly as given and
         would reject a nesting-preserving reading of the same field set.
@@ -346,31 +346,94 @@ _MUTANT_GENERATORS: dict[str, object] = {
 }
 
 
+def _unescape_pointer_token(token: str) -> str:
+    """RFC 6901 section 4: ~1 becomes /, then ~0 becomes ~.  Order is normative."""
+    return token.replace("~1", "/").replace("~0", "~")
+
+
+def _parse_json_pointer(pointer: str) -> list[str]:
+    """Parse an RFC 6901 JSON Pointer into reference tokens.
+
+    Dotted paths were ambiguous: with a source object of {"a.b": 1, "a": {"b": 2}},
+    "a.b" named both the literal top-level member and the nested one, and the literal
+    member could not be addressed at all.  A JSON Pointer distinguishes them as
+    "/a.b" and "/a/b".
+    """
+    if not isinstance(pointer, str):
+        raise ValueError(f"JSON Pointer must be a string, got {type(pointer).__name__}")
+    if pointer == "":
+        raise ValueError("the empty JSON Pointer addresses the whole document; name a member")
+    if not pointer.startswith("/"):
+        raise ValueError(f"JSON Pointer must start with '/': {pointer!r}")
+    return [_unescape_pointer_token(t) for t in pointer.split("/")[1:]]
+
+
+def _resolve_source_pointer(obj: dict, pointer: str):
+    """Resolve an RFC 6901 pointer against a source object.
+
+    Raises KeyError if any token is missing, so a vector naming a member the
+    source object does not have is a hard failure rather than a silent skip.
+    Object members only: arrays are out of scope for this template element, and a
+    numeric token against a list is rejected rather than guessed at.
+    """
+    cur = obj
+    for token in _parse_json_pointer(pointer):
+        if isinstance(cur, list):
+            raise ValueError(
+                f"{pointer!r} traverses an array; array members are out of scope for member_mapping"
+            )
+        if not isinstance(cur, dict) or token not in cur:
+            raise KeyError(pointer)
+        cur = cur[token]
+    return cur
+
+
+def _check_destination_collisions(destinations: list[str]) -> None:
+    """Every destination shares one namespace, whatever produced it.
+
+    Three collisions are rejected, and constants and fields are checked together
+    because a constant colliding with a field is the same defect as two fields
+    colliding.
+    """
+    parsed = [(d, _parse_json_pointer(d)) for d in destinations]
+    for i, (ptr_a, toks_a) in enumerate(parsed):
+        for ptr_b, toks_b in parsed[i + 1:]:
+            if toks_a == toks_b:
+                raise ValueError(f"member_mapping writes {ptr_a!r} twice")
+            shorter, longer = sorted((toks_a, toks_b), key=len)
+            if longer[: len(shorter)] == shorter:
+                raise ValueError(
+                    f"member_mapping destinations collide: {ptr_a!r} and {ptr_b!r} "
+                    "(one is an ancestor of the other)"
+                )
+
+
 def _apply_member_mapping(source: dict, mapping: dict) -> dict:
     """Derive the assembled pre-image object from a source object and a mapping.
 
-    The mapping is a function from source paths to pre-image paths, plus
+    The mapping is a function from source pointers to pre-image pointers, plus
     constants that are not source fields at all.  Applying it must yield exactly
     one object, which is the whole point of declaring it.
     """
+    fields = mapping.get("fields") or []
+    constants = mapping.get("constants") or []
+    _check_destination_collisions(
+        [f["preimage_pointer"] for f in fields] + [c["preimage_pointer"] for c in constants]
+    )
+
     out: dict = {}
-    for field in mapping.get("fields", []):
-        value = _resolve_source_path(source, field["source_path"])
+    for dest, value in (
+        [(f["preimage_pointer"], _resolve_source_pointer(source, f["source_pointer"])) for f in fields]
+        + [(c["preimage_pointer"], c["value"]) for c in constants]
+    ):
+        tokens = _parse_json_pointer(dest)
         cur = out
-        segs = field["preimage_path"].split(".")
-        for seg in segs[:-1]:
-            cur = cur.setdefault(seg, {})
-        if segs[-1] in cur:
-            raise ValueError(f"mapping writes {field['preimage_path']!r} twice")
-        cur[segs[-1]] = value
-    for const in mapping.get("constants", []):
-        cur = out
-        segs = const["preimage_path"].split(".")
-        for seg in segs[:-1]:
-            cur = cur.setdefault(seg, {})
-        if segs[-1] in cur:
-            raise ValueError(f"mapping writes {const['preimage_path']!r} twice")
-        cur[segs[-1]] = const["value"]
+        for token in tokens[:-1]:
+            nxt = cur.setdefault(token, {})
+            if not isinstance(nxt, dict):
+                raise ValueError(f"member_mapping writes through a non-object at {dest!r}")
+            cur = nxt
+        cur[tokens[-1]] = value
     return out
 
 
@@ -383,8 +446,16 @@ def _check_member_mapping_derivation(v: dict) -> list[str]:
     """
     ctx = v.get("declared_digest_context") or {}
     mapping = ctx.get("member_mapping")
-    if not mapping:
+    # Absence is `is None`, never falsiness: `member_mapping: {}` is a DECLARED mapping
+    # that derives nothing, and treating it as absent let a vector declare one and skip
+    # the check entirely.
+    if mapping is None:
         return []
+    if not isinstance(mapping, dict):
+        return [f"member_mapping must be an object, got {type(mapping).__name__}"]
+    if not (mapping.get("fields") or mapping.get("constants")):
+        return ["declared member_mapping is empty; a declared mapping MUST name at least "
+                "one field or constant, or be absent"]
     source = v.get("source_object")
     if not isinstance(source, dict):
         return ["declared member_mapping but no source_object to apply it to"]
@@ -403,20 +474,6 @@ def _check_member_mapping_derivation(v: dict) -> list[str]:
             f"  input:   {_jcs(v['input'])}"
         ]
     return []
-
-
-def _resolve_source_path(obj: dict, path: str):
-    """Resolve a dotted source path ('_meta.binding') against a source object.
-
-    Raises KeyError if any segment is missing, so a vector naming a path the
-    source object does not have is a hard failure rather than a silent skip.
-    """
-    cur = obj
-    for seg in path.split("."):
-        if not isinstance(cur, dict) or seg not in cur:
-            raise KeyError(path)
-        cur = cur[seg]
-    return cur
 
 
 # ---------------------------------------------------------------------------
@@ -577,7 +634,7 @@ def _exercise_must_fail(
         categories_fired.append("I")
         ctx = v.get("declared_digest_context") or {}
         source_object = v.get("source_object")
-        selected = v.get("selected_source_paths")
+        selected = v.get("selected_source_pointers")
 
         if ctx.get("member_mapping") is not None:
             vec_errors.append(
@@ -587,19 +644,19 @@ def _exercise_must_fail(
             )
         if not isinstance(source_object, dict) or not selected:
             vec_errors.append(
-                "Category I vector missing source_object/selected_source_paths — "
+                "Category I vector missing source_object/selected_source_pointers — "
                 "without them there is no way to check that both implementations "
                 "satisfy the SAME declared field set"
             )
         else:
             try:
                 want = sorted(
-                    _jcs(_resolve_source_path(source_object, p)) for p in selected
+                    _jcs(_resolve_source_pointer(source_object, p)) for p in selected
                 )
             except KeyError as exc:
                 want = None
                 vec_errors.append(
-                    f"selected_source_paths names a path absent from source_object: {exc}"
+                    f"selected_source_pointers names a pointer absent from source_object: {exc}"
                 )
 
             sides = {}
@@ -1026,8 +1083,8 @@ def _run_self_tests() -> None:
     # Category J: a mapping that does not derive `input` MUST be rejected.
     _j_good = {
         "declared_digest_context": {"member_mapping": {
-            "fields": [{"source_path": "a.b", "preimage_path": "x"}],
-            "constants": [{"preimage_path": "k", "value": "v"}],
+            "fields": [{"source_pointer": "/a/b", "preimage_pointer": "/x"}],
+            "constants": [{"preimage_pointer": "/k", "value": "v"}],
         }},
         "source_object": {"a": {"b": 1}},
         "input": {"x": 1, "k": "v"},
@@ -1035,18 +1092,78 @@ def _run_self_tests() -> None:
     if _check_member_mapping_derivation(_j_good):
         errors.append("SELF-TEST FAIL: a correct member_mapping derivation was rejected")
     _j_bad = copy.deepcopy(_j_good)
-    _j_bad["declared_digest_context"]["member_mapping"]["fields"][0]["preimage_path"] = "WRONG"
+    _j_bad["declared_digest_context"]["member_mapping"]["fields"][0]["preimage_pointer"] = "/WRONG"
     if not _check_member_mapping_derivation(_j_bad):
         errors.append(
             "SELF-TEST FAIL: a member_mapping that does not derive `input` was accepted "
             "-- Category J is assertion-free"
         )
     _j_absent = copy.deepcopy(_j_good)
-    _j_absent["declared_digest_context"]["member_mapping"]["fields"][0]["source_path"] = "a.nope"
+    _j_absent["declared_digest_context"]["member_mapping"]["fields"][0]["source_pointer"] = "/a/nope"
     if not _check_member_mapping_derivation(_j_absent):
         errors.append(
-            "SELF-TEST FAIL: a member_mapping naming an absent source path was accepted"
+            "SELF-TEST FAIL: a member_mapping naming an absent source pointer was accepted"
         )
+
+    # An empty declared mapping is DECLARED, not absent.  With a falsy absence test this
+    # returned no errors and skipped Category J entirely, so a vector could declare a
+    # mapping and derive nothing.
+    _j_empty = {
+        "declared_digest_context": {"member_mapping": {}},
+        "source_object": {"a": 1},
+        "input": {"wrong": 2},
+    }
+    if not _check_member_mapping_derivation(_j_empty):
+        errors.append(
+            "SELF-TEST FAIL: `member_mapping: {}` was treated as absent -- an empty declared "
+            "mapping bypasses Category J"
+        )
+    for _empty in ({"fields": []}, {"constants": []}, {"fields": [], "constants": []}):
+        _j_e = copy.deepcopy(_j_empty)
+        _j_e["declared_digest_context"]["member_mapping"] = _empty
+        if not _check_member_mapping_derivation(_j_e):
+            errors.append(f"SELF-TEST FAIL: declared but empty mapping {_empty} bypassed Category J")
+    _j_type = copy.deepcopy(_j_empty)
+    _j_type["declared_digest_context"]["member_mapping"] = []
+    if not _check_member_mapping_derivation(_j_type):
+        errors.append("SELF-TEST FAIL: a non-object member_mapping was accepted")
+    _j_none = copy.deepcopy(_j_good)
+    _j_none["declared_digest_context"].pop("member_mapping")
+    if _check_member_mapping_derivation(_j_none):
+        errors.append("SELF-TEST FAIL: an ABSENT member_mapping was treated as declared")
+
+    # RFC 6901: the literal member "a.b" and the nested one are different addresses.
+    _amb = {"a.b": 1, "a": {"b": 2}}
+    if _resolve_source_pointer(_amb, "/a.b") != 1 or _resolve_source_pointer(_amb, "/a/b") != 2:
+        errors.append("SELF-TEST FAIL: JSON Pointer does not separate a literal dot from nesting")
+    for _bad_ptr in ("a/b", "", "a.b"):
+        try:
+            _parse_json_pointer(_bad_ptr)
+        except ValueError:
+            pass
+        else:
+            errors.append(f"SELF-TEST FAIL: {_bad_ptr!r} was accepted as a JSON Pointer")
+    if _resolve_source_pointer({"a/b": 1}, "/a~1b") != 1 or _resolve_source_pointer({"a~b": 1}, "/a~0b") != 1:
+        errors.append("SELF-TEST FAIL: RFC 6901 ~1/~0 escaping is not honoured")
+
+    # Destination collisions, all three kinds, constants and fields in one namespace.
+    for _dests in (["/x", "/x"], ["/a", "/a/b"], ["/a/b", "/a"]):
+        try:
+            _check_destination_collisions(_dests)
+        except ValueError:
+            pass
+        else:
+            errors.append(f"SELF-TEST FAIL: colliding destinations {_dests} were accepted")
+    _j_const_clash = copy.deepcopy(_j_good)
+    _j_const_clash["declared_digest_context"]["member_mapping"]["constants"][0]["preimage_pointer"] = "/x"
+    if not _check_member_mapping_derivation(_j_const_clash):
+        errors.append("SELF-TEST FAIL: a constant colliding with a field destination was accepted")
+    try:
+        _resolve_source_pointer({"a": [1, 2]}, "/a/0")
+    except ValueError:
+        pass
+    else:
+        errors.append("SELF-TEST FAIL: an array traversal was accepted; arrays are out of scope")
 
     if errors:
         print("SELF-TEST FAILURES:")

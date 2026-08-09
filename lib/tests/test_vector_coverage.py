@@ -192,10 +192,14 @@ def _handle_assembled_preimage_member_mapping_undeclared(v: dict) -> None:
 
     source = v["source_object"]
 
-    def _resolve(path: str):
+    def _resolve(pointer: str):
+        # RFC 6901, re-derived here rather than imported: a dotted path could not
+        # tell a literal member "a.b" from the nested one, and this suite is meant
+        # to be a second reading of the vector rather than a call into the checker.
+        assert pointer.startswith("/"), f"not a JSON Pointer: {pointer!r}"
         cur = source
-        for seg in path.split("."):
-            cur = cur[seg]
+        for token in pointer.split("/")[1:]:
+            cur = cur[token.replace("~1", "/").replace("~0", "~")]
         return cur
 
     # Compare values canonically, not by repr(): dict repr follows insertion
@@ -204,7 +208,7 @@ def _handle_assembled_preimage_member_mapping_undeclared(v: dict) -> None:
     def _canon(value) -> str:
         return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
-    selected = sorted(_canon(_resolve(p)) for p in v["selected_source_paths"])
+    selected = sorted(_canon(_resolve(p)) for p in v["selected_source_pointers"])
 
     digests = []
     for side in ("implementation_a", "implementation_b"):
