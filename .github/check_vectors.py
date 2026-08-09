@@ -347,7 +347,25 @@ _MUTANT_GENERATORS: dict[str, object] = {
 
 
 def _unescape_pointer_token(token: str) -> str:
-    """RFC 6901 section 4: ~1 becomes /, then ~0 becomes ~.  Order is normative."""
+    """RFC 6901 section 3/4: the only escapes are ~0 and ~1, and ~1 unescapes first.
+
+    A bare `~`, or `~` followed by anything other than 0 or 1, is not valid pointer
+    syntax.  A plain str.replace() silently passes those through as literal text, so
+    `/a~2b` would address a member named "a~2b" that RFC 6901 cannot name at all.
+    Validate before unescaping, and the order of the two replacements stays normative.
+    """
+    i = 0
+    while i < len(token):
+        if token[i] == "~":
+            if i + 1 >= len(token) or token[i + 1] not in "01":
+                found = token[i:i + 2] if i + 1 < len(token) else "~ at end of token"
+                raise ValueError(
+                    f"invalid RFC 6901 escape {found!r} in reference token {token!r}: "
+                    "the only valid escapes are ~0 and ~1"
+                )
+            i += 2
+            continue
+        i += 1
     return token.replace("~1", "/").replace("~0", "~")
 
 
@@ -1145,6 +1163,19 @@ def _run_self_tests() -> None:
             errors.append(f"SELF-TEST FAIL: {_bad_ptr!r} was accepted as a JSON Pointer")
     if _resolve_source_pointer({"a/b": 1}, "/a~1b") != 1 or _resolve_source_pointer({"a~b": 1}, "/a~0b") != 1:
         errors.append("SELF-TEST FAIL: RFC 6901 ~1/~0 escaping is not honoured")
+    for _bad_esc in ("/a~2b", "/a~", "/~", "/a~b", "/a~~0b"):
+        try:
+            _parse_json_pointer(_bad_esc)
+        except ValueError:
+            pass
+        else:
+            errors.append(
+                f"SELF-TEST FAIL: {_bad_esc!r} was accepted; only ~0 and ~1 are valid escapes"
+            )
+    _j_bad_esc = copy.deepcopy(_j_good)
+    _j_bad_esc["declared_digest_context"]["member_mapping"]["fields"][0]["source_pointer"] = "/a~2b"
+    if not _check_member_mapping_derivation(_j_bad_esc):
+        errors.append("SELF-TEST FAIL: a mapping using an invalid tilde escape was accepted")
 
     # Destination collisions, all three kinds, constants and fields in one namespace.
     for _dests in (["/x", "/x"], ["/a", "/a/b"], ["/a/b", "/a"]):
