@@ -204,10 +204,13 @@ Derived Identifier:
 
 Digest Context:
 : The complete set of parameters that determine how a digest was computed:
-  the field set selected, the canonicalization algorithm applied, any domain
-  separation, the encoding of the pre-image, and the representation of the
-  output. Two digest values are comparable only when their full digest
-  contexts are established as compatible.
+  the field set selected, the exclusion set applied, the canonicalization
+  algorithm applied, any domain separation, the encoding of the pre-image,
+  and the representation of the output. Two digest values are comparable
+  only when their full digest contexts are established as compatible. A
+  payload class or artifact type MAY declare more than one digest context
+  over the same payload, each serving a distinct purpose ({{iana-art}}); the
+  contexts are independent and MUST NOT be conflated.
 
 CANONICAL-DIGEST:
 : A function parameterized by a canonicalization algorithm A: given a value
@@ -664,19 +667,110 @@ Initial contents:
 This registry records the artifact types that may appear in the `type`
 field of a typed digest reference ({{typed-refs}}).
 
+An artifact type declares one or more digest contexts. More than one is
+needed whenever an artifact type has more than one digest that a verifier
+might need to establish independently — for example, a digest that serves
+as the artifact's own derived identifier, and a separate digest computed
+over a declared subset of the same artifact to test equivalence with
+another instance. Each digest context is independent: it states its own
+canonicalization algorithm (which MAY differ per context, and MAY be an
+identity algorithm such as `as-transmitted` when one is registered in the
+Canonicalization Algorithm Registry) and its own field set, exclusion set,
+domain separation, pre-image encoding, profile version, and representation,
+as that algorithm requires. A single-context artifact type is the
+degenerate case of this template, not a different template.
+
 Registration template:
 
-* Name: A short ASCII identifier.
-* Digest Context: The preimage rule (field set selected, exclusion set
-  applied), the canonicalization algorithm name from {{iana-alg}}, and the
-  representation of the output.
+* Name: A short ASCII identifier. For a CPB-bound profile, this Name is
+  the registered profile label that a citing composition profile treats
+  as a protocol input; CPB takes no separate IANA action to register
+  profile labels beyond registering this artifact type.
+* Digest Contexts: One or more digest contexts. Each digest context states:
+  * Purpose: a label drawn from the purpose-label vocabulary below,
+    distinguishing this context from any other digest context the same
+    artifact type registers.
+  * Profile version: the version of the profile or specification that
+    defines this digest context, or `N/A` if the artifact type's
+    reference does not itself distinguish profile versions (for example,
+    a type identifier that names a type but not a version).
+  * Canonicalization algorithm: the algorithm name from {{iana-alg}} (MAY
+    be `as-transmitted`). This token also pins the digest context's hash
+    algorithm and output representation, recorded once in the cited
+    Canonicalization Algorithm Registry entry ({{iana-alg}}) rather than
+    restated per artifact type.
+  * Field set: the field set selected for this context ({{derived-id}}).
+    When the canonicalization algorithm is an identity algorithm with no
+    field set (such as `as-transmitted`), this element is instead the
+    byte-boundary selector that algorithm requires.
+  * Exclusion set: the fields omitted from the field set before digesting.
+    Not applicable to a context using an identity algorithm with no field
+    set.
+  * Domain separation: any domain-separation prefix or tag applied to the
+    pre-image, or `none`.
+  * Pre-image encoding: the encoding of the pre-image octets before
+    digesting.
+  * Representation: the representation of the output digest
+    ({{representation}}).
 * Reference: The document that defines the artifact type.
+
+A digest context element that does not apply to a given context (for
+example, exclusion set under `as-transmitted`) MUST be stated explicitly as
+`none` or `N/A` rather than omitted. A registry entry is read in isolation
+by a verifier that has not read this document's prose, and cannot assume a
+default for an absent element.
+
+**Purpose-label vocabulary.** Every digest context's purpose label is drawn
+from a single vocabulary shared across this entire registry, so that a
+companion specification introducing digest bindings at another layer (for
+example, a statement-level multi-binding facility) has one namespace to
+adopt rather than inventing a second, incompatible one. The initial
+vocabulary, extensible by the same Specification-Required process as the
+registries in this section:
+
+| Label | Meaning |
+|---|---|
+| `identifier` | The digest context that computes the artifact's derived identifier ({{derived-id}}): the artifact's primary content-address. |
+| `equivalence` | A digest context, distinct from `identifier`, computed over a declared field subset, used to determine whether two artifacts represent the same underlying content or action. |
+
+This is CPB's first published definition of this namespace; neither this
+document nor a companion may register a second purpose-label vocabulary
+that overlaps this one in meaning.
+
+A CPB purpose label is orthogonal to, not competing with, any role a
+companion composition profile assigns a digest within a cross-document
+join (for example, roles such as `subject`, `authority-reference`, or
+`receipt-payload`). The purpose label describes a digest context's
+function within its own artifact type; a join role describes which slot
+in a multi-document binding that same digest fills. The two axes are
+independent, and a single digest may carry one label from each at once —
+for example, an artifact's `identifier` digest context ({{iana-art}}) may
+simultaneously be the `subject` of a composition join. Neither vocabulary
+constrains the other, and neither document needs to adopt the other's
+terms.
+
+Resolving which digest context of a multi-context artifact type a given
+typed digest reference ({{typed-refs}}) targets is outside this section's
+scope; the typed digest reference wire format is unchanged by this
+registry template and is addressed, if at all, by whatever specification
+defines statement-level multi-binding.
 
 Initial contents:
 
-| Name | Digest Context | Reference |
-|---|---|---|
-| agent-action-capsule | jcs-n; exclusion set {capsule_id, chain}; 64-char lowercase hex | {{I-D.mih-scitt-agent-action-capsule}} |
+### `agent-action-capsule` {#art-agent-action-capsule}
+
+Reference: {{I-D.mih-scitt-agent-action-capsule}}
+
+Digest context (`identifier`):
+
+* Profile version: N/A — draft-mih-scitt-agent-action-capsule does not
+  currently register more than one profile version in this registry.
+* Canonicalization algorithm: `jcs-n`
+* Field set: all capsule fields
+* Exclusion set: {capsule_id, chain}
+* Domain separation: none
+* Pre-image encoding: JCS UTF-8 octets, per `jcs-n` ({{algo-jcs-n}})
+* Representation: 64-char lowercase hex
 
 # Related Work {#related}
 

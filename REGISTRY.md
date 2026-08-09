@@ -4,7 +4,7 @@
 Canonical Payload Binding (CPB) registries, until RFC publication establishes the
 corresponding IANA registries. The registries and their normative definitions are
 in the Internet-Draft (`draft-mih-sokolov-scitt-payload-binding`, this
-repository's `spec/`), **§11 (IANA Considerations)**. Registration policy:
+repository's `spec/`), **§13 (IANA Considerations)**. Registration policy:
 **Specification Required** per [RFC 8126 §4.6]; a Designated Expert is required
 for each registration. **Entries are immutable** — if a behavior change is
 needed, a new entry MUST be registered; existing entries MUST NOT be modified
@@ -68,7 +68,7 @@ draft (§11) is normative; this file is the living interim record.
 
 Records the canonicalization algorithms that may be used to compute
 CANONICAL-DIGEST values. Registration template: **Name**, **Description**,
-**Reference** (draft §11.1).
+**Reference** (draft §13.1).
 
 | Name | Description | Reference | Status |
 |---|---|---|---|
@@ -95,14 +95,45 @@ verification cases including MUST-FAIL cases.
 ## Artifact Type Registry
 
 Records the artifact types that may appear in the `type` field of a typed digest
-reference. Registration template: **Name**, **Digest Context** (the preimage rule
-— field set selected, exclusion set applied — the canonicalization algorithm name
-from the Algorithm Registry, and the output representation), **Reference** (draft
-§11.2).
+reference. Registration template (draft §13.2): **Name**; **Digest Contexts** —
+one or more, each stating a **purpose** label, a **profile version**, a
+**canonicalization algorithm** (from the Algorithm Registry above; MAY be
+`as-transmitted`), a **field set** (or, under `as-transmitted`, the
+byte-boundary selector that algorithm requires in place of a field set), an
+**exclusion set**, any **domain separation**, the **pre-image encoding**, and
+the **representation** of the output; **Reference**. A single-context entry is
+the degenerate case of this template, not a different one. Every digest
+context's purpose label is drawn from one vocabulary shared across this whole
+registry (initial contents: `identifier`, `equivalence` — see draft §13.2), so
+a companion introducing digest bindings at another layer has one namespace to
+adopt rather than a second, incompatible one. This purpose label is orthogonal
+to, and independent of, any digest role a composition profile assigns within a
+cross-document join — see draft §13.2 for the axis distinction.
 
-| Name | Digest Context | Reference | Status |
-|---|---|---|---|
-| `agent-action-capsule` | `jcs-n`; exclusion set `{capsule_id, chain}`; 64-char lowercase hex | draft-mih-scitt-agent-action-capsule | Registered — first payload profile |
+**Where a citing composition profile's protocol inputs come from.** The
+registered **Name** above IS the profile label a composition profile treats as
+a protocol input — CPB takes no separate IANA action to register profile
+labels. The digest context's **profile version**, when the profile is
+versioned, is stated per digest context (`N/A` when the artifact type's own
+reference does not distinguish versions). The digest context's **hash
+algorithm** and output representation are pinned by the cited
+canonicalization-algorithm token, recorded once in that token's Payload
+Canonicalization Algorithm Registry entry above rather than restated per
+artifact type.
+
+### `agent-action-capsule`
+
+**Reference:** draft-mih-scitt-agent-action-capsule
+**Status:** Registered — first payload profile
+
+| Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
+|---|---|---|---|---|---|---|---|
+| `identifier` | N/A (no versioned profile registered yet) | `jcs-n` | all capsule fields | `{capsule_id, chain}` | none | JCS UTF-8 octets (per `jcs-n`) | 64-char lowercase hex |
+
+Content unchanged from the prior 3-element shape — only the shape changed to the
+full digest-context template above. Domain separation and pre-image encoding are
+not new owner-supplied parameters: both are stated directly by `jcs-n`'s own
+normative definition, not invented for this row.
 
 Proposed Artifact Type entries awaiting their owners' confirmation are listed in
 [`spec/cpb-provisional-registry.md`](spec/cpb-provisional-registry.md).

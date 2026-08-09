@@ -99,6 +99,25 @@ def _line_offenders(line: str, pattern: re.Pattern[str], allow: tuple[str, ...])
     return hits
 
 
+_MARKDOWN_SOURCE_COMMENT_RE = re.compile(
+    r"<!--\s*##markdown-source:.*?-->", re.DOTALL
+)
+
+
+def _strip_generated_comments(text: str) -> str:
+    """Strip kramdown-rfc's compressed+base64 markdown-source echo.
+
+    xml2rfc/kramdown-rfc embeds the original .md source, gzip+base64
+    encoded, in a ``<!-- ##markdown-source: ... -->`` comment for
+    round-trip tooling. That blob is opaque binary data reflected through
+    base64's limited alphabet, so it can coincidentally spell a reserved
+    substring nowhere present in the actual .md source, which is scanned
+    directly and is already the authoritative text. Strip the blob before
+    matching so the gate can't fire on its own compression noise.
+    """
+    return _MARKDOWN_SOURCE_COMMENT_RE.sub("", text)
+
+
 def _git_tracked_files(root: Path) -> list[Path] | None:
     r = subprocess.run(
         ["git", "ls-files"],
@@ -123,6 +142,7 @@ def scan(root: Path, pattern: re.Pattern[str], allow: tuple[str, ...]) -> list[s
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
+        text = _strip_generated_comments(text)
         for i, line in enumerate(text.splitlines(), 1):
             for token in _line_offenders(line, pattern, allow):
                 offenders.append(f"{path.relative_to(root)}:{i}: {token!r}")
@@ -161,6 +181,33 @@ def _run_self_tests() -> None:
     if len(hits3) != 1 or hits3[0].lower() != "reserved":
         errors.append(
             f"two-occurrence test 3 failed: expected exactly one 'reserved', got {hits3!r}"
+        )
+
+    # kramdown-rfc markdown-source comment: a reserved term that appears only
+    # inside the compressed/base64 echo must NOT be flagged; the same term in
+    # real content, outside the comment, still must be.
+    pattern2 = re.compile(r"reserved", re.IGNORECASE)
+    doc = (
+        "real content before\n"
+        "<!-- ##markdown-source:\n"
+        "b64noisereservedmorenoise\n"
+        "-->\n"
+        "reserved appears here in real content\n"
+    )
+    stripped = _strip_generated_comments(doc)
+    if "reservedmorenoise" in stripped:
+        errors.append(
+            "markdown-source comment test failed: blob text survived stripping"
+        )
+    hits4 = [
+        tok
+        for line in stripped.splitlines()
+        for tok in _line_offenders(line, pattern2, ())
+    ]
+    if hits4 != ["reserved"]:
+        errors.append(
+            f"markdown-source comment test failed: expected exactly one "
+            f"real-content 'reserved' hit after stripping, got {hits4!r}"
         )
 
     if errors:
