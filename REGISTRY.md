@@ -74,6 +74,22 @@ CANONICAL-DIGEST values. Registration template: **Name**, **Description**,
 |---|---|---|---|
 | `jcs-n` | RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex | draft-mih-sokolov-scitt-payload-binding | Registered |
 | `cde-n` | CDE/dCBOR normalization; SHA-256 | draft-mih-sokolov-scitt-payload-binding | **Reserved** (defined in a subsequent revision) |
+| `as-transmitted` | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex | draft-mih-sokolov-scitt-payload-binding | Registered |
+
+**as-transmitted — byte-boundary selector is mandatory, not descriptive.**
+`as-transmitted` performs no canonicalization: the digest is computed over a
+byte sequence already fixed by a signature or container format, where
+re-canonicalizing would break the very binding that makes those bytes
+authoritative. Because there is no canonicalization, there is also no field
+set and no exclusion set — an Artifact Type entry that declares
+`as-transmitted` MUST instead state a byte-boundary selector: a normative
+reference plus the name that referenced specification gives to the exact
+byte sequence (e.g., `RFC 7515 §5.1, JWS Signing Input`; `RFC 9052 §4.4,
+Sig_structure`). A selector that is not a cited named production is prose,
+not a selector, and says nothing. If the container specification carrying
+the artifact does not itself name the byte sequence as a discrete
+production, the artifact type MUST NOT use `as-transmitted` — it registers a
+canonicalization algorithm instead.
 
 **jcs-n implementation note — Unicode normalisation boundary.** jcs-n applies
 no Unicode normalisation. An object whose key contains decomposed code points
