@@ -3,6 +3,9 @@
 # Toolchain (one-time):
 #   gem install kramdown-rfc
 #   python3 -m pip install xml2rfc
+#
+# Versioning convention: edits for the next revision go to the
+# highest-numbered file; a new -NN.md is cut at pin time.
 
 DRAFT   = draft-mih-sokolov-scitt-payload-binding-01
 XML2RFC ?= xml2rfc
