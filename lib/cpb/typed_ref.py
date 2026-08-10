@@ -1,7 +1,11 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Typed digest reference: construction and verification.
 
-Reference: draft-mih-sokolov-scitt-payload-binding-00 §6
+Reference: draft-mih-sokolov-scitt-payload-binding-01 §7 (Typed Digest
+References) / §7.1 (Cross-Profile Comparability). §7.1 requires the
+verifier to confirm that ``digest_alg`` identifies a hash algorithm
+consistent with the referenced artifact type's registered canonicalization
+context, in addition to recomputing and comparing the digest itself.
 """
 from __future__ import annotations
 
@@ -60,7 +64,7 @@ class TypedRefError(ValueError):
 
 
 class ContextMismatchError(TypedRefError):
-    """Recomputed digest does not match the carried digest (§6.1)."""
+    """Recomputed digest does not match the carried digest (§7.1)."""
 
     def __init__(self, carried: str | bytes, recomputed: str, artifact_type: str) -> None:
         self.carried = carried
@@ -73,7 +77,7 @@ class ContextMismatchError(TypedRefError):
 
 
 class RepresentationMismatchError(TypedRefError):
-    """The carried identifier is inconsistent with the declared representation (§6.1).
+    """The carried identifier is inconsistent with the declared representation (§7.1).
 
     The spec (§4.1): "Representations are distinct and not interchangeable."
     This error is raised when the carried digest does not conform to the
@@ -96,15 +100,18 @@ class RepresentationMismatchError(TypedRefError):
 
 class DigestAlgorithmMismatchError(TypedRefError):
     """The reference's digest_alg does not name the hash algorithm actually
-    used by the referenced artifact type's canonicalization algorithm (§6).
+    used by the referenced artifact type's canonicalization algorithm (§7.1).
 
-    §6 defines ``digest_alg`` as "the hash algorithm of the digest value";
-    the canonicalization CONTEXT is always resolved from the artifact-type
-    registry entry, never from ``digest_alg`` -- but the field still makes a
-    factual claim about which hash algorithm produced the carried digest.
-    A reference that mislabels this (e.g. a jcs-n/SHA-256 artifact cited
-    with ``digest_alg: "SHA-512"``) is internally inconsistent and MUST NOT
-    be silently recomputed and compared as though the label were correct.
+    §7 defines ``digest_alg`` as "the hash algorithm of the digest value".
+    §7.1 requires the verifier to confirm that ``digest_alg`` is consistent
+    with the referenced artifact type's registered canonicalization context
+    -- the canonicalization CONTEXT itself is always resolved from the
+    artifact-type registry entry, never from ``digest_alg``, but the field
+    still makes a factual claim about which hash algorithm produced the
+    carried digest. A reference that mislabels this (e.g. a jcs-n/SHA-256
+    artifact cited with ``digest_alg: "SHA-512"``) is internally
+    inconsistent and MUST NOT be silently recomputed and compared as though
+    the label were correct.
     """
 
     def __init__(self, declared: str, expected: str, artifact_type: str) -> None:
@@ -158,7 +165,7 @@ class ArtifactTypeRegistryEntry:
 
 @dataclass(frozen=True)
 class TypedRef:
-    """A typed digest reference (§6).
+    """A typed digest reference (§7).
 
     Fields match the spec-defined JSON object:
         type       — artifact type, from Artifact Type Registry
@@ -228,7 +235,7 @@ def make_typed_ref(
     artifact_payload: dict[str, Any],
     registry_entry: ArtifactTypeRegistryEntry,
 ) -> TypedRef:
-    """Construct a typed digest reference to an artifact (§6).
+    """Construct a typed digest reference to an artifact (§7).
 
     Args:
         artifact_payload: The artifact payload as a JSON-serializable dict.
@@ -257,7 +264,7 @@ def verify_typed_ref(
     artifact_payload: dict[str, Any],
     registry_entry: ArtifactTypeRegistryEntry,
 ) -> str:
-    """Verify a typed digest reference (§6.1).
+    """Verify a typed digest reference (§7.1).
 
     Steps:
     1. Resolve the artifact type from the registry entry.
@@ -267,10 +274,12 @@ def verify_typed_ref(
     4. Recompute the artifact digest under the declared digest context.
     5. Compare the recomputed digest to the carried digest.
 
-    The spec states: "The verifier MUST confirm that the identifier carried by
-    the reference is consistent with the established context. It MUST then
-    recompute the referenced artifact's digest under that context and compare
-    the recomputed digest with the digest carried by the reference."
+    §7.1 states: "It MUST use the `type` field to resolve the referenced
+    artifact's registered digest context. It MUST confirm that `digest_alg`
+    identifies a hash algorithm consistent with that context. It MUST then
+    recompute the referenced artifact's digest under that context and
+    compare the recomputed value with the value carried in the `digest`
+    field."
 
     Args:
         ref: The typed digest reference to verify (TypedRef or dict).

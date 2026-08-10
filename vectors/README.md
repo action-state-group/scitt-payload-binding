@@ -105,6 +105,7 @@ implementation forks on this vector.
 | typed-ref-fail-02 | MUST-FAIL | Textual equality trap (same hex, incompatible contexts) |
 | typed-ref-fail-03 | MUST-FAIL | Representation mismatch (prefixed vs bare hex) |
 | typed-ref-fail-04 | MUST-FAIL | Identifier inconsistent with context (digest produced without exclusion set) |
+| typed-ref-fail-05 | MUST-FAIL | digest_alg inconsistent with the registered context (-01 §7.1) — SHA-512, MD5, an unregistered name, and the empty string, each carrying the otherwise-correct digest |
 
 ## Profile independence summary
 

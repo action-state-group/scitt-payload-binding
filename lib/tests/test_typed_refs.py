@@ -202,6 +202,26 @@ def test_typed_ref_digest_alg_mismatch_rejected():
         verify_typed_ref(ref_mislabeled, payload, entry)
 
 
+def test_typed_ref_digest_algorithm_inconsistent_with_context():
+    """typed-ref-fail-05 (-01 §7.1): a verifier that recomputes and compares
+    digest bytes without independently confirming digest_alg would wrongly
+    accept every example below, since the carried digest is the correct
+    SHA-256 value in each case. SHA-512, MD5, an unregistered name and the
+    empty string must all be rejected against a jcs-n (SHA-256) context."""
+    vectors = load_vectors("typed-refs/fail")
+    v = next((x for x in vectors if x.get("failure_reason") == "digest_algorithm_inconsistent_with_context"), None)
+    assert v is not None, "typed-ref-fail-05 (digest_algorithm_inconsistent_with_context) not found"
+
+    cited = v["cited_artifact"]
+    entry = _entry_from_cited(cited)
+    assert canonical_digest(cited["payload"], entry.exclusion_set) == v["correct_recomputed_digest"]
+
+    for example in v["typed_references_with_mislabeled_digest_alg"]:
+        ref = TypedRef(type=cited["type"], digest_alg=example["digest_alg"], digest=example["digest"])
+        with pytest.raises(DigestAlgorithmMismatchError):
+            verify_typed_ref(ref, cited["payload"], entry)
+
+
 def test_typed_ref_raw_representation_boundary():
     """Round-2 Blocker 2: raw octets and hex are distinct, non-interchangeable
     representations (§4.1) -- not two spellings of one 'bare_hex' concept.
