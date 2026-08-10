@@ -33,15 +33,34 @@ def _typed_ref_fields(d: dict) -> dict:
     return {k: d[k] for k in ("type", "digest_alg", "digest")}
 
 
+def _entry_from_vector(v: dict) -> ArtifactTypeRegistryEntry:
+    """Like _entry_from_cited, but also checks the vector's top level.
+
+    typed-ref-cpb01-01 (ARP fold, folded byte-for-byte from Joel Hillier's
+    arp-typed-ref-cpb01-v0.1.json) carries artifact_type_registry_entry as a
+    sibling of cited_artifact rather than nested inside it.
+    """
+    cited = v["cited_artifact"]
+    if cited.get("artifact_type_registry_entry") or cited.get("registry_entry"):
+        return _entry_from_cited(cited)
+    return _entry_from_cited({"artifact_type_registry_entry": v.get("artifact_type_registry_entry", {})})
+
+
 def test_typed_ref_pass():
-    """PASS vectors: verify_typed_ref must succeed."""
+    """PASS vectors: verify_typed_ref must succeed.
+
+    typed-ref-cpb01-01's expected digest lives under `expected`, not
+    `verification`, per that vector's own field layout (see
+    _entry_from_vector for the registry-entry counterpart).
+    """
     vectors = load_vectors("typed-refs/pass")
     for v in vectors:
         cited = v["cited_artifact"]
-        entry = _entry_from_cited(cited)
+        entry = _entry_from_vector(v)
         ref = TypedRef(**_typed_ref_fields(v["typed_reference"]))
         recomputed = verify_typed_ref(ref, cited["payload"], entry)
-        expected = v["verification"]["recomputed_digest"]
+        result = v.get("verification") or v.get("expected") or {}
+        expected = result["recomputed_digest"]
         assert recomputed == expected, f"{v['id']}: recomputed {recomputed!r} != {expected!r}"
 
 

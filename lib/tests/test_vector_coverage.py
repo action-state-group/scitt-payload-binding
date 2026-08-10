@@ -147,6 +147,25 @@ def _handle_digest_algorithm_inconsistent_with_context(v: dict) -> None:
             verify_typed_ref(ref, cited["payload"], entry)
 
 
+def _handle_digest_alg_inconsistent_with_registered_context(v: dict) -> None:
+    """typed-ref-cpb01-02 (ARP fold, -01 §7.1): digest_alg 'SHA-512' against a
+    jcs-n/SHA-256 registered context, carrying the otherwise-correct digest.
+    Folded byte-for-byte from Joel Hillier's arp-typed-ref-cpb01-v0.1.json;
+    the registry entry lives at the vector's top level, not nested under
+    cited_artifact, per that vector file's own schema."""
+    reg = v["artifact_type_registry_entry"]
+    entry = ArtifactTypeRegistryEntry(
+        name=reg["name"],
+        algorithm=reg["algorithm"],
+        exclusion_set=frozenset(reg["exclusion_set"]),
+        representation=reg.get("representation", "bare_hex"),
+    )
+    cited = v["cited_artifact"]
+    ref = TypedRef(**{k: v["typed_reference"][k] for k in ("type", "digest_alg", "digest")})
+    with pytest.raises(DigestAlgorithmMismatchError):
+        verify_typed_ref(ref, cited["payload"], entry)
+
+
 def _handle_representation_mismatch_identifier_whitespace(v: dict) -> None:
     """jcs-n-kat-20/21: identifier grammar, trailing newline / surrounding
     whitespace. The carried digest is padded (a 65+ char string), which is
@@ -207,6 +226,7 @@ _HANDLERS = {
     "representation_mismatch_surrounding_whitespace": _handle_representation_mismatch_identifier_whitespace,
     "identifier_inconsistent_with_context": _handle_identifier_inconsistent_with_context,
     "digest_algorithm_inconsistent_with_context": _handle_digest_algorithm_inconsistent_with_context,
+    "digest_alg_inconsistent_with_registered_context": _handle_digest_alg_inconsistent_with_registered_context,
     "nfc_normalisation_deviation": _handle_nfc_normalisation_deviation,
     "profile_independence_violation": _handle_profile_independence_violation,
 }
