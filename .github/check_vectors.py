@@ -46,6 +46,19 @@ For must_fail vectors — each MUST match at least one category (enforced):
         typed_reference_with_wrong_digest.digest; verify verification.correct_pre_image ->
         SHA-256 = verification.recomputed_digest; assert wrong_digest != recomputed_digest
         (inequality is real).
+  I. digest_alg mismatch: 'failure_reason' in {'digest_algorithm_inconsistent_with_context',
+     'digest_alg_inconsistent_with_registered_context'}
+     -> REQUIRES cited_artifact.payload AND a resolvable registry entry (checked at
+        cited_artifact.registry_entry, cited_artifact.artifact_type_registry_entry, or
+        the vector's own top-level artifact_type_registry_entry) naming either an
+        explicit hash_algorithm_registered_by_algorithm_entry or algorithm 'jcs-n'
+        (registered hash SHA-256); recompute the digest independently from the payload
+        and assert it equals every carried digest_alg example's digest (the mislabeling
+        must be isolated to digest_alg, not hidden by an also-wrong digest value); assert
+        every example's digest_alg does NOT case-insensitively equal the registered hash
+        algorithm (the mismatch is real). Examples are read from either
+        typed_references_with_mislabeled_digest_alg (a list) or typed_reference (a single
+        object) -- vector files fold from different sources with different shapes.
 
 A must_fail vector matching NONE of the above is a hard failure -- 'ran_any_check' is
 enforced.  A bare {'must_fail': true} fails the suite.
@@ -148,6 +161,46 @@ def jcs_n_pre_image(
 
 def _sha256_hex(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
+
+
+# ---------------------------------------------------------------------------
+# digest_alg-mismatch helpers (Category I)
+# ---------------------------------------------------------------------------
+
+_DIGEST_ALG_MISMATCH_FAILURE_REASONS = frozenset({
+    "digest_algorithm_inconsistent_with_context",
+    "digest_alg_inconsistent_with_registered_context",
+})
+
+
+def _digest_alg_registry_entry(v: dict) -> dict:
+    """Vectors fold from different sources with different registry-entry
+    locations: nested under cited_artifact (this repo's own fail-05), or a
+    sibling of cited_artifact at the vector's top level (ARP's fold)."""
+    cited = v.get("cited_artifact", {})
+    return (
+        cited.get("registry_entry")
+        or cited.get("artifact_type_registry_entry")
+        or v.get("artifact_type_registry_entry")
+        or {}
+    )
+
+
+def _expected_hash_alg(reg: dict) -> str | None:
+    explicit = reg.get("hash_algorithm_registered_by_algorithm_entry")
+    if explicit:
+        return explicit
+    if reg.get("algorithm") == "jcs-n":
+        return "SHA-256"
+    return None
+
+
+def _digest_alg_examples(v: dict) -> list[dict]:
+    examples = v.get("typed_references_with_mislabeled_digest_alg")
+    if examples is not None:
+        return examples
+    single = v.get("typed_reference")
+    return [single] if single else []
 
 
 # ---------------------------------------------------------------------------
@@ -295,6 +348,18 @@ def _mutant_H(v: dict) -> dict | None:
     return None
 
 
+def _mutant_I(v: dict) -> dict | None:
+    m = copy.deepcopy(v)
+    reg = _digest_alg_registry_entry(m)
+    expected = _expected_hash_alg(reg)
+    examples = _digest_alg_examples(m)
+    if not expected or not examples:
+        return None
+    for ex in examples:
+        ex["digest_alg"] = expected
+    return m
+
+
 _MUTANT_GENERATORS: dict[str, object] = {
     "A": _mutant_A,
     "B": _mutant_B,
@@ -302,6 +367,7 @@ _MUTANT_GENERATORS: dict[str, object] = {
     "F": _mutant_F,
     "G": _mutant_G,
     "H": _mutant_H,
+    "I": _mutant_I,
 }
 
 
@@ -541,6 +607,50 @@ def _exercise_must_fail(
                 vec_errors.append(
                     f"wrong_digest == recomputed_digest — no inequality demonstrated: {wrong_digest!r}"
                 )
+
+    # I. digest_alg mismatch: carried digest is correct, digest_alg is mislabeled
+    if v.get("failure_reason") in _DIGEST_ALG_MISMATCH_FAILURE_REASONS:
+        ran_any_check = True
+        categories_fired.append("I")
+        cited = v.get("cited_artifact", {})
+        payload = cited.get("payload")
+        reg = _digest_alg_registry_entry(v)
+        expected_alg = _expected_hash_alg(reg)
+        examples = _digest_alg_examples(v)
+        if payload is None or not expected_alg or not examples:
+            vec_errors.append(
+                "Category I vector missing cited_artifact.payload, a resolvable "
+                "registry entry (algorithm / hash_algorithm_registered_by_algorithm_entry), "
+                "and/or a typed_references_with_mislabeled_digest_alg list or "
+                "typed_reference object -- the digest_alg mismatch cannot be "
+                "independently checked"
+            )
+        else:
+            reg_excl = reg.get("exclusion_set") or []
+            try:
+                computed = jcs_n_pre_image(payload, reg_excl or None)
+                recomputed_digest = _sha256_hex(computed)
+            except Exception as exc:
+                vec_errors.append(f"Category I: jcs_n_pre_image raised: {exc!r}")
+                recomputed_digest = None
+            for ex in examples:
+                digest_alg = ex.get("digest_alg")
+                digest = ex.get("digest")
+                if recomputed_digest is not None and digest != recomputed_digest:
+                    vec_errors.append(
+                        f"Category I: carried digest {digest!r} != independently "
+                        f"recomputed digest {recomputed_digest!r} -- the mislabeling "
+                        f"must be isolated to digest_alg, not hidden behind an "
+                        f"also-wrong digest value"
+                    )
+                if digest_alg is None:
+                    vec_errors.append("Category I: example missing digest_alg")
+                elif digest_alg.upper() == expected_alg.upper():
+                    vec_errors.append(
+                        f"Category I: declared digest_alg {digest_alg!r} matches the "
+                        f"registered hash algorithm {expected_alg!r} -- no mismatch "
+                        f"demonstrated"
+                    )
 
     # Enforcement: a vector matching none of the above is a hard failure.
     if not ran_any_check:
