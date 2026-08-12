@@ -311,7 +311,7 @@ examples of a valid selector:
 
 * `RFC 7515 §5.1, JWS Signing Input` -- the octets a JWS signature is
   computed over.
-* `RFC 9052 §4.4, Sig_structure` -- the octets a COSE_Sign1 signature is
+* `RFC 9052 §4.4, ToBeSigned` -- the octets a COSE_Sign1 signature is
   computed over.
 
 A selector that is not a cited named production is prose, not a selector,
