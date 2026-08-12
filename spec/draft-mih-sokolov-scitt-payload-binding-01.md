@@ -481,8 +481,9 @@ A typed digest reference is a JSON object with the following fields:
 | Field | Type | Req | Meaning |
 |---|---|---|---|
 | type | string | REQUIRED | The artifact type, from the Artifact Type Registry ({{iana-art}}). |
-| digest_alg | string | REQUIRED | The hash algorithm of the digest value (e.g., "SHA-256"). The canonicalization context of the cited artifact is resolved from its artifact type's registry entry ({{iana-art}}), not from this field. |
-| digest | string | REQUIRED | The digest of the cited artifact, in the representation declared by its payload class. |
+| purpose | string | CONDITIONAL | The purpose label ({{iana-art}}) selecting which of the artifact type's digest contexts this reference targets. REQUIRED whenever the resolved artifact type registers more than one digest context. MAY be omitted only when the resolved artifact type registers exactly one digest context, in which case that single context applies; a verifier MUST NOT infer a default when more than one context is registered. |
+| digest_alg | string | REQUIRED | The hash algorithm of the digest value (e.g., "SHA-256"). The canonicalization context of the cited artifact is resolved from the digest context selected by `type` and `purpose` ({{iana-art}}), not from this field. |
+| digest | string | REQUIRED | The digest of the cited artifact, in the representation declared by the selected digest context. |
 
 Additional fields MAY be present and MUST be ignored by verifiers that do
 not understand them.
@@ -494,9 +495,16 @@ and the digest recomputed over the referenced artifact are comparable only
 when both are interpreted under the same established referenced-artifact
 digest context and comparison representation.
 
-To verify the reference, the verifier MUST use the `type` field to resolve
-the referenced artifact's registered digest context. It MUST confirm that
-`digest_alg` identifies a hash algorithm consistent with that context.
+To verify the reference, the verifier MUST use the `type` field, together
+with the `purpose` field when the resolved artifact type registers more than
+one digest context, to resolve exactly one of the referenced artifact's
+registered digest contexts. If `type` resolves to more than one digest
+context and `purpose` is absent, ambiguous (matching no registered purpose
+label), or names a purpose label the resolved artifact type does not
+register, the reference is unresolvable: the verifier MUST NOT guess a
+context and MUST NOT report the typed reference as verified. It MUST confirm
+that `digest_alg` identifies a hash algorithm consistent with the resolved
+context.
 
 `digest_alg` is REQUIRED even though every algorithm registered in
 {{iana-alg}} today names the same hash, SHA-256: it is the field that lets
@@ -812,11 +820,15 @@ simultaneously be the `subject` of a composition join. Neither vocabulary
 constrains the other, and neither document needs to adopt the other's
 terms.
 
-Resolving which digest context of a multi-context artifact type a given
-typed digest reference ({{typed-refs}}) targets is outside this section's
-scope; the typed digest reference wire format is unchanged by this
-registry template and is addressed, if at all, by whatever specification
-defines statement-level multi-binding.
+A typed digest reference ({{typed-refs}}) selects which digest context of a
+multi-context artifact type it targets via the reference's own `purpose`
+field, using the purpose label from this vocabulary. Each digest context an
+artifact type registers MUST carry a purpose label distinct from every other
+digest context the same artifact type registers, so that `type` plus
+`purpose` together resolve to exactly one digest context with no remaining
+ambiguity. This mechanism is orthogonal to, and does not substitute for,
+whatever role vocabulary a companion statement-level multi-binding facility
+may separately define for its own join semantics.
 
 Initial contents:
 
