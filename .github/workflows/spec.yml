@@ -10,9 +10,9 @@ name: spec
 
 on:
   push:
-    paths: ["spec/**"]
+    paths: ["spec/**", ".github/workflows/spec.yml"]
   pull_request:
-    paths: ["spec/**"]
+    paths: ["spec/**", ".github/workflows/spec.yml"]
 
 permissions:
   contents: read
