@@ -56,6 +56,36 @@ regardless of registration type:
    positives-only cannot detect an implementation that accepts malformed inputs.
    Both sides are required to make a conformance claim.
 
+**Display strings live with the value they name.** A registry entry for a
+spec-defined value that a verifier renders to a person — `action_type`,
+`verdict_class`, `effect.status`, `effect_attestation`, `disposition.approver`,
+`chain.relation`, and any future controlled vocabulary of this kind — MUST carry
+a **Display String** field in its registration template, alongside **Name**,
+**Description**, and **Reference**: the same per-table template-line convention
+the Artifact Type Registry's **Digest Context** field demonstrates above. The
+sorting test is the same one that puts the vocabulary here rather than in
+`capsule-registry`: changing the display string changes what every verifier
+shows, which is precisely "changes what a VERIFIER must do." A companion that
+introduces such a vocabulary (see "one registry home for the CPB document
+family" above) inherits this requirement automatically — it is part of what
+"new registry, same home" means, not a separate rule to remember per companion.
+
+Because the display string changes verifier-visible behavior, it follows the
+same **entries are immutable** discipline as every other field above: a revised
+display string registers as a **new entry**, never an in-place edit of one
+already on record, so "what did this say when it was sealed" stays answerable
+against the entry a given spec/implementation version actually shipped with.
+This is the single authoring point for that text — narration snapshots, engine
+CLIs, and hosted consoles all resolve display strings from here (directly or via
+a versioned, digest-pinned copy of this table), never author a second table of
+English strings of their own.
+
+This registry-of-record requirement is distinct from, and does not replace, any
+runtime rendering rule a consuming spec or implementation layers on top (e.g. a
+narration surface's own rules about how it must render text sourced from a
+non-spec-controlled vocabulary). Those rules belong where that vocabulary is
+registered.
+
 **Descriptive, not generative.** This file is DESCRIPTIVE of the registries
 defined normatively in the Internet-Draft; it never generates new semantics. The
 draft (§11) is normative; this file is the living interim record.
