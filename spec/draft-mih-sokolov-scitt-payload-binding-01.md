@@ -251,11 +251,13 @@ Algorithm Registry ({{iana-alg}}) are:
 | Name | Summary | Reference |
 |---|---|---|
 | jcs-n | JCS + absent-field normalization; SHA-256; lowercase hex output | {{algo-jcs-n}} |
-| cde-n | CDE/dCBOR normalization; SHA-256 | {{algo-cde-n}} (pending) |
+| cde-n | Deterministic CBOR canonicalization profile; SHA-256 | {{algo-cde-n}} (pending) |
 | as-transmitted | No canonicalization; digest over a byte sequence fixed by a cited named production in the container format; SHA-256; 64-character lowercase hex | {{algo-as-transmitted}} |
 
 Entries in the Canonicalization Algorithm Registry are immutable: new
 behavior requires a new entry, never a retroactive edit to an existing one.
+A reserved entry binds its token only; its summary is provisional until the
+entry is defined, at which point the full entry becomes immutable.
 The hash function is part of each algorithm's definition; migration to a
 different hash (for example, a future post-quantum function) is performed by
 registering a new algorithm entry, never by reinterpreting an existing one.
@@ -306,8 +308,13 @@ input, with no coordination beyond the specification; see Appendix C.
 
 ## Algorithm cde-n (Reserved) {#algo-cde-n}
 
-Algorithm `cde-n` is reserved for a CDE/dCBOR canonicalization suite. Its
-definition will be specified in a subsequent revision of this document.
+Algorithm `cde-n` is reserved for a deterministic CBOR canonicalization
+profile. Its definition -- including the choice of deterministic encoding
+profile, the float width, and the treatment of exceptional floating-point
+values -- will be specified in a subsequent revision of this document. That
+revision will state how the profile relates to the CDE and dCBOR profiles and
+to the deterministic serialization work in the CBOR Working Group; `cde-n`
+is not defined as any of them.
 
 ## Algorithm as-transmitted {#algo-as-transmitted}
 
@@ -724,7 +731,7 @@ Initial contents:
 | Name | Description | Reference |
 |---|---|---|
 | jcs-n | RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex | This document |
-| cde-n | CDE/dCBOR normalization; SHA-256 | This document (reserved; subsequent revision) |
+| cde-n | Deterministic CBOR canonicalization profile; SHA-256 | This document (reserved; subsequent revision) |
 | as-transmitted | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex | This document |
 
 An artifact type entry MUST NOT register `as-transmitted` without a
