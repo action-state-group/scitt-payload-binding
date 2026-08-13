@@ -85,7 +85,7 @@ set and no exclusion set — an Artifact Type entry that declares
 `as-transmitted` MUST instead state a byte-boundary selector: a normative
 reference plus the name that referenced specification gives to the exact
 byte sequence (e.g., `RFC 7515 §5.1, JWS Signing Input`; `RFC 9052 §4.4,
-Sig_structure`). A selector that is not a cited named production is prose,
+ToBeSigned`). A selector that is not a cited named production is prose,
 not a selector, and says nothing. If the container specification carrying
 the artifact does not itself name the byte sequence as a discrete
 production, the artifact type MUST NOT use `as-transmitted` — it registers a
