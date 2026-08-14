@@ -10,9 +10,9 @@ name: spec
 
 on:
   push:
-    paths: ["spec/**"]
+    paths: ["spec/**", ".github/workflows/spec.yml"]
   pull_request:
-    paths: ["spec/**"]
+    paths: ["spec/**", ".github/workflows/spec.yml"]
 
 permissions:
   contents: read
@@ -55,11 +55,21 @@ jobs:
             # Normalize ONLY the four build-day-derived date locations in RFC .txt output.
             # Bibliographic reference dates (e.g. "24 June 2026" in [ccf-profile-04])
             # are content-derived — do NOT normalise them so a stale reference goes RED.
+            #
+            # The final rule collapses whitespace runs on lines a date rule already
+            # touched.  xml2rfc right-pads these lines to a fixed column, so the date's
+            # own WIDTH shifts the padding: "13 February 2027" is one character longer
+            # than "6 February 2027", moving every page footer by one space.  Replacing
+            # the date text alone leaves that shift behind, which made the gate pass or
+            # fail according to the day of the month rather than according to staleness.
+            # Only already-normalised lines are collapsed, so page numbers and every
+            # content line stay compared byte-for-byte.
             sed \
               -e 's/^Expires: [0-9][0-9]* [A-Za-z][A-Za-z]* [0-9][0-9][0-9][0-9]/Expires: DATE_NORM/' \
               -e 's/expire on [0-9][0-9]* [A-Za-z][A-Za-z]* [0-9][0-9][0-9][0-9]/expire on DATE_NORM/' \
               -e 's/Expires [0-9][0-9]* [A-Za-z][A-Za-z]* [0-9][0-9][0-9][0-9]  *\[Page/Expires DATE_NORM [Page/' \
-              -e '/^ *[0-9][0-9]* [A-Za-z][A-Za-z]* [0-9][0-9][0-9][0-9] *$/s/.*/DATE_NORM/'
+              -e '/^ *[0-9][0-9]* [A-Za-z][A-Za-z]* [0-9][0-9][0-9][0-9] *$/s/.*/DATE_NORM/' \
+              -e '/DATE_NORM/s/  */ /g'
           }
           diff <(strip_xml < "$DRAFT.xml") <(strip_xml < _ci_build/"$DRAFT.xml") \
             || { echo "STALE: $DRAFT.xml is out of date — run 'make' locally and commit"; exit 1; }
