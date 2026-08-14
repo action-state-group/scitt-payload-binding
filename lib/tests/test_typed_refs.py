@@ -6,6 +6,7 @@ from cpb import (
     ArtifactTypeRegistryEntry,
     ContextMismatchError,
     DigestAlgorithmMismatchError,
+    PurposeMismatchError,
     RepresentationMismatchError,
     TypedRef,
     TypedRefError,
@@ -239,6 +240,74 @@ def test_typed_ref_digest_algorithm_inconsistent_with_context():
         ref = TypedRef(type=cited["type"], digest_alg=example["digest_alg"], digest=example["digest"])
         with pytest.raises(DigestAlgorithmMismatchError):
             verify_typed_ref(ref, cited["payload"], entry)
+
+
+def test_typed_ref_purpose_matches_registered_label():
+    """A carried `purpose` (§13.2) that matches the resolved type's one
+    registered digest context label verifies normally, via the dict path
+    verify_typed_ref accepts alongside TypedRef."""
+    payload = {
+        "doc_id": None,
+        "subject": "WS-42",
+        "scope": "temperature-write",
+        "issued_at": "2026-07-24T00:00:00Z",
+    }
+    entry = ArtifactTypeRegistryEntry(
+        name="authorization-doc",
+        exclusion_set=frozenset(["doc_id"]),
+    )
+    digest = canonical_digest(payload, entry.exclusion_set)
+    ref = {
+        "type": "authorization-doc",
+        "purpose": "identifier",
+        "digest_alg": "SHA-256",
+        "digest": digest,
+    }
+    assert verify_typed_ref(ref, payload, entry) == digest
+
+
+def test_typed_ref_purpose_mismatch_rejected():
+    """A carried `purpose` that does not name this type's registered
+    digest context label must be rejected, not silently ignored (round-2
+    gap: the dict path used to extract only type/digest_alg/digest)."""
+    payload = {
+        "doc_id": None,
+        "subject": "WS-42",
+        "scope": "temperature-write",
+        "issued_at": "2026-07-24T00:00:00Z",
+    }
+    entry = ArtifactTypeRegistryEntry(
+        name="authorization-doc",
+        exclusion_set=frozenset(["doc_id"]),
+    )
+    digest = canonical_digest(payload, entry.exclusion_set)
+    ref = {
+        "type": "authorization-doc",
+        "purpose": "equivalence",
+        "digest_alg": "SHA-256",
+        "digest": digest,
+    }
+    with pytest.raises(PurposeMismatchError):
+        verify_typed_ref(ref, payload, entry)
+
+
+def test_typed_ref_purpose_omitted_still_verifies():
+    """§13.2: `purpose` MAY be omitted when the type registers exactly one
+    digest context -- a reference carrying no `purpose` at all must still
+    verify (this is the existing, unchanged dict path)."""
+    payload = {
+        "doc_id": None,
+        "subject": "WS-42",
+        "scope": "temperature-write",
+        "issued_at": "2026-07-24T00:00:00Z",
+    }
+    entry = ArtifactTypeRegistryEntry(
+        name="authorization-doc",
+        exclusion_set=frozenset(["doc_id"]),
+    )
+    digest = canonical_digest(payload, entry.exclusion_set)
+    ref = {"type": "authorization-doc", "digest_alg": "SHA-256", "digest": digest}
+    assert verify_typed_ref(ref, payload, entry) == digest
 
 
 def test_typed_ref_raw_representation_boundary():
