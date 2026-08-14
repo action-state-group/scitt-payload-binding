@@ -75,6 +75,22 @@ CANONICAL-DIGEST values. Registration template: **Name**, **Description**,
 | `jcs-n` | RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex | draft-mih-sokolov-scitt-payload-binding | Registered |
 | `cde-n` | Deterministic CBOR canonicalization profile; SHA-256 | draft-mih-sokolov-scitt-payload-binding | **Reserved** (defined in a subsequent revision) |
 | `as-transmitted` | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex | draft-mih-sokolov-scitt-payload-binding | Registered |
+| `json-sk-cp` | RFC 8785 subset. Object members serialized in ascending key order by Unicode code point; no insignificant whitespace; UTF-8 encoding; no member removal (null, empty array and empty object members are retained and serialized); numbers restricted to integers, since ES6 number formatting per RFC 8785 §3.2.2 is not implemented. Digest: SHA-256. Representation: lowercase hex. | draft-mih-sokolov-scitt-payload-binding (registration text: Anton Sokolov, Tyche Institute) | Registered |
+
+**json-sk-cp — owner attribution and integer ceiling.** The registration
+text above is Anton Sokolov's (Tyche Institute), reproduced as he stated it
+rather than as a normative reference to an external repository, per his
+proposal on the PR #4 thread (2026-08-04). The "subset" wording is
+retained from that text as written; implementers should note json-sk-cp is
+not always substitutable for full RFC 8785 output, since its key ordering
+is by Unicode code point rather than RFC 8785 §3.2.3's UTF-16 code-unit
+ordering — the two diverge only for non-BMP keys. An integer whose
+magnitude exceeds 2^53−1 (the ECMAScript safe-integer bound) MUST NOT
+appear in a json-sk-cp pre-image; a conforming implementation rejects it
+as a typed error rather than serializing it. This ceiling was agreed
+between the CPB editors and the registering owner on the same thread
+(2026-08-04), extending the registration text's own integer restriction
+above.
 
 **as-transmitted — byte-boundary selector is mandatory, not descriptive.**
 `as-transmitted` performs no canonicalization: the digest is computed over a
@@ -150,6 +166,26 @@ Content unchanged from the prior 3-element shape — only the shape changed to t
 full digest-context template above. Domain separation and pre-image encoding are
 not new owner-supplied parameters: both are stated directly by `jcs-n`'s own
 normative definition, not invented for this row.
+
+### `machine-mandate`
+
+**Owner:** Anton Sokolov, Tyche Institute
+**Reference:** `tyche-institute/machine-mandate` @ `524e6a3129b7f1ab850dd9471967458d3cb6f4cd`
+**Status:** Registered — owner-confirmed (PR #4 thread, 2026-08-09 and 2026-08-13); second Artifact Type Registry entry
+
+| Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
+|---|---|---|---|---|---|---|---|
+| `identifier` | N/A | `as-transmitted` | byte-boundary selector — the issuer-signed JWS component of the SD-JWT (RFC 7515 §7.1 compact serialization; the first `~`-separated component exactly as transmitted); everything after the first `~` is outside the pre-image | N/A (`as-transmitted` has no field set) | none | N/A (no separate encoding step) | bare 64-char lowercase hex |
+| `equivalence` | N/A | `json-sk-cp` | `{action_id, outcome}`, closed | none | none | json-sk-cp UTF-8 octets (per `json-sk-cp`) | `sha256:` + 64-char lowercase hex, as carried in the in-document `action_hash` claim |
+
+**Conformance vectors:** `tyche-institute/machine-mandate`, branch
+`feat/cpb-registry-vectors-v0.1`, commit `5605783a` (supersedes
+`640f2a668cfc4a357f9b34ecb0add5faf8bbdda1`),
+`vectors/cpb-registry/machine-mandate-vectors-v0.1.json`, file SHA-256
+`06572fccb7afa3eda4c68604221a83476faac8f8509b7165724553d58384d816`.
+Independently reproduced byte-for-byte, including condition-removed
+mutants confirming each of the five negatives discriminates rather than
+pattern-matches (PR #4 thread, 2026-08-11).
 
 Proposed Artifact Type entries awaiting their owners' confirmation are listed in
 [`spec/cpb-provisional-registry.md`](spec/cpb-provisional-registry.md).

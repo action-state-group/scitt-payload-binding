@@ -101,35 +101,9 @@ specify a CPB-compatible canonicalization algorithm for
 
 ---
 
-## Proposed: `machine-mandate` (third-party-documented, pending owner review)
-
-**Owner:** Anton Sokolov, Tyche Institute
-**Owner draft/repo:** tyche-institute/machine-mandate @ commit `524e6a3129b7f1ab850dd9471967458d3cb6f4cd`
-**Proposed by:** Action State Group, from public documentation at the pinned commit.
-**Registrant note:** Entry is `third-party-documented` — authored by the registrant from public artifacts; not yet owner-confirmed. Upgrades to `owner-confirmed` on Anton's PR approval or explicit ack. **Removal on owner objection, no questions asked.**
-
-### Proposed registry row
-
-| Field | Value |
-|---|---|
-| Name | `machine-mandate` \[OWNER TO CONFIRM: preferred artifact type name\] |
-| Digest Context | \[OWNER TO CONFIRM — see fields below\] |
-| Reference | tyche-institute/machine-mandate@524e6a3 |
-| Status | `provisional` (no published vector set found at pinned commit) |
-
-### Fields requiring owner confirmation
-
-All digest-context fields are marked `[OWNER TO CONFIRM]` — the pinned commit does not publicly state a CPB-compatible canonicalization construction for MachineMandate payloads. CPB editors MUST NOT infer or fill these in:
-
-1. **Preferred artifact type name** — `machine-mandate` is the registrant's suggestion. Please confirm or substitute.
-2. **Canonicalization algorithm** — which CPB-registered algorithm (e.g. `jcs-n`, `cde-n`, or a new entry) applies to MachineMandate payloads (AEP tokens, EAR results, run credentials, mint records)?
-3. **Field set and exclusion set** — which top-level fields are included in the canonical form, and which (if any) are excluded for the derived identifier?
-4. **Representation** — output is assumed lowercase hex (64-char SHA-256); please confirm.
-
-### Vector status
-
-No published vector set found at tyche-institute/machine-mandate@524e6a3. Entry is `provisional`; a two-sided vector set (positive + negative) is required for full registration per REGISTRY.md policy.
-
-### Notes (CPB editor, non-normative)
-
-MachineMandate is a RATS-adjacent accountability token format produced by SPIRE-attested workloads. The `machine-mandate/v1` shape (AEP profile identifier, EAR status + trustworthiness vector, run credentials with scope/allowed_actions/max_spend, mint records with L1–L4 gate verdicts) is documented in the public tyche-institute repo. When the owner supplies digest-context parameters and vectors, this entry is immediately eligible for promotion to `owner-confirmed` and inclusion in CPB -01.
+**`machine-mandate` has graduated.** Formerly tracked here as
+`third-party-documented, pending owner review`, it is now owner-confirmed
+(Anton Sokolov, Tyche Institute; PR #4 thread, 2026-08-09 and 2026-08-13)
+and registered in the normative Artifact Type Registry — see
+[`draft-mih-sokolov-scitt-payload-binding-01.md`](draft-mih-sokolov-scitt-payload-binding-01.md)
+§13.2 and [`REGISTRY.md`](../REGISTRY.md).
