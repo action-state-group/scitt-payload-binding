@@ -56,6 +56,22 @@ regardless of registration type:
    positives-only cannot detect an implementation that accepts malformed inputs.
    Both sides are required to make a conformance claim.
 
+**Vector-backed means: shared core suite PLUS a mutation probe on every
+profile-specific check.** A profile's own vectors REUSE the shared CPB core
+conformance suite for the binding layer — canonicalization, derived-id,
+typed-ref, and representation are profile-agnostic and are exercised by the same
+core cases for every entry. Any PROFILE-SPECIFIC check a profile adds MUST ride
+the mutation-probe discipline institutionalized in
+[`.github/check_vectors.py`](.github/check_vectors.py): every new check family
+registers a condition-removed mutant generator (or is declared exempt), or the
+suite refuses to count that family as exercised — an assertion-free check (one
+whose condition-removed mutant still passes) fails CI. Therefore "vector-backed"
+for a new registry entry means BOTH: the entry passes the shared CPB core suite,
+AND each of its own profile-specific checks carries a mutation probe. This is
+what makes every future registry slot inherit the same rigor automatically — a
+registered profile cannot ship a weak or assertion-free check, because the suite
+will not certify a check family it cannot flip.
+
 **Descriptive, not generative.** This file is DESCRIPTIVE of the registries
 defined normatively in the Internet-Draft; it never generates new semantics. The
 draft (§11) is normative; this file is the living interim record.
@@ -179,8 +195,9 @@ Proposed Artifact Type entries awaiting their owners' confirmation are listed in
 
 ## Entry Status Vocabulary
 
-Every registry entry carries a `status` field drawn from the following controlled vocabulary.
-These values are the authoritative terms; registrars MUST use them verbatim.
+This controlled vocabulary applies to **new entries registered going forward**.
+Every new registry entry carries a `status` field drawn from the following terms;
+registrars MUST use them verbatim.
 
 | Status | Meaning |
 |---|---|
@@ -189,6 +206,23 @@ These values are the authoritative terms; registrars MUST use them verbatim.
 | `provisional` | A reference resolves but the vector set is incomplete or the specification is insufficiently pinned. Entry is held in [`spec/cpb-provisional-registry.md`](spec/cpb-provisional-registry.md) until vectors and pinning are complete. |
 
 Statuses are not permanent — see [Entry Lifecycle](#entry-lifecycle) below.
+
+**Legacy mapping for pre-existing rows.** The live tables above predate this
+vocabulary and are NOT rewritten to it; they are read through the following
+mapping so policy and record do not contradict:
+
+- An existing **`Registered`** status (the Payload Canonicalization Algorithm
+  Registry Status column, and the prose "Status: Registered" line on the
+  `agent-action-capsule` Artifact Type entry) maps to **`owner-confirmed`** — it
+  denotes an owner-confirmed, live entry.
+- **`Reserved`** is NOT a lifecycle status. It marks a pre-registration hold on a
+  name (e.g. `cde-n`, defined in a subsequent revision) and sits outside this
+  vocabulary entirely; it is neither `owner-confirmed`, `third-party-documented`,
+  nor `provisional`, and does not transition along the lifecycle until it is
+  registered as a live entry.
+
+Existing rows keep their current wording; the mapping above is the reconciliation,
+not a relabeling.
 
 ---
 
@@ -274,8 +308,20 @@ owner's behalf. If a required field cannot be sourced from public artifacts, the
 
 ### Entry Template
 
-Add one row to the appropriate registry table per entry.
-For new entries that are third-party or provisional, also add the `Registrant` column.
+The flat single-row templates below are the shape for the Payload Canonicalization
+Algorithm Registry, and for simple Artifact Type entries. They are **not the only
+shape.** An Artifact Type entry MAY instead take the form the live
+`agent-action-capsule` entry uses: a **named subsection** (`### <name>`) carrying a
+multi-column **Digest Context** sub-table (one row per digest context) plus a
+`Reference:` line, with the entry's **Status expressed as a prose
+`Status:` line** rather than a per-row Status column. Use the flat row for a simple
+one-context artifact type; use the named-subsection form when an entry has multiple
+digest contexts or otherwise does not fit a single flat row. In both shapes the
+same required fields (below) and the same status vocabulary apply.
+
+For a flat-row entry, add one row to the appropriate registry table per entry.
+For new entries that are third-party or provisional, also add the `Registrant` column
+(or, in the named-subsection form, a `Registrant:` prose line).
 
 **Payload Canonicalization Algorithm Registry — new row:**
 
@@ -302,7 +348,7 @@ For new entries that are third-party or provisional, also add the `Registrant` c
 | Name | Yes | The controlled identifier used in the `type` field or algorithm name. |
 | Description / Digest Context | Yes | For algorithms: normalization + hash + output. For artifact types: algorithm, exclusion set, output format. |
 | Reference | Yes | Publicly available specification (Internet-Draft or RFC). |
-| Status | Yes | One of `owner-confirmed`, `third-party-documented`, `provisional`. |
+| Status | Yes | For new entries: one of `owner-confirmed`, `third-party-documented`, `provisional` (expressed as a Status column or, in the named-subsection form, a prose `Status:` line). Legacy `Registered`/`Reserved` rows are read via the mapping in [Entry Status Vocabulary](#entry-status-vocabulary). |
 | Registrant | Third-party only | Self-attestation: "Registered by X from Y at commit Z." |
 | Vectors | Third-party/provisional | Link to owner's published vector set, or state "none published — entry is provisional." |
 
