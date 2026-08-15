@@ -37,7 +37,8 @@ jobs:
       - name: build draft to temp + diff against tracked artifacts
         working-directory: spec
         run: |
-          DRAFT="draft-mih-sokolov-scitt-payload-binding-00"
+          DRAFT=$(grep '^DRAFT[[:space:]]*=' Makefile | sed 's/^DRAFT[[:space:]]*=[[:space:]]*//')
+          echo "DRAFT=$DRAFT" >> "$GITHUB_ENV"
           mkdir -p _ci_build
           kramdown-rfc "$DRAFT.md" > _ci_build/.draft.v2.xml
           xml2rfc --v2v3 _ci_build/.draft.v2.xml -o _ci_build/"$DRAFT.xml"
@@ -78,8 +79,8 @@ jobs:
 
       - name: assert RFCXML v3
         working-directory: spec
-        run: grep -q 'version="3"' _ci_build/draft-mih-sokolov-scitt-payload-binding-00.xml
+        run: grep -q 'version="3"' _ci_build/"${DRAFT}.xml"
 
       - name: idnits
         working-directory: spec
-        run: npx --yes @ietf-tools/idnits _ci_build/draft-mih-sokolov-scitt-payload-binding-00.txt || true
+        run: npx --yes @ietf-tools/idnits _ci_build/"${DRAFT}.txt" || true
