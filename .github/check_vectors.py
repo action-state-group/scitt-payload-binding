@@ -7,6 +7,8 @@ using a minimal RFC 8785 / jcs-n implementation, then verifies:
   1. Recomputed pre_image == pinned pre_image
   2. pre_image encoded as UTF-8 hex == pre_image_bytes_hex
   3. SHA-256 of pre_image bytes == digest
+  For domain-transform PASS vectors (those with 'domain_transforms' + 'source'):
+  additionally verifies that applying the named transform to source produces 'input'.
 
 For diverge vectors ('diverge': true) — category J:
   J. Subject-binding algorithm divergence: 'action' + 'jcs' + 'jcs_n'
@@ -69,6 +71,10 @@ For must_fail vectors — each MUST match at least one category (enforced):
         algorithm (the mismatch is real). Examples are read from either
         typed_references_with_mislabeled_digest_alg (a list) or typed_reference (a single
         object) -- vector files fold from different sources with different shapes.
+  J. Domain-transform stream-incomplete: 'domain_transforms' present + 'source' present
+     + no 'input' field + failure_reason == 'stream_incomplete'
+     -> apply _stream_reassemble(source); assert it raises ValueError.
+     Mutant: append a terminal chunk so reassembly succeeds -- checker must flip to failure.
 
 A must_fail vector matching NONE of the above is a hard failure -- 'ran_any_check' is
 enforced.  A bare {'must_fail': true} fails the suite.
@@ -92,12 +98,41 @@ import hashlib
 import json
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 
 # \A...\Z, not ^...$: Python's $ also matches immediately before a trailing
 # newline, so a ^...$ pattern accepts "<64 hex chars>\n" as bare hex.
 _BARE_HEX_64_RE = re.compile(r"\A[0-9a-f]{64}\Z")
+
+_WIRE_NUMBER_RE = re.compile(r'^(0|-?[1-9][0-9]*)$')
+_SAFE_INT_MAX = (1 << 53) - 1
+
+
+def _parse_int_wire(s):
+    if not _WIRE_NUMBER_RE.match(s):
+        raise ValueError(f"invalid wire number token: {s!r}")
+    val = int(s)
+    if abs(val) > _SAFE_INT_MAX:
+        raise ValueError(f"integer exceeds ±(2^53-1): {s!r}")
+    return val
+
+
+def _reject_float_wire(s):
+    raise ValueError(f"non-integer number token in digest-bearing field: {s!r}")
+
+
+def _no_dup_keys(pairs):
+    seen = {}
+    result = {}
+    for k, v in pairs:
+        nfc = unicodedata.normalize('NFC', k)
+        if nfc in seen:
+            raise ValueError(f"duplicate key after NFC normalization: {k!r}")
+        seen[nfc] = True
+        result[k] = v
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -261,6 +296,54 @@ def _digest_alg_examples(v: dict) -> list[dict]:
         return examples
     single = v.get("typed_reference")
     return [single] if single else []
+
+
+# ---------------------------------------------------------------------------
+# Domain-transform helpers (Category J)
+# ---------------------------------------------------------------------------
+
+def _stream_reassemble(source: list) -> dict:
+    """Apply the 'stream-reassemble' transform: concatenate 'chunk' fields in
+    order and parse the result as JSON.  Raises ValueError if no chunk carries
+    'done: true' (stream is incomplete) or if the concatenated bytes are not
+    valid JSON.
+    """
+    if not isinstance(source, list) or not source:
+        raise ValueError("stream_incomplete: source is empty or not a list")
+    has_terminal = any(item.get("done") is True for item in source)
+    if not has_terminal:
+        raise ValueError(
+            "stream_incomplete: no terminal chunk (none has 'done': true) -- "
+            "the pre-image cannot be determined from a truncated stream"
+        )
+    concatenated = "".join(item.get("chunk", "") for item in source)
+    try:
+        return json.loads(concatenated)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"stream_incomplete: concatenated chunks are not valid JSON: {exc}") from exc
+
+
+_TRANSFORM_HANDLERS = {
+    "stream-reassemble": _stream_reassemble,
+}
+
+
+def _apply_domain_transforms(transforms: list, source: object) -> object:
+    """Apply a declared transform chain to 'source', returning the result.
+    Only 'stream-reassemble' is currently defined.  Unknown transform ids
+    are a hard error (the declaration must use stable registered identifiers).
+    """
+    result = source
+    for t in transforms:
+        tid = t.get("id", "")
+        handler = _TRANSFORM_HANDLERS.get(tid)
+        if handler is None:
+            raise ValueError(
+                f"unknown transform id {tid!r} -- only {list(_TRANSFORM_HANDLERS)} are defined; "
+                "the canonicalization declaration requires stable identifiers for all transforms"
+            )
+        result = handler(result)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -444,6 +527,30 @@ def _mutant_I(v: dict) -> dict | None:
     return m
 
 
+def _mutant_J(v: dict) -> dict | None:
+    """Append a terminal chunk so _stream_reassemble succeeds on the mutant.
+    The real vector has no terminal chunk; adding one makes the reassembler
+    return a valid (possibly empty or partial) object instead of raising,
+    which should flip the Category J check to failure.
+    """
+    m = copy.deepcopy(v)
+    source = m.get("source")
+    if not isinstance(source, list):
+        return None
+    # Gather all existing chunk text and close it as valid JSON so parse succeeds
+    existing_chunks = "".join(item.get("chunk", "") for item in source)
+    # Build a terminal chunk that completes the JSON (use {} as a safe fallback
+    # if existing content is empty or incomplete)
+    try:
+        json.loads(existing_chunks)
+        terminal_content = ""
+    except (json.JSONDecodeError, ValueError):
+        existing_chunks = ""
+        terminal_content = "{}"
+    m["source"] = [{"chunk": existing_chunks + terminal_content, "done": True}]
+    return m
+
+
 _MUTANT_GENERATORS: dict[str, object] = {
     "A": _mutant_A,
     "B": _mutant_B,
@@ -452,6 +559,7 @@ _MUTANT_GENERATORS: dict[str, object] = {
     "G": _mutant_G,
     "H": _mutant_H,
     "I": _mutant_I,
+    "J": _mutant_J,
 }
 
 
@@ -463,6 +571,7 @@ def _exercise_must_fail(
     v: dict,
     vid: str,
     exclusion_set: list[str],
+    raw_text: str | None = None,
     *,
     _probe_mutants: bool = True,
 ) -> tuple[bool, list[str]]:
@@ -481,13 +590,21 @@ def _exercise_must_fail(
     if "input" in v and "jcs_n_correct_digest" not in v and "pre_image" not in v:
         ran_any_check = True
         categories_fired.append("A")
-        try:
-            jcs_n_pre_image(v["input"], exclusion_set or None)
-            vec_errors.append(
-                "runner accepted invalid input -- jcs_n_pre_image should have raised ValueError"
-            )
-        except (ValueError, TypeError):
-            pass
+        token_rejected = False
+        if raw_text is not None:
+            try:
+                json.loads(raw_text, parse_int=_parse_int_wire, parse_float=_reject_float_wire,
+                           object_pairs_hook=_no_dup_keys)
+            except ValueError:
+                token_rejected = True
+        if not token_rejected:
+            try:
+                jcs_n_pre_image(v["input"], exclusion_set or None)
+                vec_errors.append(
+                    "runner accepted invalid input -- jcs_n_pre_image should have raised ValueError"
+                )
+            except (ValueError, TypeError):
+                pass
 
     # B. NFC-contrast
     if "jcs_n_correct_digest" in v:
@@ -746,6 +863,26 @@ def _exercise_must_fail(
                         f"registered hash algorithm {expected_alg!r} -- no mismatch "
                         f"demonstrated"
                     )
+
+    # J. Domain-transform stream-incomplete
+    domain_transforms = v.get("domain_transforms")
+    source = v.get("source")
+    if (
+        domain_transforms
+        and source is not None
+        and "input" not in v
+        and v.get("failure_reason") == "stream_incomplete"
+    ):
+        ran_any_check = True
+        categories_fired.append("J")
+        try:
+            _apply_domain_transforms(domain_transforms, source)
+            vec_errors.append(
+                "domain transform succeeded on supposedly incomplete source -- "
+                "expected ValueError for stream_incomplete"
+            )
+        except ValueError:
+            pass
 
     # Enforcement: a vector matching none of the above is a hard failure.
     if not ran_any_check:
@@ -1406,7 +1543,7 @@ def check_vectors(root: Path) -> int:
                     informative += 1
                 continue
 
-            ok, vec_errors = _exercise_must_fail(v, vid, exclusion_set)
+            ok, vec_errors = _exercise_must_fail(v, vid, exclusion_set, raw_text=raw)
             if ok:
                 passed += 1
             else:
@@ -1420,6 +1557,28 @@ def check_vectors(root: Path) -> int:
         if "pre_image" not in v or "input" not in v:
             skipped += 1
             continue
+
+        # For domain-transform PASS vectors: verify the transform chain produces 'input'.
+        domain_transforms = v.get("domain_transforms")
+        source = v.get("source")
+        if domain_transforms and source is not None:
+            try:
+                transformed = _apply_domain_transforms(domain_transforms, source)
+                if transformed != v["input"]:
+                    errors.append(
+                        f"FAIL {vid}: domain transform produced wrong 'input'\n"
+                        f"  transform chain: {[t.get('id') for t in domain_transforms]}\n"
+                        f"  expected: {v['input']!r}\n"
+                        f"  got:      {transformed!r}"
+                    )
+                    failed += 1
+                    continue
+            except Exception as exc:
+                errors.append(
+                    f"FAIL {vid}: domain transform raised unexpectedly: {exc!r}"
+                )
+                failed += 1
+                continue
 
         pinned_pre_image: str = v["pre_image"]
         pinned_hex: str = v.get("pre_image_bytes_hex", "")

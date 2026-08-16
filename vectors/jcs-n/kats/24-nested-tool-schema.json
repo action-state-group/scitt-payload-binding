@@ -1,0 +1,34 @@
+{
+  "id": "jcs-n-kat-24",
+  "description": "Nested tool schema: JSON Schema structure as a payload. JCS sorts all object keys at every level by UTF-16 code unit order. The canonical form here has 'input_schema' before 'name' at the 'tool' level (because 'i' < 'n'), and within 'input_schema', 'properties' before 'type' (because 'p' < 't'). Nested schemas are common in tool-use records; this vector pins the sort behavior across schema vocabulary keys.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1",
+  "input": {
+    "tool": {
+      "name": "get_weather",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "location": {"type": "string"},
+          "unit": {"type": "string"}
+        }
+      }
+    }
+  },
+  "exclusion_set": [],
+  "normalized": {
+    "tool": {
+      "name": "get_weather",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "location": {"type": "string"},
+          "unit": {"type": "string"}
+        }
+      }
+    }
+  },
+  "pre_image": "{\"tool\":{\"input_schema\":{\"properties\":{\"location\":{\"type\":\"string\"},\"unit\":{\"type\":\"string\"}},\"type\":\"object\"},\"name\":\"get_weather\"}}",
+  "pre_image_bytes_hex": "7b22746f6f6c223a7b22696e7075745f736368656d61223a7b2270726f70657274696573223a7b226c6f636174696f6e223a7b2274797065223a22737472696e67227d2c22756e6974223a7b2274797065223a22737472696e67227d7d2c2274797065223a226f626a656374227d2c226e616d65223a226765745f77656174686572227d7d",
+  "digest": "ca37149a91b912dc80b5733d035a2b94262545c6efc0e8eada5858d54974aff4"
+}

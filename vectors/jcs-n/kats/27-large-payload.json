@@ -1,0 +1,48 @@
+{
+  "id": "jcs-n-kat-27",
+  "description": "Large payload: 13 top-level fields of mixed types. JCS sorts all 13 keys by UTF-16 code unit order and produces a single flat canonical form. Boolean values and nested objects are included. This exercises the full member-sort path at scale and demonstrates that absent-field normalization is applied to the nested 'filters' object before the outer sort.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1",
+  "input": {
+    "action": "search",
+    "category": "electronics",
+    "currency": "USD",
+    "filters": {
+      "in_stock": true,
+      "max_price": "999.99",
+      "min_price": "10.00"
+    },
+    "language": "en-US",
+    "page": 1,
+    "per_page": 20,
+    "query": "wireless headphones",
+    "region": "us-west-2",
+    "sort": "relevance",
+    "timestamp": "2026-08-16T00:00:00Z",
+    "user": "anon",
+    "version": "2"
+  },
+  "exclusion_set": [],
+  "normalized": {
+    "action": "search",
+    "category": "electronics",
+    "currency": "USD",
+    "filters": {
+      "in_stock": true,
+      "max_price": "999.99",
+      "min_price": "10.00"
+    },
+    "language": "en-US",
+    "page": 1,
+    "per_page": 20,
+    "query": "wireless headphones",
+    "region": "us-west-2",
+    "sort": "relevance",
+    "timestamp": "2026-08-16T00:00:00Z",
+    "user": "anon",
+    "version": "2"
+  },
+  "pre_image": "{\"action\":\"search\",\"category\":\"electronics\",\"currency\":\"USD\",\"filters\":{\"in_stock\":true,\"max_price\":\"999.99\",\"min_price\":\"10.00\"},\"language\":\"en-US\",\"page\":1,\"per_page\":20,\"query\":\"wireless headphones\",\"region\":\"us-west-2\",\"sort\":\"relevance\",\"timestamp\":\"2026-08-16T00:00:00Z\",\"user\":\"anon\",\"version\":\"2\"}",
+  "pre_image_bytes_hex": "7b22616374696f6e223a22736561726368222c2263617465676f7279223a22656c656374726f6e696373222c2263757272656e6379223a22555344222c2266696c74657273223a7b22696e5f73746f636b223a747275652c226d61785f7072696365223a223939392e3939222c226d696e5f7072696365223a2231302e3030227d2c226c616e6775616765223a22656e2d5553222c2270616765223a312c227065725f70616765223a32302c227175657279223a22776972656c657373206865616470686f6e6573222c22726567696f6e223a2275732d776573742d32222c22736f7274223a2272656c6576616e6365222c2274696d657374616d70223a22323032362d30382d31365430303a30303a30305a222c2275736572223a22616e6f6e222c2276657273696f6e223a2232227d",
+  "digest": "cb6f355c0148660c32e81dbcccd59db4cdcb317331a4fe12dcce4175ace84581"
+}
