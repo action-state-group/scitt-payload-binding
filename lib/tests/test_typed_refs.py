@@ -6,6 +6,7 @@ from cpb import (
     ArtifactTypeRegistryEntry,
     ContextMismatchError,
     DigestAlgorithmMismatchError,
+    PurposeMismatchError,
     RepresentationMismatchError,
     TypedRef,
     TypedRefError,
@@ -33,15 +34,34 @@ def _typed_ref_fields(d: dict) -> dict:
     return {k: d[k] for k in ("type", "digest_alg", "digest")}
 
 
+def _entry_from_vector(v: dict) -> ArtifactTypeRegistryEntry:
+    """Like _entry_from_cited, but also checks the vector's top level.
+
+    typed-ref-cpb01-01 (ARP fold, folded byte-for-byte from Joel Hillier's
+    arp-typed-ref-cpb01-v0.1.json) carries artifact_type_registry_entry as a
+    sibling of cited_artifact rather than nested inside it.
+    """
+    cited = v["cited_artifact"]
+    if cited.get("artifact_type_registry_entry") or cited.get("registry_entry"):
+        return _entry_from_cited(cited)
+    return _entry_from_cited({"artifact_type_registry_entry": v.get("artifact_type_registry_entry", {})})
+
+
 def test_typed_ref_pass():
-    """PASS vectors: verify_typed_ref must succeed."""
+    """PASS vectors: verify_typed_ref must succeed.
+
+    typed-ref-cpb01-01's expected digest lives under `expected`, not
+    `verification`, per that vector's own field layout (see
+    _entry_from_vector for the registry-entry counterpart).
+    """
     vectors = load_vectors("typed-refs/pass")
     for v in vectors:
         cited = v["cited_artifact"]
-        entry = _entry_from_cited(cited)
+        entry = _entry_from_vector(v)
         ref = TypedRef(**_typed_ref_fields(v["typed_reference"]))
         recomputed = verify_typed_ref(ref, cited["payload"], entry)
-        expected = v["verification"]["recomputed_digest"]
+        result = v.get("verification") or v.get("expected") or {}
+        expected = result["recomputed_digest"]
         assert recomputed == expected, f"{v['id']}: recomputed {recomputed!r} != {expected!r}"
 
 
@@ -200,6 +220,94 @@ def test_typed_ref_digest_alg_mismatch_rejected():
     ref_mislabeled = TypedRef(type="authorization-doc", digest_alg="SHA-512", digest=correct_digest)
     with pytest.raises(DigestAlgorithmMismatchError):
         verify_typed_ref(ref_mislabeled, payload, entry)
+
+
+def test_typed_ref_digest_algorithm_inconsistent_with_context():
+    """typed-ref-fail-05 (-01 §7.1): a verifier that recomputes and compares
+    digest bytes without independently confirming digest_alg would wrongly
+    accept every example below, since the carried digest is the correct
+    SHA-256 value in each case. SHA-512, MD5, an unregistered name and the
+    empty string must all be rejected against a jcs-n (SHA-256) context."""
+    vectors = load_vectors("typed-refs/fail")
+    v = next((x for x in vectors if x.get("failure_reason") == "digest_algorithm_inconsistent_with_context"), None)
+    assert v is not None, "typed-ref-fail-05 (digest_algorithm_inconsistent_with_context) not found"
+
+    cited = v["cited_artifact"]
+    entry = _entry_from_cited(cited)
+    assert canonical_digest(cited["payload"], entry.exclusion_set) == v["correct_recomputed_digest"]
+
+    for example in v["typed_references_with_mislabeled_digest_alg"]:
+        ref = TypedRef(type=cited["type"], digest_alg=example["digest_alg"], digest=example["digest"])
+        with pytest.raises(DigestAlgorithmMismatchError):
+            verify_typed_ref(ref, cited["payload"], entry)
+
+
+def test_typed_ref_purpose_matches_registered_label():
+    """A carried `purpose` (§13.2) that matches the resolved type's one
+    registered digest context label verifies normally, via the dict path
+    verify_typed_ref accepts alongside TypedRef."""
+    payload = {
+        "doc_id": None,
+        "subject": "WS-42",
+        "scope": "temperature-write",
+        "issued_at": "2026-07-24T00:00:00Z",
+    }
+    entry = ArtifactTypeRegistryEntry(
+        name="authorization-doc",
+        exclusion_set=frozenset(["doc_id"]),
+    )
+    digest = canonical_digest(payload, entry.exclusion_set)
+    ref = {
+        "type": "authorization-doc",
+        "purpose": "identifier",
+        "digest_alg": "SHA-256",
+        "digest": digest,
+    }
+    assert verify_typed_ref(ref, payload, entry) == digest
+
+
+def test_typed_ref_purpose_mismatch_rejected():
+    """A carried `purpose` that does not name this type's registered
+    digest context label must be rejected, not silently ignored (round-2
+    gap: the dict path used to extract only type/digest_alg/digest)."""
+    payload = {
+        "doc_id": None,
+        "subject": "WS-42",
+        "scope": "temperature-write",
+        "issued_at": "2026-07-24T00:00:00Z",
+    }
+    entry = ArtifactTypeRegistryEntry(
+        name="authorization-doc",
+        exclusion_set=frozenset(["doc_id"]),
+    )
+    digest = canonical_digest(payload, entry.exclusion_set)
+    ref = {
+        "type": "authorization-doc",
+        "purpose": "equivalence",
+        "digest_alg": "SHA-256",
+        "digest": digest,
+    }
+    with pytest.raises(PurposeMismatchError):
+        verify_typed_ref(ref, payload, entry)
+
+
+def test_typed_ref_purpose_omitted_still_verifies():
+    """§13.2: `purpose` MAY be omitted when the type registers exactly one
+    digest context -- a reference carrying no `purpose` at all must still
+    verify (this is the existing, unchanged dict path)."""
+    payload = {
+        "doc_id": None,
+        "subject": "WS-42",
+        "scope": "temperature-write",
+        "issued_at": "2026-07-24T00:00:00Z",
+    }
+    entry = ArtifactTypeRegistryEntry(
+        name="authorization-doc",
+        exclusion_set=frozenset(["doc_id"]),
+    )
+    digest = canonical_digest(payload, entry.exclusion_set)
+    ref = {"type": "authorization-doc", "digest_alg": "SHA-256", "digest": digest}
+    assert verify_typed_ref(ref, payload, entry) == digest
 
 
 def test_typed_ref_raw_representation_boundary():

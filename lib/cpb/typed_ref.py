@@ -1,7 +1,11 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Typed digest reference: construction and verification.
 
-Reference: draft-mih-sokolov-scitt-payload-binding-00 §6
+Reference: draft-mih-sokolov-scitt-payload-binding-01 §7 (Typed Digest
+References) / §7.1 (Cross-Profile Comparability). §7.1 requires the
+verifier to confirm that ``digest_alg`` identifies a hash algorithm
+consistent with the referenced artifact type's registered canonicalization
+context, in addition to recomputing and comparing the digest itself.
 """
 from __future__ import annotations
 
@@ -17,6 +21,7 @@ __all__ = [
     "ContextMismatchError",
     "RepresentationMismatchError",
     "DigestAlgorithmMismatchError",
+    "PurposeMismatchError",
     "make_typed_ref",
     "verify_typed_ref",
     "hex_to_raw",
@@ -60,7 +65,7 @@ class TypedRefError(ValueError):
 
 
 class ContextMismatchError(TypedRefError):
-    """Recomputed digest does not match the carried digest (§6.1)."""
+    """Recomputed digest does not match the carried digest (§7.1)."""
 
     def __init__(self, carried: str | bytes, recomputed: str, artifact_type: str) -> None:
         self.carried = carried
@@ -73,7 +78,7 @@ class ContextMismatchError(TypedRefError):
 
 
 class RepresentationMismatchError(TypedRefError):
-    """The carried identifier is inconsistent with the declared representation (§6.1).
+    """The carried identifier is inconsistent with the declared representation (§7.1).
 
     The spec (§4.1): "Representations are distinct and not interchangeable."
     This error is raised when the carried digest does not conform to the
@@ -96,15 +101,18 @@ class RepresentationMismatchError(TypedRefError):
 
 class DigestAlgorithmMismatchError(TypedRefError):
     """The reference's digest_alg does not name the hash algorithm actually
-    used by the referenced artifact type's canonicalization algorithm (§6).
+    used by the referenced artifact type's canonicalization algorithm (§7.1).
 
-    §6 defines ``digest_alg`` as "the hash algorithm of the digest value";
-    the canonicalization CONTEXT is always resolved from the artifact-type
-    registry entry, never from ``digest_alg`` -- but the field still makes a
-    factual claim about which hash algorithm produced the carried digest.
-    A reference that mislabels this (e.g. a jcs-n/SHA-256 artifact cited
-    with ``digest_alg: "SHA-512"``) is internally inconsistent and MUST NOT
-    be silently recomputed and compared as though the label were correct.
+    §7 defines ``digest_alg`` as "the hash algorithm of the digest value".
+    §7.1 requires the verifier to confirm that ``digest_alg`` is consistent
+    with the referenced artifact type's registered canonicalization context
+    -- the canonicalization CONTEXT itself is always resolved from the
+    artifact-type registry entry, never from ``digest_alg``, but the field
+    still makes a factual claim about which hash algorithm produced the
+    carried digest. A reference that mislabels this (e.g. a jcs-n/SHA-256
+    artifact cited with ``digest_alg: "SHA-512"``) is internally
+    inconsistent and MUST NOT be silently recomputed and compared as though
+    the label were correct.
     """
 
     def __init__(self, declared: str, expected: str, artifact_type: str) -> None:
@@ -118,15 +126,37 @@ class DigestAlgorithmMismatchError(TypedRefError):
         )
 
 
+class PurposeMismatchError(TypedRefError):
+    """The reference's purpose field does not match the resolved artifact
+    type's registered digest context label (§13.2).
+
+    This library models only single-digest-context artifact types, so this
+    is the minimal single-context check: when a reference carries a
+    `purpose`, it must name the one digest context this type registers.
+    Resolving a `purpose` against a multi-context registry entry is not
+    implemented here.
+    """
+
+    def __init__(self, declared: str, expected: str, artifact_type: str) -> None:
+        self.declared = declared
+        self.expected = expected
+        self.artifact_type = artifact_type
+        super().__init__(
+            f"typed reference to {artifact_type!r}: declared purpose "
+            f"{declared!r} does not match {expected!r}, the label this "
+            f"artifact type's digest context is registered under"
+        )
+
+
 @dataclass(frozen=True)
 class ArtifactTypeRegistryEntry:
-    """An entry in the Artifact Type Registry (§11.2 / REGISTRY.md).
+    """An entry in the Artifact Type Registry (§13.2 / REGISTRY.md).
 
     name:
         The artifact type name (the 'type' field value).
     algorithm:
-        The canonicalization algorithm from the Algorithm Registry (§11.1).
-        Currently the only registered value is 'jcs-n'.
+        The canonicalization algorithm from the Algorithm Registry (§13.1).
+        This library currently implements only 'jcs-n'.
     exclusion_set:
         The fields excluded from the canonical form before the derived
         identifier is computed (§4).
@@ -136,18 +166,25 @@ class ArtifactTypeRegistryEntry:
         'prefixed' — 'sha256:' followed by 64-char lowercase hex;
         'raw' — 32 raw bytes.
         These are distinct and not interchangeable (§4.1).
+    purpose:
+        The purpose label (§13.2) this entry's single digest context is
+        registered under. Defaults to 'identifier', the context that
+        computes the artifact's derived identifier -- the only purpose
+        label this library's single-context model needs today.
     """
 
     name: str
     algorithm: str = "jcs-n"
     exclusion_set: frozenset[str] = field(default_factory=frozenset)
     representation: str = "bare_hex"
+    purpose: str = "identifier"
 
     def __post_init__(self) -> None:
         if self.algorithm != "jcs-n":
             raise ValueError(
-                f"unsupported algorithm {self.algorithm!r}; only 'jcs-n' is "
-                "defined in this revision of the spec"
+                f"unsupported algorithm {self.algorithm!r}; this library "
+                "implements only 'jcs-n' from the Canonicalization Algorithm "
+                "Registry (§13.1)"
             )
         if self.representation not in ("bare_hex", "prefixed", "raw"):
             raise ValueError(
@@ -158,7 +195,7 @@ class ArtifactTypeRegistryEntry:
 
 @dataclass(frozen=True)
 class TypedRef:
-    """A typed digest reference (§6).
+    """A typed digest reference (§7).
 
     Fields match the spec-defined JSON object:
         type       — artifact type, from Artifact Type Registry
@@ -228,7 +265,7 @@ def make_typed_ref(
     artifact_payload: dict[str, Any],
     registry_entry: ArtifactTypeRegistryEntry,
 ) -> TypedRef:
-    """Construct a typed digest reference to an artifact (§6).
+    """Construct a typed digest reference to an artifact (§7).
 
     Args:
         artifact_payload: The artifact payload as a JSON-serializable dict.
@@ -257,20 +294,33 @@ def verify_typed_ref(
     artifact_payload: dict[str, Any],
     registry_entry: ArtifactTypeRegistryEntry,
 ) -> str:
-    """Verify a typed digest reference (§6.1).
+    """Verify a typed digest reference (§7.1).
 
     Steps:
     1. Resolve the artifact type from the registry entry.
+    1a. If the reference carries a `purpose`, confirm it names this type's
+        registered digest context.
     2. Confirm digest_alg names the hash algorithm this artifact type's
        canonicalization algorithm actually uses.
     3. Check the carried identifier is consistent with the declared representation.
     4. Recompute the artifact digest under the declared digest context.
     5. Compare the recomputed digest to the carried digest.
 
-    The spec states: "The verifier MUST confirm that the identifier carried by
-    the reference is consistent with the established context. It MUST then
-    recompute the referenced artifact's digest under that context and compare
-    the recomputed digest with the digest carried by the reference."
+    §7.1 states: "It MUST use the `type` field to resolve the referenced
+    artifact's registered digest context. It MUST confirm that `digest_alg`
+    identifies a hash algorithm consistent with that context. It MUST then
+    recompute the referenced artifact's digest under that context and
+    compare the recomputed value with the value carried in the `digest`
+    field."
+
+    `purpose` (§13.2) selects among a multi-context artifact type's digest
+    contexts; this library models only single-context registry entries, so
+    resolving `purpose` against a multi-context registry is not
+    implemented. For today's single-context registrations, §13.2 permits
+    `purpose` to be omitted -- when it IS present, this function validates
+    it minimally: it must match the resolved type's one registered
+    `purpose` label, or the reference is rejected rather than the field
+    being silently ignored.
 
     Args:
         ref: The typed digest reference to verify (TypedRef or dict).
@@ -283,11 +333,14 @@ def verify_typed_ref(
         The recomputed digest (64-char lowercase hex).
 
     Raises:
+        PurposeMismatchError: A carried purpose does not name this type's
+            registered digest context.
         DigestAlgorithmMismatchError: digest_alg does not name the hash
             algorithm this artifact type's canonicalization algorithm uses.
         RepresentationMismatchError: Carried digest is not in the declared representation.
         ContextMismatchError: Recomputed digest does not match the carried digest.
     """
+    carried_purpose = ref.get("purpose") if isinstance(ref, dict) else None
     if isinstance(ref, dict):
         ref = TypedRef(**{k: ref[k] for k in ("type", "digest_alg", "digest")})
 
@@ -296,6 +349,15 @@ def verify_typed_ref(
         raise TypedRefError(
             f"registry entry {registry_entry.name!r} does not match "
             f"typed reference type {ref.type!r}"
+        )
+
+    # Step 1a: a carried purpose must name this type's registered digest
+    # context -- see the `purpose` note in the docstring above.
+    if carried_purpose is not None and carried_purpose != registry_entry.purpose:
+        raise PurposeMismatchError(
+            declared=carried_purpose,
+            expected=registry_entry.purpose,
+            artifact_type=ref.type,
         )
 
     # Step 2: confirm digest_alg names the hash algorithm this artifact

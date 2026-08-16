@@ -105,6 +105,9 @@ implementation forks on this vector.
 | typed-ref-fail-02 | MUST-FAIL | Textual equality trap (same hex, incompatible contexts) |
 | typed-ref-fail-03 | MUST-FAIL | Representation mismatch (prefixed vs bare hex) |
 | typed-ref-fail-04 | MUST-FAIL | Identifier inconsistent with context (digest produced without exclusion set) |
+| typed-ref-fail-05 | MUST-FAIL | digest_alg inconsistent with the registered context (-01 §7.1) — SHA-512, MD5, an unregistered name, and the empty string, each carrying the otherwise-correct digest |
+| typed-ref-cpb01-01 | PASS | ARP conformance baseline (-01 §7, §7.1) — folded byte-for-byte from Joel Hillier's `arp-typed-ref-cpb01-v0.1.json` (`88153dd1…673d`), vector 1 of 5 |
+| typed-ref-cpb01-02 | MUST-FAIL | digest_alg inconsistent with the registered context (-01 §7.1) — ARP's independent exercise of the same gap as typed-ref-fail-05; folded byte-for-byte from the same source, vector 2 of 5. Vectors 3 (specification question, withdrawn per PM ruling), 4 (not applicable — this library constructs no log leaf) and 5 (ARP/CAID-side, not a CPB finding) were not folded |
 
 ## Profile independence summary
 
