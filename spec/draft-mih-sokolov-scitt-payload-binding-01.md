@@ -316,6 +316,12 @@ revision will state how the profile relates to the CDE and dCBOR profiles and
 to the deterministic serialization work in the CBOR Working Group; `cde-n`
 is not defined as any of them.
 
+A payload class or typed digest reference that names `cde-n` cannot be
+verified today: the algorithm's definition is incomplete, so a verifier
+encountering this token MUST fail closed — MUST NOT report the payload
+class or typed digest reference as verified — until the defining revision
+lands.
+
 ## Algorithm as-transmitted {#algo-as-transmitted}
 
 Algorithm `as-transmitted` applies no canonicalization. The digest pre-image
@@ -519,15 +525,31 @@ a future Canonicalization Algorithm Registry entry using a different hash
 land as a new token without a breaking change to this wire format, rather
 than being decorative because only one value is legal now.
 
+The hash algorithm is not chosen per-reference: each entry in the
+Canonicalization Algorithm Registry names its hash function as an immutable
+part of its definition ({{algorithms}}), and each artifact type entry names
+exactly one such algorithm ({{iana-art}}). `digest_alg` is therefore fully
+determined by `type` (together with `purpose` where needed): a conforming
+reference can only carry the hash algorithm the resolved digest context
+mandates. It is a redundant consistency declaration by design — hash-in-algorithm
+is what makes Canonicalization Algorithm Registry entries immutable and enables
+long-term algorithm migration by registering a new entry rather than
+reinterpreting an existing one.
+
 It MUST then recompute the referenced artifact's digest under that context and
 compare the recomputed value with the value carried in the `digest` field.
 
-If the context established from the `type` and `digest_alg` fields cannot
-be reconciled with the context used to recompute the referenced artifact,
-or if a required deterministic conversion to a common comparison
-representation is not expressly defined, the verifier MUST NOT report the
-typed reference as verified. The consuming profile determines the resulting
-error disposition.
+A `digest_alg` value that does not name the hash algorithm mandated by the
+resolved digest context is a defect in the reference. The verifier MUST treat
+this as a failure and MUST NOT attempt to reconcile the inconsistency — for
+example, by silently proceeding with the algorithm the registry mandates and
+ignoring the mislabeled field. More generally, if the context established from
+the `type` and `digest_alg` fields cannot be reconciled with the context used
+to recompute the referenced artifact, or if a required deterministic conversion
+to a common comparison representation is not expressly defined, the verifier
+MUST NOT report the typed reference as verified. The failure verdict is mandatory
+at the verifier layer; the consuming profile determines the resulting error
+disposition, but not the verdict itself.
 
 The citing record's own derived-identifier context need NOT be compatible
 with the referenced artifact's digest context; those contexts govern
@@ -733,6 +755,11 @@ Initial contents:
 | jcs-n | RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex | This document |
 | cde-n | Deterministic CBOR canonicalization profile; SHA-256 | This document (reserved; subsequent revision) |
 | as-transmitted | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex | This document |
+
+A payload class or typed digest reference naming `cde-n` MUST NOT be
+treated as verifiable until the defining revision lands. `cde-n` is
+reserved: its algorithm is incomplete, and a verifier encountering it MUST
+fail closed (MUST NOT report verified). See {{algo-cde-n}}.
 
 An artifact type entry MUST NOT register `as-transmitted` without a
 byte-boundary selector that cites a named production in the container
