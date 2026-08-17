@@ -22,6 +22,12 @@ Secret schema (JSON):
                   phrase on the same line — not every occurrence of the token on
                   the line (two-occurrence fix: track spans, not just presence).
 
+Output redaction: matched terms are NOT printed unless ``NEUTRALITY_REVEAL`` is
+set to a truthy value. Redacted output keeps file:line and a per-line hit count.
+Set it only on trusted runs (same-repo events); leaving it unset on runs
+reachable from a fork is what stops the reserved list leaking one term at a time
+through the build log.
+
 Usage: python .github/neutrality_scan.py [ROOT=.]
        python .github/neutrality_scan.py --self-test
 Exit 0 = clean; 1 = reserved vocabulary found (prints file:line); 2 = misconfig.
@@ -33,6 +39,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 SCAN_SUFFIXES = (
@@ -128,7 +135,35 @@ def _git_tracked_files(root: Path) -> list[Path] | None:
     return [root / f for f in r.stdout.splitlines() if f]
 
 
-def scan(root: Path, pattern: re.Pattern[str], allow: tuple[str, ...]) -> list[str]:
+def _reveal_matches() -> bool:
+    """Whether matched terms may be printed verbatim.
+
+    Redaction is the DEFAULT, and the caller must opt in. The reserved list is
+    withheld from this repository precisely so that it is not public; echoing a
+    matched term back into a build log republishes the very thing the gate
+    exists to protect. Under ``pull_request_target`` the scan is reachable from
+    a fork, so on an untrusted run an outsider could recover the list one term
+    at a time by submitting a wordlist and reading the output. Actions' log
+    masking does not help here: it masks the whole ``NEUTRALITY_TERMS`` JSON
+    payload, not the individual terms this script parses out and re-emits.
+
+    On a redacted run the operator still gets path, line and a per-line count —
+    enough to locate every hit — and can re-run the gate on a trusted event to
+    see which term fired.
+    """
+    return os.environ.get("NEUTRALITY_REVEAL", "").strip().lower() in (
+        "1", "true", "yes", "on",
+    )
+
+
+def scan(
+    root: Path,
+    pattern: re.Pattern[str],
+    allow: tuple[str, ...],
+    reveal: bool | None = None,
+) -> list[str]:
+    if reveal is None:
+        reveal = _reveal_matches()
     tracked = _git_tracked_files(root)
     candidates: list[Path] = tracked if tracked is not None else sorted(root.rglob("*"))
     offenders: list[str] = []
@@ -144,8 +179,17 @@ def scan(root: Path, pattern: re.Pattern[str], allow: tuple[str, ...]) -> list[s
             continue
         text = _strip_generated_comments(text)
         for i, line in enumerate(text.splitlines(), 1):
-            for token in _line_offenders(line, pattern, allow):
-                offenders.append(f"{path.relative_to(root)}:{i}: {token!r}")
+            hits = _line_offenders(line, pattern, allow)
+            if not hits:
+                continue
+            rel = path.relative_to(root)
+            if reveal:
+                offenders.extend(f"{rel}:{i}: {tok!r}" for tok in hits)
+            else:
+                n = len(hits)
+                offenders.append(
+                    f"{rel}:{i}: {n} reserved term{'' if n == 1 else 's'} (redacted)"
+                )
     return offenders
 
 
@@ -210,6 +254,82 @@ def _run_self_tests() -> None:
             f"real-content 'reserved' hit after stripping, got {hits4!r}"
         )
 
+    # Redaction: the matched term must never appear in redacted output, and
+    # must appear when the caller explicitly opts in. Run against a real tree
+    # rather than _line_offenders, since scan() is what formats the output.
+    # The stand-in term must not collide with the wording of the redaction
+    # label itself, or "term absent from the output" cannot be asserted.
+    secret_term = "zzsecretterm"
+    pattern3 = re.compile(re.escape(secret_term), re.IGNORECASE)
+
+    with tempfile.TemporaryDirectory() as td:
+        troot = Path(td)
+        (troot / "doc.md").write_text(
+            f"{secret_term} here\nclean line\n{secret_term} and {secret_term}\n",
+            encoding="utf-8",
+        )
+
+        redacted = scan(troot, pattern3, (), reveal=False)
+        if any(secret_term in o.lower() for o in redacted):
+            errors.append(
+                f"redaction test failed: matched term echoed in redacted "
+                f"output: {redacted!r}"
+            )
+        if redacted != [
+            "doc.md:1: 1 reserved term (redacted)",
+            "doc.md:3: 2 reserved terms (redacted)",
+        ]:
+            errors.append(
+                f"redaction test failed: expected path:line + per-line count, "
+                f"got {redacted!r}"
+            )
+
+        # The default path, with no reveal argument and no env set, is the one
+        # a fork run actually takes — assert it directly. Passing reveal=False
+        # above only proves the formatting branch, not that it is the default.
+        prior = os.environ.pop("NEUTRALITY_REVEAL", None)
+        try:
+            defaulted = scan(troot, pattern3, ())
+        finally:
+            if prior is not None:
+                os.environ["NEUTRALITY_REVEAL"] = prior
+        if defaulted != redacted:
+            errors.append(
+                f"redaction-default test failed: with NEUTRALITY_REVEAL unset "
+                f"scan() must redact, got {defaulted!r}"
+            )
+
+        revealed = scan(troot, pattern3, (), reveal=True)
+        if revealed != [f"doc.md:1: '{secret_term}'",
+                        f"doc.md:3: '{secret_term}'",
+                        f"doc.md:3: '{secret_term}'"]:
+            errors.append(
+                f"reveal test failed: expected one entry per hit with the term, "
+                f"got {revealed!r}"
+            )
+
+    # Default must be redacted: an unset NEUTRALITY_REVEAL is the untrusted
+    # case, and this is the assertion that keeps redaction opt-in rather than
+    # opt-out if the env plumbing is ever changed.
+    for value, expected in (("", False), ("0", False), ("no", False),
+                            ("1", True), ("true", True), ("YES", True)):
+        prior = os.environ.get("NEUTRALITY_REVEAL")
+        try:
+            if value:
+                os.environ["NEUTRALITY_REVEAL"] = value
+            else:
+                os.environ.pop("NEUTRALITY_REVEAL", None)
+            if _reveal_matches() is not expected:
+                errors.append(
+                    f"reveal-env test failed: NEUTRALITY_REVEAL={value!r} "
+                    f"should be {expected}"
+                )
+        finally:
+            if prior is None:
+                os.environ.pop("NEUTRALITY_REVEAL", None)
+            else:
+                os.environ["NEUTRALITY_REVEAL"] = prior
+
     if errors:
         print("NEUTRALITY SELF-TEST FAILURES:")
         for e in errors:
@@ -230,7 +350,13 @@ def main(argv: list[str] | None = None) -> int:
     pattern, allow = _load_config()
     offenders = scan(root, pattern, allow)
     if offenders:
-        print(f"NEUTRALITY VIOLATION: reserved vocabulary present ({len(offenders)} hit(s)):")
+        # "location(s)", not "hit(s)": a redacted entry collapses every hit on a
+        # line into one entry carrying its own count, so entry count == hit
+        # count only on a revealing run.
+        print(
+            f"NEUTRALITY VIOLATION: reserved vocabulary present "
+            f"({len(offenders)} location(s)):"
+        )
         for o in offenders:
             print(f"  {o}")
         print("\nThis public repo must carry none of the reserved vocabulary. "
