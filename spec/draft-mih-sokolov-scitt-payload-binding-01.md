@@ -98,6 +98,12 @@ informative:
       - ins: Y. Lee
         name: Yong Bok Lee
         organization: Meridian Verity Group
+  OCI-image-spec:
+    title: "OCI Image Format Specification, Version 1.1.0"
+    target: https://specs.opencontainers.org/image-spec/
+    author:
+      - org: Open Container Initiative
+    date: 2024
 
 --- abstract
 
@@ -502,6 +508,26 @@ and the digest recomputed over the referenced artifact are comparable only
 when both are interpreted under the same established referenced-artifact
 digest context and comparison representation.
 
+If the value of `type` is not present in the Artifact Type Registry
+({{iana-art}}), the verifier cannot resolve any digest context for the
+reference. The verifier MUST NOT report the typed reference as verified;
+the reference MUST be treated as present but not verified. The consuming
+profile determines the resulting disposition. A citation carrying an
+unregistered `type` value is not an error in the citing record: it
+becomes verifiable once a conforming Artifact Type Registry entry for that
+type exists. See {{appendix-d}} for a worked example.
+
+A third party MAY author an Artifact Type Registry entry for an
+externally-defined artifact type without requiring participation by the
+body that owns or defines that type. The Specification Required policy
+({{RFC8126}}, Section 4.6) requires a citable specification describing the
+digest context; it does not require that the body controlling the external
+type be the registrant. An implementer or profile author who can produce a
+citable specification for the pre-image construction of, for example, an
+OCI image manifest {{OCI-image-spec}}, a SEV-SNP measurement, a TDX quote,
+or an in-toto subject digest may submit a registry entry for that type
+independently.
+
 To verify the reference, the verifier MUST use the `type` field, together
 with the `purpose` field when the resolved artifact type registers more than
 one digest context, to resolve exactly one of the referenced artifact's
@@ -645,6 +671,14 @@ use typed digest references ({{typed-refs}}) that pin the content by its
 CANONICAL-DIGEST. Names, labels, and human-readable identifiers MAY appear
 alongside a typed reference for display purposes but carry no evidentiary
 weight.
+
+When an externally-defined artifact type cited in an immutable coordinate
+has no entry in the Artifact Type Registry at verification time, the
+citation is present but not verified; the consuming profile determines the
+disposition ({{comparability}}). This is not a defect in the citing record:
+the citation becomes verifiable once a conforming registry entry exists, and
+that entry may be authored by a third party independently of the body that
+defines the external artifact type.
 
 ## Tamper Evidence and Runtime Honesty
 
@@ -1117,6 +1151,83 @@ cross-verifications complete.
 The PermitReceipt × MachineMandate composition is excluded from this appendix.
 It is recorded in the AAC interop registry (INTEROP.md).
 
+
+# Verifier Behavior for an Unregistered Artifact Type: OCI Image Manifest Digest {#appendix-d}
+
+This appendix is informative.
+
+An OCI image manifest is content-addressed by the SHA-256 digest of its
+serialized JSON bytes, as specified by the OCI Image Format Specification
+{{OCI-image-spec}}. A record that cites a specific OCI image MAY use a
+typed digest reference. This appendix illustrates conforming verifier
+behavior before and after an Artifact Type Registry entry for this artifact
+type exists.
+
+**Typed digest reference (illustrative):**
+
+~~~json
+{
+  "type": "oci-image-manifest",
+  "purpose": "identifier",
+  "digest_alg": "SHA-256",
+  "digest": "44136fa355ba77b9ad7b7c41d8...86785"
+}
+~~~
+
+The type name `oci-image-manifest` used here is illustrative; the actual
+registered name would be whatever token an Artifact Type Registry entry
+establishes.
+
+**Before registration.** No entry named `oci-image-manifest` (or any other
+token for this artifact type) exists in the Artifact Type Registry. A
+conforming verifier:
+
+1. Looks up the `type` value in the Artifact Type Registry — no entry found.
+2. MUST NOT report the typed reference as verified.
+3. Treats the reference as present but not verified.
+4. Returns the error disposition to the consuming profile for the profile
+   to resolve; the citing record is not defective.
+
+The Open Container Initiative need not register this type. A third party —
+an implementer or profile author — may author a registry entry by producing
+a citable specification describing the pre-image construction. The
+Specification Required policy ({{RFC8126}}, Section 4.6) requires a citable
+specification, not participation by the artifact type's owning body.
+
+**After registration.** Suppose a third party produces a citable
+specification and a Designated Expert approves the following entry:
+
+Name: `oci-image-manifest`
+
+Reference: the citable specification produced by the registrant,
+describing OCI image manifest digest construction per {{OCI-image-spec}}.
+
+Digest context (`identifier`):
+
+* Profile version: N/A
+* Canonicalization algorithm: `as-transmitted`
+* Byte-boundary selector: the complete serialized byte sequence of the OCI
+  image manifest JSON document as defined in Section 5 of {{OCI-image-spec}}.
+* Exclusion set: N/A
+* Domain separation: none
+* Pre-image encoding: raw bytes
+* Representation: 64-character lowercase hexadecimal
+
+A conforming verifier can now:
+
+1. Look up `oci-image-manifest` in the Artifact Type Registry — entry found.
+2. Use `purpose` (`identifier`) to select the single registered digest
+   context.
+3. Confirm `digest_alg` is consistent with the registered context (SHA-256).
+4. Recompute SHA-256 over the manifest byte sequence and compare to the
+   `digest` field.
+5. Report the typed reference as verified if the values match, or not
+   verified if they do not.
+
+The citing record is unchanged between the two scenarios; only the registry
+state differs. This is the verifiable-once-registered property: a citation
+with an unregistered type is a present-but-unverified citation awaiting a
+conforming registry entry, not a structural defect in the citing record.
 
 # Acknowledgments {#acknowledgments}
 {:numbered="false"}
