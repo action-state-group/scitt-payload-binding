@@ -6,6 +6,14 @@
 # secret, and is fail-closed: a missing secret fails the job rather than
 # passing silently.
 #
+# Steven: set the NEUTRALITY_TERMS repository secret (Settings -> Secrets ->
+# Actions) to the same JSON payload used in the other public repos. Under
+# pull_request_target this gate is LESS forgiving than the old pull_request
+# form: with the secret unset every run fails closed with exit 2 -- fork AND
+# same-repo, not just forks. If the whole repo suddenly goes red on this check,
+# an unset or rotated NEUTRALITY_TERMS is the first thing to look at. The gate
+# is a no-op-that-blocks until the secret is configured.
+#
 # ---------------------------------------------------------------------------
 # WHY pull_request_target — READ BEFORE EDITING THIS FILE
 # ---------------------------------------------------------------------------
