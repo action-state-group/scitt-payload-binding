@@ -88,10 +88,30 @@ jobs:
         with:
           python-version: "3.12"
 
+      # Guards the scanner's own logic, including that matched terms stay
+      # redacted by default. Runs on the trusted base checkout and needs no
+      # secret.
+      - name: Neutrality scanner self-test
+        run: python .github/neutrality_scan.py --self-test
+
       - name: Reserved-vocabulary neutrality scan (term list from secret)
         env:
           NEUTRALITY_TERMS: ${{ secrets.NEUTRALITY_TERMS }}
           SCAN_ROOT: ${{ github.event_name == 'pull_request_target' && 'pr' || '.' }}
+          # Print the matched term ONLY when the run is trusted — i.e. not a
+          # pull_request_target run from a fork. The scanner redacts by default;
+          # this is the sole opt-in. On an untrusted run the log still carries
+          # file:line and a per-line count, which locates every hit without
+          # naming it, and a maintainer can re-run on `main` or via
+          # workflow_dispatch to see which term fired.
+          #
+          # Without this, pull_request_target would let any stranger recover the
+          # reserved list one term at a time: open a fork PR carrying a wordlist,
+          # read the terms back out of the public log. That is a worse outcome
+          # than the fork-PR red this workflow exists to fix. Actions' log
+          # masking does not cover it — it masks the whole NEUTRALITY_TERMS JSON,
+          # not the individual terms the scanner parses out and re-emits.
+          NEUTRALITY_REVEAL: ${{ github.event_name != 'pull_request_target' || github.event.pull_request.head.repo.full_name == github.repository }}
         # The scanner enumerates via `git ls-files` with cwd=ROOT, so a separate
         # checkout directory works unmodified. Only base's copy of the script is
         # ever invoked.
