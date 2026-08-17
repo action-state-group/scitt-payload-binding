@@ -1,0 +1,10 @@
+{
+  "id": "jcs-n-kat-29",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 §7",
+  "description": "PASS: integer zero (token '0') is a valid wire value",
+  "input": {"count": 0},
+  "pre_image": "{\"count\":0}",
+  "pre_image_bytes_hex": "7b22636f756e74223a307d",
+  "digest": "618de7d9f46f3f697d827a1b6d84974760d5deda62e4e592adaa3c646602a94c"
+}

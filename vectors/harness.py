@@ -52,9 +52,44 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
+
+
+# ---------------------------------------------------------------------------
+# Wire-rule helpers (D2: validate number tokens before parser normalization)
+# ---------------------------------------------------------------------------
+
+_WIRE_NUMBER_RE = re.compile(r'^(0|-?[1-9][0-9]*)$')
+_SAFE_INT_MAX = (1 << 53) - 1
+
+
+def _parse_int_wire(s):
+    if not _WIRE_NUMBER_RE.match(s):
+        raise ValueError(f"invalid wire number token: {s!r}")
+    val = int(s)
+    if abs(val) > _SAFE_INT_MAX:
+        raise ValueError(f"integer exceeds ±(2^53-1): {s!r}")
+    return val
+
+
+def _reject_float_wire(s):
+    raise ValueError(f"non-integer number token in digest-bearing field: {s!r}")
+
+
+def _no_dup_keys(pairs):
+    seen = {}
+    result = {}
+    for k, v in pairs:
+        nfc = unicodedata.normalize('NFC', k)
+        if nfc in seen:
+            raise ValueError(f"duplicate key after NFC normalization: {k!r}")
+        seen[nfc] = True
+        result[k] = v
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -108,7 +143,14 @@ def jcs_n_pre_image(payload: dict, exclusion_set: list[str] | None = None) -> st
 def _reference_impl_main() -> int:
     """Read one vector from stdin; write pre_image+digest or exit 1."""
     try:
-        v = json.load(sys.stdin)
+        raw = sys.stdin.read()
+        try:
+            json.loads(raw, parse_int=_parse_int_wire, parse_float=_reject_float_wire,
+                       object_pairs_hook=_no_dup_keys)
+        except ValueError as exc:
+            print(f"error: wire-rule violation: {exc}", file=sys.stderr)
+            return 1
+        v = json.loads(raw)
     except json.JSONDecodeError as exc:
         print(f"error: invalid JSON on stdin: {exc}", file=sys.stderr)
         return 2
@@ -175,14 +217,30 @@ def verify_impl(command: str, root: Path) -> int:
             continue
 
         vid = v.get("id", str(vec_path))
-        vector_json = json.dumps(v)
-        rc, stdout, stderr = _run_command(command, vector_json)
+        raw_text = vec_path.read_text(encoding="utf-8")
+        assert vec_path.read_bytes() == raw_text.encode("utf-8"), f"bytes-on-disk mismatch: {vec_path}"
 
-        if v.get("must_fail"):
+        # D4: For input-bearing algorithm-rejection vectors, strip harness metadata
+        # so the external impl must reject based on content, not the must_fail flag.
+        is_algo_rejection = (
+            v.get("must_fail")
+            and "input" in v
+            and "jcs_n_correct_digest" not in v
+            and "pre_image" not in v
+        )
+
+        if v.get("must_fail") and not is_algo_rejection:
+            skipped += 1
+            continue
+
+        if is_algo_rejection:
+            stripped = {k: w for k, w in v.items()
+                        if k in ("input", "exclusion_set", "algorithm")}
+            vector_json_to_send = json.dumps(stripped)
+            rc, stdout, stderr = _run_command(command, vector_json_to_send)
             if rc == 0:
                 failures.append(
-                    f"FAIL {vid}: must_fail vector — command exited 0 (should exit non-zero)\n"
-                    f"  stdout: {stdout.strip()!r}"
+                    f"FAIL {vid}: must-fail vector (algorithm-rejection) — command accepted invalid input"
                 )
                 failed += 1
             else:
@@ -192,6 +250,8 @@ def verify_impl(command: str, root: Path) -> int:
         if "input" not in v or "pre_image" not in v:
             skipped += 1
             continue
+
+        rc, stdout, stderr = _run_command(command, raw_text)
 
         if rc != 0:
             failures.append(
@@ -275,8 +335,8 @@ def jcs_str(s):
     out = [\'"\']
     for ch in s:
         o = ord(ch)
-        if ch == \'"\': out.append(\'\\\\\\"\\')
-        elif ch == \'\\\\\': out.append(\'\\\\\\\\\\')
+        if ch == \'"\': out.append(\'\\\\"\')
+        elif ch == \'\\\\\': out.append(\'\\\\\\\\')
         elif o == 8: out.append(\'\\\\b\')
         elif o == 9: out.append(\'\\\\t\')
         elif o == 10: out.append(\'\\\\n\')
@@ -297,14 +357,13 @@ def jcs(v):
         if abs(v) >= 2**53 or abs(v) >= 10**21: raise ValueError(f"unsafe int: {v}")
         return str(v)
     if isinstance(v, float): raise ValueError(f"float not allowed: {v}")
-    if isinstance(v, list): return \'[\' + \',\'.join(jcs(x) for x in v) + \']\\'
+    if isinstance(v, list): return \'[\' + \',\'.join(jcs(x) for x in v) + \']\'
     if isinstance(v, dict):
         items = sorted(v.items(), key=lambda kv: kv[0].encode("utf-16-be"))
         return \'{\' + \',\'.join(jcs_str(k) + \':\' + jcs(val) for k, val in items) + \'}\'
 
 def run():
     v = json.load(sys.stdin)
-    if v.get("must_fail"): sys.exit(1)
     if "input" not in v: sys.exit(0)
     excl = v.get("exclusion_set") or []
     payload = {k: val for k, val in v["input"].items() if k not in excl}

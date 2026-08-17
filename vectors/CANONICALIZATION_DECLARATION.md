@@ -1,7 +1,7 @@
 # Canonicalization Declaration for Algorithm `jcs-n`
 
 **Versioned algorithm identifier:** `jcs-n`  
-**Defined in:** draft-mih-sokolov-scitt-payload-binding-00 §3.1  
+**Defined in:** draft-mih-sokolov-scitt-payload-binding-01 §7  
 **Status:** This declaration is authoritative for the vector suite in this directory.  
 **Recorded in each record as:** the `algorithm` field of the record's digest context.
 
@@ -59,6 +59,30 @@ values, and some JSON parsers silently coerce integers and floats.
 | Exponent notation (`1e2`) | PROHIBITED in digest-bearing fields | A JSON float, same as above |
 | Float in general | PROHIBITED in digest-bearing fields | Non-reproducible across implementations |
 | `null` | Removed by absent-field normalization | After normalization, no `null` appears in the pre-image |
+| `-0` token | MUST reject | Parser-boundary: Python json.loads normalizes -0 (int) to 0 silently; explicit rejection is required by the wire rule |
+| Wire token rule | `0\|-?[1-9][0-9]*`, value ∈ [-(2^53-1), 2^53-1] | Any token with `.`, `e`, `E`, leading zero, or `-0` MUST be rejected |
+
+**Wire rule**: A conforming implementation MUST validate each number token against the
+pattern `0|-?[1-9][0-9]*` with value within ±(2^53−1) before accepting it. Tokens
+with a decimal point (`.`), exponent notation (`e`, `E`), a leading zero other than
+`0` itself, or the literal token `-0` are explicitly rejected. The `-0` token is a
+parser-boundary problem: Python's `json.loads` silently normalizes integer `-0` to `0`,
+so the rejection MUST occur at the token level (before parser normalization) using a
+`parse_int` hook.
+
+---
+
+## 2a. Duplicate key rule
+
+**Duplicate keys MUST be rejected.** Detection is performed after NFC normalization
+of key strings. This is an explicit departure from RFC 8785 §3.1, which states that
+implementations should preserve duplicate keys as-is; `jcs-n` requires rejection
+because duplicate keys produce non-deterministic canonical forms across implementations.
+
+A conforming implementation MUST detect duplicate keys using an `object_pairs_hook`
+(or equivalent) that compares keys after Unicode NFC normalization. Two keys that
+differ only in normalization form (e.g., one pre-composed and one decomposed) are
+treated as duplicates.
 
 ---
 
@@ -200,6 +224,12 @@ A conforming test suite MUST demonstrate that each of the following inputs is re
 5. **Representation mismatch** — A digest with trailing whitespace, surrounding spaces,
    or a `sha256:` prefix where `bare_hex` is declared MUST be rejected.  (Vectors
    `jcs-n-kat-20`, `jcs-n-kat-21`, `typed-ref-fail-03`.)
+
+6. **Negative zero (`-0`)** — The wire token `-0` MUST be rejected even though many
+   parsers silently normalize it to `0`. (Vector `jcs-n-kat-28`.)
+
+7. **Duplicate keys** — An input JSON with duplicate keys MUST be rejected, detected
+   after NFC normalization of key strings. (Vector `jcs-n-kat-30`.)
 
 ---
 
