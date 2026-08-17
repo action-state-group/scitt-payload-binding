@@ -288,6 +288,14 @@ _MUTANT_EXEMPT_CATEGORIES = frozenset({
     "C",  # Data-integrity check; condition-removed mutant passes without semantic change.
 })
 
+# (correct_pre_image_bytes_hex_field, contrast_pre_image_bytes_hex_field, contrast_digest_field)
+# for string-escape contrast vectors (Category B extension).
+_ESCAPE_CONTRAST_TRIPLETS = [
+    ("jcs_n_correct_pre_image_bytes_hex", "uppercase_contrast_pre_image_bytes_hex", "uppercase_contrast_digest"),
+    ("jcs_n_correct_pre_image_bytes_hex", "long_form_contrast_pre_image_bytes_hex", "long_form_contrast_digest"),
+    ("jcs_n_correct_pre_image_bytes_hex", "escaped_sort_contrast_pre_image_bytes_hex", "escaped_sort_contrast_digest"),
+]
+
 
 def _mutant_A(v: dict) -> dict | None:
     m = copy.deepcopy(v)
@@ -297,17 +305,33 @@ def _mutant_A(v: dict) -> dict | None:
 
 def _mutant_B(v: dict) -> dict | None:
     m = copy.deepcopy(v)
-    if "jcs_n_correct_pre_image_bytes_hex" not in m or "nfc_contrast_pre_image_bytes_hex" not in m:
-        return None
-    m["jcs_n_correct_pre_image_bytes_hex"], m["nfc_contrast_pre_image_bytes_hex"] = (
-        m["nfc_contrast_pre_image_bytes_hex"],
-        m["jcs_n_correct_pre_image_bytes_hex"],
-    )
-    m["jcs_n_correct_digest"], m["nfc_contrast_digest"] = (
-        m.get("nfc_contrast_digest"),
-        m.get("jcs_n_correct_digest"),
-    )
-    return m
+    # NFC-contrast shape (original Category B)
+    if "jcs_n_correct_pre_image_bytes_hex" in m and "nfc_contrast_pre_image_bytes_hex" in m:
+        m["jcs_n_correct_pre_image_bytes_hex"], m["nfc_contrast_pre_image_bytes_hex"] = (
+            m["nfc_contrast_pre_image_bytes_hex"],
+            m["jcs_n_correct_pre_image_bytes_hex"],
+        )
+        m["jcs_n_correct_digest"], m["nfc_contrast_digest"] = (
+            m.get("nfc_contrast_digest"),
+            m.get("jcs_n_correct_digest"),
+        )
+        return m
+    # Escape-contrast shapes: swap correct hex/digest with the named contrast pair.
+    # After the swap the library still produces the real correct bytes, but
+    # jcs_n_correct_pre_image_bytes_hex now holds the contrast bytes, so
+    # Category B's library-output check FAILS on the mutant.
+    for _, contrast_hex_key, contrast_digest_key in _ESCAPE_CONTRAST_TRIPLETS:
+        if contrast_hex_key in m and contrast_digest_key in m and "jcs_n_correct_pre_image_bytes_hex" in m:
+            m["jcs_n_correct_pre_image_bytes_hex"], m[contrast_hex_key] = (
+                m[contrast_hex_key],
+                m["jcs_n_correct_pre_image_bytes_hex"],
+            )
+            m["jcs_n_correct_digest"], m[contrast_digest_key] = (
+                m[contrast_digest_key],
+                m["jcs_n_correct_digest"],
+            )
+            return m
+    return None
 
 
 def _mutant_D(v: dict) -> dict | None:
@@ -427,6 +451,17 @@ def _exercise_must_fail(
                     f"  expected: {v['nfc_contrast_digest']}\n"
                     f"  got:      {got}"
                 )
+        # Escape-contrast pairs: verify contrast bytes hash to contrast digest.
+        for _, contrast_hex_key, contrast_digest_key in _ESCAPE_CONTRAST_TRIPLETS:
+            if contrast_hex_key in v and contrast_digest_key in v:
+                contrast_bytes = bytes.fromhex(v[contrast_hex_key])
+                got = hashlib.sha256(contrast_bytes).hexdigest()
+                if got != v[contrast_digest_key]:
+                    vec_errors.append(
+                        f"{contrast_hex_key} -> SHA-256 != {contrast_digest_key}\n"
+                        f"  expected: {v[contrast_digest_key]}\n"
+                        f"  got:      {got}"
+                    )
         if "input" in v and "jcs_n_correct_pre_image_bytes_hex" in v:
             try:
                 computed = jcs_n_pre_image(v["input"], exclusion_set or None)

@@ -102,11 +102,31 @@ exercised by conformance vectors `jcs-n-kat-12` (PASS) and
 `jcs-n-nfc-contrast-01` (informative contrast); no previously published test
 corpus covers this case (Joel Hillier, SCITT list, 2026-07-27).
 
+**jcs-n implementation note — string-escape encoding.** JCS (RFC 8785
+§3.2.2.2) prescribes exactly two escape categories for string characters:
+(1) named two-character escapes (`\b`, `\t`, `\n`, `\f`, `\r`, `\"`, `\\`)
+for the specific control characters they name — these MUST be used where
+applicable; and (2) `\uXXXX` with **lowercase hexadecimal digits** for all
+other characters in U+0000–U+001F. An implementation that outputs uppercase
+hex digits (e.g., `\u001B` instead of `\u001b`) or the long form `\u0009`
+instead of `\t` produces a different byte sequence and therefore a different
+digest. Key strings (member names) obey the same escaping rules, and their
+sort order is determined by the code units of the **unescaped** key string,
+not by the bytes of the escaped form (RFC 8785 §3.2.3). Prior to this note,
+the vector suite had zero coverage of these rules; a third-party Rust
+implementer would have had no KAT to build against. Coverage added by vectors
+`jcs-n-kat-23` through `jcs-n-kat-26` (PASS) and `jcs-n-esc-uppercase-contrast`,
+`jcs-n-tab-long-form-contrast`, `jcs-n-control-key-escaped-sort-contrast`
+(both-directions contrast); see [`vectors/README.md`](vectors/README.md)
+§String-escape group for the rule stated in prose and the contrast digests.
+
 Conformance vectors: [`vectors/jcs-n/`](vectors/jcs-n/) — the canonical test suite
 for algorithm `jcs-n`, covering Known-Answer Tests (including the E3 boundary
 group: null, empty-array, empty-object, and absent field all normalize to the
-same canonical form), derived-identifier construction, and typed-reference
-verification cases including MUST-FAIL cases.
+same canonical form), string-escape encoding (including both-directions contrast
+vectors for uppercase-hex, long-form, and escaped-sort deviations),
+derived-identifier construction, and typed-reference verification cases
+including MUST-FAIL cases.
 
 ## Artifact Type Registry
 

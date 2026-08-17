@@ -1,0 +1,16 @@
+{
+  "id": "jcs-n-kat-23",
+  "description": "ESC character (U+001B) in a string value. RFC 8785 §3.2.2.2 requires that control characters in U+0000-U+001F with no named two-character escape (\\b \\t \\n \\f \\r) be serialized as \\uXXXX with lowercase hexadecimal digits. U+001B has no named escape, so its canonical form is \\u001b (bytes 5c 75 30 30 31 62), not \\u001B. See jcs-n-esc-uppercase-contrast (vector 27) for the both-directions check.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 §3.1 step 2 (JCS per RFC 8785 §3.2.2.2)",
+  "input": {
+    "msg": "\u001b"
+  },
+  "exclusion_set": [],
+  "normalized": {
+    "msg": "\u001b"
+  },
+  "pre_image": "{\"msg\":\"\\u001b\"}",
+  "pre_image_bytes_hex": "7b226d7367223a225c7530303162227d",
+  "digest": "f5d570fa6125f49bcb56da3ce3e37d4d214d02723feb1c7d24ddedc5b2677153"
+}

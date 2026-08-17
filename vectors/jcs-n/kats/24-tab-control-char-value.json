@@ -1,0 +1,16 @@
+{
+  "id": "jcs-n-kat-24",
+  "description": "TAB character (U+0009) in a string value. RFC 8785 §3.2.2.2 assigns TAB the named two-character escape \\t; the canonical form is \\t (2 bytes: 5c 74), not the six-byte \\u0009. An implementation that outputs \\u0009 instead of \\t is non-conforming; it produces a different pre-image and therefore a different digest. See jcs-n-tab-long-form-contrast (vector 28) for the both-directions check.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 §3.1 step 2 (JCS per RFC 8785 §3.2.2.2)",
+  "input": {
+    "msg": "\t"
+  },
+  "exclusion_set": [],
+  "normalized": {
+    "msg": "\t"
+  },
+  "pre_image": "{\"msg\":\"\\t\"}",
+  "pre_image_bytes_hex": "7b226d7367223a225c74227d",
+  "digest": "7ac9c6bd87cdda62f1e81f0139d6ab751c66321164e230d35f3133a000280695"
+}
