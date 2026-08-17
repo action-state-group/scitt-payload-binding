@@ -234,7 +234,15 @@ Three rungs of provenance, from cleanest to minimum-viable:
 The profile's owner opens the PR and supplies all fields directly.
 The registrar (CPB editor) reviews for completeness and correctness, then merges.
 Entry enters the live tables with status `owner-confirmed`.
-This is the cleanest provenance and the preferred path.
+This is the cleanest provenance and the preferred path — **except** where the owner
+also holds a registry-editor or CPB draft co-author role. In that case the entry is
+owner-authored and is not independent or third-party validation: the same party authored
+the construction, wrote the registry policy, and confirmed the row. A `Disclosure` field
+is required (see [Required fields](#entry-template)); the disclosure is the mechanism
+that makes the independence posture of the entry computable from the record rather than
+asserted by whoever reads it. The consequence of omitting it is that `owner-confirmed`
+entries from registry editors are indistinguishable in the record from entries confirmed
+by parties with no shared authorship, which is the property the field exists to preserve.
 
 **Rung 2 — Third-party-documented.**
 A third party (not the owner) registers from publicly available artifacts.
@@ -249,7 +257,8 @@ pinned to support a complete Digest Context description.
 Entry is tracked in [`spec/cpb-provisional-registry.md`](spec/cpb-provisional-registry.md),
 not in the live tables, until the missing material lands.
 Status is `provisional` until vectors and pinning are complete; then the entry may be
-promoted to Rung 1 or Rung 2.
+promoted directly to `owner-confirmed` (owner-direct path, see [Entry Lifecycle](#entry-lifecycle))
+or to `third-party-documented` (Rung 2).
 
 ---
 
@@ -302,6 +311,12 @@ owner's behalf. If a required field cannot be sourced from public artifacts, the
    PR title convention: `registry: add <name> to <Registry Name>`.
 4. **CI must pass.** The repository CI gate checks structural validity of the registry tables.
    A PR with failing CI will not be merged.
+   **Note:** a structural registry-table checker (template conformance, column counts,
+   required-field presence) is not yet implemented. Until it exists, the CPB editor is
+   the only gate — a conforming-looking PR that omits a required field (e.g. `Disclosure`,
+   `Vectors`) will merge without complaint. A checker is planned; track progress on the
+   open issue. Until the checker lands, reviewers MUST verify required fields manually
+   against this template.
 5. **Maintainer review.** A CPB editor reviews for completeness, accuracy, and policy
    compliance. For third-party entries, the editor notifies the owner.
 6. **Merge.** On approval, the entry moves into the live tables in `REGISTRY.md`.
@@ -323,10 +338,21 @@ For a flat-row entry, add one row to the appropriate registry table per entry.
 For new entries that are third-party or provisional, also add the `Registrant` column
 (or, in the named-subsection form, a `Registrant:` prose line).
 
-**Payload Canonicalization Algorithm Registry — new row:**
+**Payload Canonicalization Algorithm Registry — new row (owner-authored):**
 
 ```
 | `<name>` | <description of normalization algorithm, hash, and output format> | <draft or RFC reference> | `<status>` |
+```
+
+**Payload Canonicalization Algorithm Registry — new row (third-party-documented):**
+A third-party algorithm entry uses the same four-column flat row as above, and appends
+a `Registrant:` prose line immediately following the table row (not a fifth column — the
+Algorithm Registry table is four columns; a fifth column makes it ragged):
+
+```
+| `<name>` | <description> | <draft or RFC reference> | `third-party-documented` |
+
+⌙ Registrant: Registered by <registrant> from <spec-rev> / commit `<hash>`.
 ```
 
 **Artifact Type Registry — new row (owner-authored or owner-confirmed):**
@@ -335,10 +361,19 @@ For new entries that are third-party or provisional, also add the `Registrant` c
 | `<name>` | `<algorithm>`; exclusion set `{<fields>}`; <output format> | <draft or RFC reference> | `<status>` |
 ```
 
-**Artifact Type Registry — new row (third-party-documented), with Registrant column:**
+**Artifact Type Registry — new row (third-party-documented):**
+Use the named-subsection form (`### <name>`) to accommodate the `Registrant:` and any
+`Disclosure:` prose lines without adding a fifth column to a four-column table:
 
 ```
-| `<name>` | `<algorithm>`; exclusion set `{<fields>}`; <output format> | <draft or RFC reference> | `third-party-documented` | Registered by <registrant> from <spec-rev> / commit `<hash>` |
+### `<name>`
+**Reference:** <draft or RFC reference>
+**Status:** third-party-documented
+**Registrant:** Registered by <registrant> from <spec-rev> / commit `<hash>`.
+
+| Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
+|---|---|---|---|---|---|---|---|
+| ... | ... | ... | ... | ... | ... | ... | ... |
 ```
 
 **Required fields for all entries:**
@@ -347,10 +382,11 @@ For new entries that are third-party or provisional, also add the `Registrant` c
 |---|---|---|
 | Name | Yes | The controlled identifier used in the `type` field or algorithm name. |
 | Description / Digest Context | Yes | For algorithms: normalization + hash + output. For artifact types: algorithm, exclusion set, output format. |
-| Reference | Yes | Publicly available specification (Internet-Draft or RFC). |
+| Reference | Yes | Publicly available specification (Internet-Draft, RFC, or a pinned repository revision). When citing a repository, a commit hash is mandatory — a branch or tag alone is not a pin, since both can move after the fact. |
 | Status | Yes | For new entries: one of `owner-confirmed`, `third-party-documented`, `provisional` (expressed as a Status column or, in the named-subsection form, a prose `Status:` line). Legacy `Registered`/`Reserved` rows are read via the mapping in [Entry Status Vocabulary](#entry-status-vocabulary). |
-| Registrant | Third-party only | Self-attestation: "Registered by X from Y at commit Z." |
-| Vectors | Third-party/provisional | Link to owner's published vector set, or state "none published — entry is provisional." |
+| Registrant | Third-party only | Self-attestation: "Registered by X from Y at commit Z." Retained on upgrade to `owner-confirmed` when a `Disclosure` is also present — dropping it would destroy the provenance the disclosure exists to preserve. |
+| Vectors | Yes — all entries | Link to the vector set (owner's published set, or the entry's own if the owner produced it). Third-party entries MUST cite the owner's published vector set and MUST NOT fabricate one. Owner-authored entries that have not yet published a two-sided vector set are `provisional`. |
+| Disclosure | When owner or confirmer holds a CPB editor or draft co-author role | Required prose statement in the entry. Take the disclosing party's own wording verbatim — it is their name and their role. Model text from the first instance: "Disclosure: the owner is a co-author of the CPB draft and a co-editor of this registry; this entry is owner-authored and is not independent or third-party validation." A `Disclosure` field makes independence computable from the record rather than remembered by the reader. |
 
 ---
 
@@ -360,14 +396,25 @@ Entries move through statuses in one direction only (toward higher provenance):
 
 ```
 provisional  →  third-party-documented  →  owner-confirmed
+             ↘                                             ↗
+                     (owner-direct, skipping Rung 2)
 ```
 
 - **`provisional` → `third-party-documented`:** vectors land and source artifacts are
   sufficiently pinned; registrant opens a PR updating the status and moving the entry
   from `spec/cpb-provisional-registry.md` into the live tables.
+- **`provisional` → `owner-confirmed` (direct, skipping `third-party-documented`):**
+  the entry's own author or owner supplies the missing fields and vectors, opens or
+  takes over the PR; registrar merges. Skipping the middle rung is legitimate here
+  precisely because no third-party representation is made — the confirmer IS the owner,
+  so there is no registrant to name and no third-party claim to validate. The entry
+  carries no `Registrant` line and enters as `owner-confirmed`. If a `Disclosure` is
+  required (see [Required fields](#entry-template)), it is included in the same PR.
 - **`third-party-documented` → `owner-confirmed`:** owner acknowledges the entry (PR
-  approval or email on record); registrar updates the status field and removes the
-  `Registrant` self-attestation note (or retains it for provenance, per owner preference).
+  approval or email on record); registrar updates the status field. The `Registrant`
+  self-attestation note is retained when a `Disclosure` is also present (dropping it
+  would destroy the provenance the disclosure exists to preserve); otherwise it may be
+  removed or retained, per owner preference.
 - **`owner-confirmed`:** terminal state for a live entry. Entries are immutable once
   owner-confirmed (see "Entries are immutable" in the policy header above). If behavior
   changes, a new entry MUST be registered rather than modifying the existing one.
