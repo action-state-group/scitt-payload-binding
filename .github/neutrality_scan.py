@@ -36,6 +36,8 @@ from __future__ import annotations
 
 import json
 import os
+import contextlib
+import io
 import re
 import subprocess
 import sys
@@ -147,9 +149,19 @@ def _reveal_matches() -> bool:
     masking does not help here: it masks the whole ``NEUTRALITY_TERMS`` JSON
     payload, not the individual terms this script parses out and re-emits.
 
-    On a redacted run the operator still gets path, line and a per-line count —
-    enough to locate every hit — and can re-run the gate on a trusted event to
-    see which term fired.
+    Redaction of the term alone is not sufficient. ``path:line`` on a fork run
+    describes content the SUBMITTER wrote, so a stranger can submit one candidate
+    per line and read the reserved list out of the line numbers in the public log
+    — a faster oracle than the per-term one it replaced. So an untrusted run emits
+    the verdict and NOTHING that varies with the input: no path, no line, no count.
+    That leaves one bit per pull request, which is irreducible for any gate that
+    reports a verdict to an untrusted contributor, and is visible to a human each
+    time.
+
+    THIS ENVIRONMENT VARIABLE IS THE WHOLE SECURITY BOUNDARY. The workflow is the
+    only intended caller: it grants the opt-in only when the run is not
+    ``pull_request_target`` or the head repository equals the base. It reads as a
+    convenience toggle and is not one.
     """
     return os.environ.get("NEUTRALITY_REVEAL", "").strip().lower() in (
         "1", "true", "yes", "on",
@@ -330,6 +342,66 @@ def _run_self_tests() -> None:
             else:
                 os.environ["NEUTRALITY_REVEAL"] = prior
 
+    # Untrusted output carries NOTHING that varies with the input. Redacting the
+    # term is not enough: path:line on a fork run describes the submitter's own
+    # content, so one candidate per line turns the log into a per-line oracle.
+    # This asserts the whole-run output, not scan()'s return value, because main()
+    # is what the log actually sees.
+    with tempfile.TemporaryDirectory() as td:
+        troot = Path(td)
+        (troot / "secretfile.md").write_text(
+            f"clean line\n{secret_term} here\nclean\n", encoding="utf-8"
+        )
+        prior = os.environ.get("NEUTRALITY_REVEAL")
+        prior_terms = os.environ.get("NEUTRALITY_TERMS")
+        try:
+            os.environ.pop("NEUTRALITY_REVEAL", None)
+            os.environ["NEUTRALITY_TERMS"] = json.dumps({"substring": [secret_term]})
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = main([str(troot)])
+            out_a = buf.getvalue()
+            if rc != 1:
+                errors.append(f"untrusted-output test: expected exit 1, got {rc}")
+
+            # The invariant, asserted directly: untrusted output is CONSTANT.
+            # A second tree differing in filename, line number, hit count and
+            # which term fired must produce byte-identical output. This catches
+            # leaks nobody thought to enumerate, which a list of forbidden
+            # substrings cannot.
+            (troot / "z.md").unlink(missing_ok=True)
+            other = Path(td) / "second"
+            other.mkdir()
+            (other / "wholly-different-name.md").write_text(
+                f"{secret_term}\n{secret_term} and {secret_term}\n",
+                encoding="utf-8",
+            )
+            buf_b = io.StringIO()
+            with contextlib.redirect_stdout(buf_b):
+                rc_b = main([str(other)])
+            out_b = buf_b.getvalue()
+            if rc_b != 1:
+                errors.append(f"untrusted-output test: expected exit 1, got {rc_b}")
+            if out_a != out_b:
+                errors.append(
+                    "untrusted-output test failed: output varies with input — "
+                    f"{out_a!r} vs {out_b!r}"
+                )
+            if "withheld" not in out_a:
+                errors.append(
+                    f"untrusted-output test failed: expected the withheld-details "
+                    f"verdict, got {out_a!r}"
+                )
+        finally:
+            if prior is None:
+                os.environ.pop("NEUTRALITY_REVEAL", None)
+            else:
+                os.environ["NEUTRALITY_REVEAL"] = prior
+            if prior_terms is None:
+                os.environ.pop("NEUTRALITY_TERMS", None)
+            else:
+                os.environ["NEUTRALITY_TERMS"] = prior_terms
+
     if errors:
         print("NEUTRALITY SELF-TEST FAILURES:")
         for e in errors:
@@ -350,6 +422,14 @@ def main(argv: list[str] | None = None) -> int:
     pattern, allow = _load_config()
     offenders = scan(root, pattern, allow)
     if offenders:
+        if not _reveal_matches():
+            # Untrusted run: verdict only. The location count is the same oracle
+            # at lower resolution, so it is withheld too.
+            print(
+                "neutrality: content check failed. Details are withheld on fork "
+                "runs; a maintainer can re-run this gate on a trusted event."
+            )
+            return 1
         # "location(s)", not "hit(s)": a redacted entry collapses every hit on a
         # line into one entry carrying its own count, so entry count == hit
         # count only on a revealing run.
