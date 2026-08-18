@@ -159,6 +159,35 @@ def _jcs(obj: object) -> str:
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
 
 
+def _jcs_rfc8785(obj: object) -> str:
+    """Plain RFC 8785 JCS — identical to _jcs() except floats are allowed.
+
+    Used only for Category J Direction-B (float) vectors where the subject
+    binding (composition §6.3.2) accepts floating-point values that jcs-n §3.1
+    explicitly prohibits.  Do NOT use for jcs-n computation.
+    """
+    if isinstance(obj, dict):
+        sorted_k = sorted(obj.keys(), key=_jcs_sort_key)
+        pairs = [_jcs_rfc8785(k) + ":" + _jcs_rfc8785(obj[k]) for k in sorted_k]
+        return "{" + ",".join(pairs) + "}"
+    if isinstance(obj, list):
+        return "[" + ",".join(_jcs_rfc8785(item) for item in obj) + "]"
+    if not isinstance(obj, bool) and isinstance(obj, int):
+        n = abs(obj)
+        if n >= 10 ** 21:
+            raise ValueError(
+                f"integer >= 1e21: Python json.dumps produces full decimal digits "
+                f"but JCS requires scientific notation for this value: {obj!r}"
+            )
+        if n >= 1 << 53:
+            raise ValueError(
+                f"unsafe integer (|n| >= 2^53): cannot be exactly represented "
+                f"in IEEE 754 double: {obj!r}"
+            )
+    # floats are allowed (plain RFC 8785); json.dumps gives the correct shortest form
+    return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
+
+
 def jcs_n_pre_image(
     payload: dict[str, object],
     exclusion_set: list[str] | None = None,
@@ -756,7 +785,7 @@ def _exercise_diverge(
     directly from the vector file -- the digest input is the computed UTF-8 bytes,
     not a round-tripped parse.
 
-    Steps:
+    Direction A (jcs_n_must_fail absent or false) — different digests:
     1. Compute plain JCS (_jcs(action), no normalization pass).
     2. Assert computed == pinned jcs.pre_image.
     3. Assert UTF-8 hex of computed == jcs.pre_image_bytes_hex.
@@ -766,16 +795,21 @@ def _exercise_diverge(
     7. Assert UTF-8 hex of computed == jcs_n.pre_image_bytes_hex.
     8. Assert SHA-256(computed bytes) == jcs_n.digest.
     9. Assert jcs.digest != jcs_n.digest (divergence is real, not asserted).
+    Mutation probe: replace null/empty members with 'n/a' → jcs == jcs-n → step 9
+    must flip to failure.
 
-    Mutation probe: build a mutant by replacing null/empty-object/empty-array
-    action members with 'n/a', then recompute correct pinned values for both
-    sides (which are now identical since no normalization is needed).  The
-    inequality at step 9 must FLIP to failure on the mutant.
+    Direction B (jcs_n_must_fail: true) — acceptance vs rejection:
+    1. Compute plain RFC 8785 JCS (_jcs_rfc8785(action), floats allowed).
+    2-4. Assert pinned jcs fields (pre_image, hex, digest).
+    5. Assert jcs_n_pre_image(action) RAISES (float prohibition) — MUST-FAIL.
+    Mutation probe: replace float members with string equivalents → jcs-n no longer
+    raises; now jcs.digest == jcs_n.digest (no divergence) → exerciser must fail.
     """
     errs: list[str] = []
     action = v.get("action")
     jcs_pin = v.get("jcs", {})
     jcsn_pin = v.get("jcs_n", {})
+    direction_b = bool(v.get("jcs_n_must_fail"))
 
     if action is None or not jcs_pin or not jcsn_pin:
         errs.append(
@@ -783,11 +817,13 @@ def _exercise_diverge(
         )
         return False, errs
 
-    # Steps 1–4: plain JCS (no normalize pass)
+    # Steps 1–4: plain JCS side.
+    # Direction A uses _jcs() (no floats); Direction B uses _jcs_rfc8785() (floats ok).
     try:
-        plain_pre = _jcs(action)
+        plain_pre = _jcs_rfc8785(action) if direction_b else _jcs(action)
     except Exception as exc:
-        errs.append(f"plain JCS (_jcs(action)) raised: {exc!r}")
+        fn = "_jcs_rfc8785" if direction_b else "_jcs"
+        errs.append(f"plain JCS ({fn}(action)) raised: {exc!r}")
         return False, errs
 
     pinned_plain = jcs_pin.get("pre_image", "")
@@ -814,7 +850,62 @@ def _exercise_diverge(
             f"  pinned:   {pinned_plain_digest}"
         )
 
-    # Steps 5–8: jcs-n (normalize then JCS)
+    if direction_b:
+        # Direction B: jcs-n MUST-FAIL (float prohibition §3.1).
+        # Assert jcs_n_pre_image raises; if it succeeds, that is a hard failure.
+        try:
+            jcsn_computed = jcs_n_pre_image(action)
+            errs.append(
+                f"Expected jcs_n_pre_image(action) to raise (float prohibition) "
+                f"but it returned: {jcsn_computed!r}"
+            )
+        except (ValueError, TypeError):
+            pass  # Expected — jcs-n correctly rejects the float
+
+        if errs:
+            return False, errs
+
+        # Mutation probe for Direction B: replace float members with their string
+        # equivalents (e.g. 0.95 → "0.95") so jcs-n no longer raises.  Now
+        # jcs.digest == jcs_n.digest (no normalization needed), so step 9 must
+        # flip to failure, confirming the MUST-FAIL assertion is live.
+        if _probe_mutant:
+            mutant_action: dict[str, object] = {}
+            for k, val in v["action"].items():
+                mutant_action[k] = repr(val) if isinstance(val, float) else val
+            mutant_plain = _jcs(mutant_action)
+            mutant_plain_hex = mutant_plain.encode("utf-8").hex()
+            mutant_digest = hashlib.sha256(mutant_plain.encode("utf-8")).hexdigest()
+            mutant_jcsn = _jcs(_normalize(mutant_action))
+            mutant_jcsn_hex = mutant_jcsn.encode("utf-8").hex()
+            mutant_jcsn_digest = hashlib.sha256(mutant_jcsn.encode("utf-8")).hexdigest()
+            mutant = copy.deepcopy(v)
+            mutant["action"] = mutant_action
+            mutant["jcs_n_must_fail"] = False
+            mutant["jcs"] = {
+                **mutant.get("jcs", {}),
+                "pre_image": mutant_plain,
+                "pre_image_bytes_hex": mutant_plain_hex,
+                "digest": mutant_digest,
+            }
+            mutant["jcs_n"] = {
+                "pre_image": mutant_jcsn,
+                "pre_image_bytes_hex": mutant_jcsn_hex,
+                "digest": mutant_jcsn_digest,
+            }
+            mutant_ok, _ = _exercise_diverge(
+                mutant, f"{vid}[mutant-J-float]", _probe_mutant=False
+            )
+            if mutant_ok:
+                errs.append(
+                    f"ASSERTION-FREE: float mutant ({vid}[mutant-J-float]) passed — "
+                    f"replacing floats with strings did not flip the exerciser to "
+                    f"failure; the jcs_n_must_fail check is not being tested"
+                )
+
+        return (not errs), errs
+
+    # Direction A: Steps 5–8: jcs-n (normalize then JCS)
     try:
         jcsn_pre = jcs_n_pre_image(action)
     except Exception as exc:
@@ -859,12 +950,12 @@ def _exercise_diverge(
     if errs:
         return False, errs
 
-    # Mutation probe: replace null/empty-object/empty-array action members with
-    # 'n/a' so that normalization is a no-op and JCS == jcs-n.  Recompute the
-    # correct pinned values for both sides; now jcs.digest == jcs_n.digest, so
-    # step 9 must flip to failure.
+    # Mutation probe for Direction A: replace null/empty-object/empty-array action
+    # members with 'n/a' so that normalization is a no-op and JCS == jcs-n.
+    # Recompute the correct pinned values for both sides; now jcs.digest ==
+    # jcs_n.digest, so step 9 must flip to failure.
     if _probe_mutant:
-        mutant_action: dict[str, object] = {}
+        mutant_action = {}
         for k, val in v["action"].items():
             if val is None or val == {} or val == []:
                 mutant_action[k] = "n/a"
@@ -1186,6 +1277,60 @@ def _run_self_tests() -> None:
         errors.append(
             "SELF-TEST FAIL: a non-diverging action (no null/empty members) passed "
             "the diverge exerciser — the inequality assertion is not tested"
+        )
+
+    # Direction B self-test: float member → plain RFC 8785 accepts; jcs-n MUST-FAIL.
+    j_action_float = {"task": "classify", "confidence": 0.95, "device": "sensor-01"}
+    j_plain_float = _jcs_rfc8785(j_action_float)
+    j_float_vector = {
+        "diverge": True,
+        "jcs_n_must_fail": True,
+        "action": j_action_float,
+        "jcs": {
+            "pre_image": j_plain_float,
+            "pre_image_bytes_hex": j_plain_float.encode("utf-8").hex(),
+            "digest": _sha256_hex(j_plain_float),
+        },
+        "jcs_n": {
+            "must_fail": True,
+            "failure_reason": "float_in_digest_bearing_field",
+        },
+    }
+    ok, float_errs = _exercise_diverge(copy.deepcopy(j_float_vector), "self-test-j-float")
+    if not ok:
+        errors.append(
+            f"SELF-TEST FAIL: Direction B (float must-fail) vector rejected: {float_errs!r}"
+        )
+
+    # Direction B probe: replace float with string → jcs-n accepts → exerciser must fail.
+    j_action_float_str = {
+        "task": "classify",
+        "confidence": "0.95",
+        "device": "sensor-01",
+    }
+    j_plain_fstr = _jcs(j_action_float_str)
+    j_jcsn_fstr = _jcs(_normalize(j_action_float_str))
+    j_float_nodiv = {
+        "diverge": True,
+        "jcs_n_must_fail": False,
+        "action": j_action_float_str,
+        "jcs": {
+            "pre_image": j_plain_fstr,
+            "pre_image_bytes_hex": j_plain_fstr.encode("utf-8").hex(),
+            "digest": _sha256_hex(j_plain_fstr),
+        },
+        "jcs_n": {
+            "pre_image": j_jcsn_fstr,
+            "pre_image_bytes_hex": j_jcsn_fstr.encode("utf-8").hex(),
+            "digest": _sha256_hex(j_jcsn_fstr),
+        },
+    }
+    ok, _ = _exercise_diverge(j_float_nodiv, "self-test-j-float-nodiv", _probe_mutant=False)
+    if ok:
+        errors.append(
+            "SELF-TEST FAIL: a non-diverging string-confidence action passed the "
+            "exerciser with jcs_n_must_fail=False — step 9 is not checked for the "
+            "float direction (jcs.digest == jcs_n.digest but exerciser accepted)"
         )
 
     if errors:
