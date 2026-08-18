@@ -34,6 +34,7 @@ normative:
   RFC8785:
   RFC9052:
   RFC9943:
+  I-D.ietf-scitt-architecture:
 
 informative:
   RFC9901:
@@ -600,6 +601,122 @@ This specification does not define these facilities in this document. Each will 
 addressed in a companion document that payload profiles MUST reference rather than
 developing an incompatible per-profile variant. Defining any of these facilities
 per-profile would violate the constraint established in {{profile-independence}}.
+
+# Producer-Local Log Checkpointing {#local-log-checkpoint}
+
+## Overview
+
+A producer that maintains a local append-only log of CPB records MAY emit periodic
+signed checkpoints that summarize the state of that log at a point in time and register
+those checkpoints with a Transparency Service (TS) conformant with
+{{I-D.ietf-scitt-architecture}}. Checkpointing is optional because not every deployment can or
+should carry the operational overhead — air-gapped environments, confidential compute
+enclaves, and development deployments may legitimately omit it. The checkpointing
+regime is therefore graded and declared: a producer either announces its checkpoint
+policy and conforms to it, or makes no checkpointing claim. There is no middle
+position in which a producer silently omits checkpoints while implying availability.
+
+When a producer elects to checkpoint, all of the requirements in this section become
+MUST-level. Electing to checkpoint means electing the full discipline.
+
+## Checkpoint Structure
+
+A checkpoint is a producer-signed data structure containing at minimum:
+
+- the size of the log tree at the time of the checkpoint (number of leaves committed
+  to the Merkle tree, as a non-negative integer);
+- a digest that commits to the peak hashes of the Merkle Mountain Range at that size;
+- the size of the most recent prior checkpoint of the same log, or zero if this is the
+  first checkpoint (the previous-size field exists so that consistency between successive
+  checkpoints is verifiable without retaining all intermediate state);
+- a stable key identifier for the signing key (the key identifier MUST be resolvable
+  to verification material for the lifetime of any record that cites it; key rotation
+  MUST NOT invalidate that resolvability for previously-issued checkpoints);
+- a producer-asserted timestamp.
+
+The checkpoint MUST be signed by the producer key associated with the log. An
+unsigned checkpoint provides no tamper-evidence and MUST NOT be represented as a
+checkpointed record.
+
+## Monotonicity and Rollback Detection
+
+The log tree size stated in each checkpoint MUST be strictly greater than the previous
+size stated in the same checkpoint. A checkpoint whose size field is less than or equal
+to its previous-size field is malformed and MUST be rejected by any party that verifies
+it.
+
+A verifier that holds two successive checkpoints from the same producer MUST be able to
+confirm that the later tree is a consistent extension of the earlier one — that is, the
+Merkle path from the earlier peaks to the later peaks is valid — without retaining the
+full leaf sequence. This consistency requirement is the primary tamper-evidence property
+of the checkpointing regime: a rollback (where a producer replaces records that already
+appeared in a witnessed checkpoint) is detectable by any party that holds the
+corresponding checkpoint.
+
+A verifier that finds the consistency check fails MUST treat the log as potentially
+tampered. The verifier MUST NOT silently ignore an inconsistent successor checkpoint.
+
+## Cadence and Lag Disclosure
+
+A producer that emits checkpoints MUST declare its checkpointing policy in its producer
+metadata. The policy MUST state:
+
+- the target cadence (maximum elapsed time between successive checkpoints under normal
+  operating conditions); and
+- the maximum permitted lag (the interval beyond which the producer considers its own
+  checkpointing to be in a degraded state and SHOULD surface an alert to operators).
+
+A withheld checkpoint — an interval during which no checkpoint has been emitted when
+one was due — MUST be distinguishable from a quiet log (a log that has received no new
+records). A quiet log legitimately produces no new records; a withheld checkpoint means
+the log has received records that have not yet been committed to a checkpoint. A producer
+MUST NOT suppress the emission of a checkpoint solely because the log is busy — busy
+logs require checkpoints more, not less.
+
+## Witness Requirements
+
+A checkpoint gains its third-party verifiability from having been registered with a
+Transparency Service and from the receipt issued by that TS. The checkpoint itself is
+producer-signed and can be rolled back by the producer alone; the TS receipt is
+independently countersigned and provides protection against producer-side rollback.
+
+A witness, for the purposes of this section, is a party that independently countersigns
+or registers the checkpoint with a TS and whose countersignature or TS receipt is
+retained alongside the checkpoint. The producer MUST NOT count itself as a witness.
+Self-witnessing — where the producer signs both the checkpoint and the witness
+attestation — provides no additional protection against producer-side rollback.
+
+A producer that claims its records are third-party-verifiable MUST name at least one
+independent witness in its producer metadata. A claim of third-party verifiability MUST
+be scoped to records committed to a checkpoint that has received a TS receipt from an
+independent witness; records appended after the most recent witnessed checkpoint are not
+covered by that claim until the next checkpoint is issued and witnessed.
+
+A producer that claims resilience to witness-operator compromise SHOULD engage multiple
+independent witnesses. Witness independence means that the compromise of any one
+witness's signing key does not retroactively invalidate the attestations made by the
+others.
+
+## Scope of Verifiability Claims
+
+A producer MUST NOT represent a record as third-party-verifiable if no TS receipt from
+an independent witness covers the checkpoint that includes that record. If the most
+recent checkpoint has been issued but not yet witnessed, the records in that checkpoint
+are producer-verified only. A relying party that distinguishes these tiers MUST be
+given the information necessary to make that distinction.
+
+When a producer's declared cadence implies that a record will be witnessed within a
+bounded time, the producer MUST surface the lag clearly in any verification output —
+for example, "witnessed up to log size S at time T; current log size is N (N − S records
+pending witness)" — so that a relying party can assess whether the uncommitted tail falls
+within an acceptable window for their use case.
+
+## Relationship to SCITT Architecture
+
+Checkpointing as defined in this section is a producer-side discipline that layers on
+top of SCITT without modifying the SCITT model. The TS receipt produced by registering a
+checkpoint is a standard SCITT receipt for a checkpoint entry. Nothing in this section
+creates a new TS entry type or modifies SCITT verification semantics.
 
 # Security Considerations {#security}
 
