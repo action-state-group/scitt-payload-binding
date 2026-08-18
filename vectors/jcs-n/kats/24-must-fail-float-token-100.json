@@ -1,0 +1,13 @@
+{
+  "id": "jcs-n-kat-24",
+  "description": "MUST-FAIL: integer-valued float (100.0) in a digest-bearing field. This value is the parsed form of the JSON tokens '1e2', '1E2', and '100.0' — all three token forms produce float(100.0) in Python. Python's json.loads destroys the token before canonicalize sees it, so this vector tests what the VALUE RULE implementation does with an integer-valued float that arrived via exponential or decimal notation. Node.js JSON.parse produces integer 100 for the same tokens and ACCEPTS; Python cpb produces float 100.0 and REJECTS (FloatInDigestError). This is the live cross-implementation divergence documented in §2 of the rebuild task (defect 2). The mutant is the condition `isinstance(v, float)` in _jcs_value: removing that check (or replacing it with `v != int(v)` — the integer-valued-float relaxation) would make this vector pass, making the implementation undetectably diverge from the token rule intent.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 §3.1",
+  "must_fail": true,
+  "failure_reason": "float_in_digest_bearing_field",
+  "input": {"a": 100.0},
+  "exclusion_set": [],
+  "token_forms": ["1e2", "1E2", "100.0"],
+  "cross_impl_note": "Node.js JSON.parse('1e2') -> 100 (integer); Python json.loads('1e2') -> 100.0 (float). Same token, different type. Under the VALUE RULE this Python implementation REJECTS; a Node JCS verifier ACCEPTS. Under a TOKEN RULE both would reject. This vector establishes which side our implementation is on.",
+  "mutation_probe": "Replace `isinstance(v, float)` with `isinstance(v, float) and v != int(v)` — the integer-valued-float relaxation — and this vector passes (100.0 == int(100.0)). The test MUST go red with that mutant to demonstrate the check is not vacuous."
+}

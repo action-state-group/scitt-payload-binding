@@ -1,0 +1,13 @@
+{
+  "id": "jcs-n-kat-25",
+  "description": "MUST-FAIL: float 1.0 in a digest-bearing field. This is the parsed form of JSON tokens '1.0' and '1e0'. Python json.loads -> float(1.0); Node JSON.parse -> integer 1. Same cross-implementation split as kat-24: Python rejects (FloatInDigestError); Node JCS accepts (integer 1, serializes as '1'). The defect-2 discriminating set requires 1e2/1E2/1.0/0.0 to all be present as must-fail vectors; this covers the '1.0' token form. Mutation probe: same as kat-24 (integer-valued-float relaxation would pass this).",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 §3.1",
+  "must_fail": true,
+  "failure_reason": "float_in_digest_bearing_field",
+  "input": {"a": 1.0},
+  "exclusion_set": [],
+  "token_forms": ["1.0", "1e0", "1E0"],
+  "cross_impl_note": "Node.js JSON.parse('1.0') -> 1 (integer); Python json.loads('1.0') -> 1.0 (float). Our implementation rejects; Node JCS accepts.",
+  "mutation_probe": "Replace `isinstance(v, float)` with `isinstance(v, float) and v != int(v)` — this vector passes (1.0 == int(1.0) = 1). The test must go red with that mutant."
+}

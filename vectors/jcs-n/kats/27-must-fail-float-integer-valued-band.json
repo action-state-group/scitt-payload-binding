@@ -1,0 +1,12 @@
+{
+  "id": "jcs-n-kat-27",
+  "description": "MUST-FAIL: integer-valued binary64 float above 2^53 (the 'unresolved band' from defect 4). The value 1e21 is integer-valued (1e21 == int(1e21) is True in Python) but is a float in Python's type system. RFC 8785 §3.2.2.3 would serialize it as '1e+21' — which fails the wire regex entirely. The decision document §1's 'non-integer numeric quantities travel as JSON strings' does NOT reach this band because 1e21 is integer-valued. This vector documents the resolution: the value-rule implementation rejects ALL floats (FloatInDigestError), including integer-valued ones. The producer holding 1e21 MUST emit it as the string '1e+21' (per RFC 8785 §3.2.2.3) or as the exact decimal string '1000000000000000000000', NOT as a JSON number. Mutation probe: relaxing to reject only non-integer-valued floats (v != int(v)) would PASS this vector incorrectly — 1e21 == int(1e21) in Python.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 §3.1",
+  "must_fail": true,
+  "failure_reason": "float_in_digest_bearing_field",
+  "input": {"a": 1e21},
+  "exclusion_set": [],
+  "band_note": "1e21 is integer-valued (1e21 == int(1e21) in Python, True) but float-typed. Its RFC 8785 string form is '1e+21', which fails the wire integer regex ^(?:0|-?[1-9][0-9]*)$ entirely. The only conforming wire form for a producer holding this value is the JSON string '\"1000000000000000000000\"' or '\"1e+21\"' (per §1's string-encoding escape hatch for non-integer quantities, extended to this band in normative text).",
+  "mutation_probe": "Replace `isinstance(v, float)` with `isinstance(v, float) and v != int(v)` — 1e21 == int(1e21) → condition is False → vector passes incorrectly. The test must go red with that mutant."
+}

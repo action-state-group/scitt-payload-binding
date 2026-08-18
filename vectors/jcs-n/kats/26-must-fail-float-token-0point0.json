@@ -1,0 +1,13 @@
+{
+  "id": "jcs-n-kat-26",
+  "description": "MUST-FAIL: float 0.0 in a digest-bearing field. Parsed form of JSON tokens '0.0' and '0e0'. Same cross-implementation split: Python rejects (FloatInDigestError); Node JCS accepts (integer 0, serializes as '0'). Note: JSON token '-0' parses to integer 0 in Python (not float), so -0 is NOT covered by this vector — it is ACCEPTED by the value-rule implementation (see separate informative note). This vector covers the '0.0' and '0e0' token forms specifically. Mutation probe: same as kat-24/25.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 §3.1",
+  "must_fail": true,
+  "failure_reason": "float_in_digest_bearing_field",
+  "input": {"a": 0.0},
+  "exclusion_set": [],
+  "token_forms": ["0.0", "0e0", "0E0"],
+  "cross_impl_note": "Python json.loads('0.0') -> float(0.0), which hits FloatInDigestError. Python json.loads('-0') -> int(0), which is ACCEPTED. Node JCS accepts '0.0' (integer 0) and also accepts '-0' (integer -0, which Number.isInteger(-0) = true). The -0 token gap (both Python and Node accept, value-rule cannot distinguish from 0) is a separate informative note.",
+  "mutation_probe": "Replace `isinstance(v, float)` with `isinstance(v, float) and v != int(v)` — passes (0.0 == 0). The test must go red with that mutant."
+}

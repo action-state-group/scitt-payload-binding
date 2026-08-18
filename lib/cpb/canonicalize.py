@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Algorithm jcs-n: absent-field normalization + JCS + SHA-256 + lowercase hex.
 
-Reference: draft-mih-sokolov-scitt-payload-binding-00 §3.1
+Reference: draft-mih-sokolov-scitt-payload-binding-01 §3.1
 
 CANONICAL-DIGEST(jcs-n, P) =
     lowercase_hex(SHA-256(JCS(normalize(P minus exclusion_set))))
@@ -29,12 +29,21 @@ MAX_SAFE_INTEGER = 2**53 - 1  # 9007199254740991
 
 
 class FloatInDigestError(ValueError):
-    """A JSON float reached a digest-bearing field. §3.1 forbids this."""
+    """A JSON float reached a digest-bearing field.
+
+    The error message names the JSON path where the float appeared so the
+    caller can report which field to fix (§3.1 MUST).  Path format:
+    top-level key ``"latency_ms"``; nested ``"outer.inner.latency_ms"``;
+    array element ``"items[2]"``.
+    """
 
 
 class UnsafeIntegerError(ValueError):
     """An integer outside ±(2^53-1) reached a digest-bearing field.
-    Represent large integers as exact decimal strings (§3.1)."""
+
+    The error message names the JSON path where the unsafe integer appeared
+    (§3.1 MUST).  Represent large integers as exact decimal strings (§3.1).
+    """
 
 
 def normalize(v: Any) -> Any:
@@ -91,7 +100,7 @@ def _jcs_string(s: str) -> str:
     return "".join(out)
 
 
-def _jcs_value(v: Any) -> str:
+def _jcs_value(v: Any, _path: str = "") -> str:
     if v is None:
         return "null"
     if v is True:
@@ -106,25 +115,30 @@ def _jcs_value(v: Any) -> str:
         # Guard the JS-safe range: magnitude beyond 2^53-1 is not reproducible
         # across ECMAScript-Number readers.
         if v > MAX_SAFE_INTEGER or v < -MAX_SAFE_INTEGER:
+            _at = f" at {_path!r}" if _path else ""
             raise UnsafeIntegerError(
-                f"integer {v} is outside the safe range ±{MAX_SAFE_INTEGER}; "
+                f"integer {v}{_at} is outside the safe range ±{MAX_SAFE_INTEGER}; "
                 "represent large integers as exact decimal strings (§3.1)"
             )
         return str(v)
     if isinstance(v, float):
+        _at = f" at {_path!r}" if _path else ""
         raise FloatInDigestError(
-            "JSON floating-point value in a digest-bearing field; §3.1 requires "
-            "exact decimal strings for monetary/quantity values"
+            f"JSON floating-point value{_at} in a digest-bearing field; "
+            "§3.1 requires exact decimal strings for monetary/quantity values"
         )
     if isinstance(v, list):
-        return "[" + ",".join(_jcs_value(x) for x in v) + "]"
+        return "[" + ",".join(
+            _jcs_value(x, f"{_path}[{i}]") for i, x in enumerate(v)
+        ) + "]"
     if isinstance(v, dict):
         # RFC 8785 §3.2.3: sort by UTF-16 code units of the member name.
         items = sorted(v.items(), key=lambda kv: kv[0].encode("utf-16-be"))
+        _pfx = (_path + ".") if _path else ""
         return (
             "{"
             + ",".join(
-                _jcs_string(k) + ":" + _jcs_value(val) for k, val in items
+                _jcs_string(k) + ":" + _jcs_value(val, _pfx + k) for k, val in items
             )
             + "}"
         )

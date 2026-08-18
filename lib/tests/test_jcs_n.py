@@ -7,7 +7,7 @@ Every MUST-FAIL vector must raise the appropriate error.
 import hashlib
 import pytest
 
-from cpb import FloatInDigestError, canonical_digest, jcs, normalize
+from cpb import FloatInDigestError, UnsafeIntegerError, canonical_digest, jcs, normalize
 from .conftest import load_vectors
 
 
@@ -88,3 +88,62 @@ def test_jcs_n_exclusion_groups():
     by_id = {v["id"]: v for v in vectors}
     assert by_id["jcs-n-kat-08"]["digest"] == by_id["jcs-n-kat-01"]["digest"]
     assert by_id["jcs-n-kat-09"]["digest"] == by_id["jcs-n-kat-01"]["digest"]
+
+
+def test_jcs_n_error_messages_name_path():
+    """Defect-5 fix: error messages must name the JSON path to the offending field.
+
+    The MUST in §3.1 is 'reject with an error naming the field'. Both
+    FloatInDigestError and UnsafeIntegerError must include the dotted path
+    so a caller can report which field to fix without inspecting every key.
+
+    Mutant test: remove ``_path`` from ``_jcs_value`` — both assertions
+    fail because the path string no longer appears in the message.
+    """
+    # Nested float: path must name the full dotted chain.
+    with pytest.raises(FloatInDigestError) as exc_info:
+        canonical_digest({"outer": {"inner": {"latency_ms": 1.25}}})
+    assert "outer.inner.latency_ms" in str(exc_info.value), (
+        f"path not in float error: {exc_info.value}"
+    )
+
+    # Top-level float: path is just the key name.
+    with pytest.raises(FloatInDigestError) as exc_info:
+        canonical_digest({"amount": 99.9})
+    assert "amount" in str(exc_info.value), (
+        f"path not in top-level float error: {exc_info.value}"
+    )
+
+    # Nested unsafe integer: same path requirement applies.
+    with pytest.raises(UnsafeIntegerError) as exc_info:
+        canonical_digest({"outer": {"seq": 2**53}})
+    assert "outer.seq" in str(exc_info.value), (
+        f"path not in unsafe-integer error: {exc_info.value}"
+    )
+
+    # Float inside an array: path uses bracket notation.
+    with pytest.raises(FloatInDigestError) as exc_info:
+        canonical_digest({"items": [1, 2.5, 3]})
+    assert "items[1]" in str(exc_info.value), (
+        f"array path not in float error: {exc_info.value}"
+    )
+
+
+def test_jcs_n_bottom_up_three_level_discriminator():
+    """KAT-23: {a:{b:{c:null}}} → {} (bottom-up); top-down gives {a:{b:{}}}.
+
+    The §0 survived-falsification claim that normalize() is genuinely bottom-up
+    is verifiable: the three-level chain removes the deepest null first, which
+    causes its parent to become empty, which causes its grandparent to become
+    empty, which removes the top-level key. A top-down pass stops after removing
+    c=null because it has already committed to keeping a and b before recursing.
+
+    Mutant: replace normalize() with a top-down single-pass. The canonical
+    digest changes from 44136fa3... (empty object) to the digest of '{"a":{"b":{}}}'.
+    """
+    vectors = load_vectors("jcs-n/kats")
+    by_id = {v["id"]: v for v in vectors}
+    v = by_id["jcs-n-kat-23"]
+    assert canonical_digest(v["input"]) == v["digest"], (
+        "bottom-up three-level normalization produced wrong digest"
+    )

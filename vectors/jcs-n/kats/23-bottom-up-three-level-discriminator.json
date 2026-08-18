@@ -1,0 +1,21 @@
+{
+  "id": "jcs-n-kat-23",
+  "description": "Bottom-up normalization discriminator: three levels deep, all removed. {a:{b:{c:null}}} → {} bottom-up (correct) vs {a:{b:{}}} with a naive top-down single-pass. The bottom-up pass removes c:null (level 3), which makes b={} empty (level 2), which makes a={} empty (level 1), which is then removed at the top level. A top-down pass stops at level 1 because {b:{c:null}} is not null/empty at the time it is examined, and never revisits a once b becomes empty. This vector is the §0 (survived-falsification) discriminator confirming normalize() is genuinely bottom-up.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 §3.1 step 1 ('bottom-up and recursively')",
+  "input": {"a": {"b": {"c": null}}},
+  "exclusion_set": [],
+  "normalization_steps": [
+    {"step": 1, "result": {"a": {"b": {}}}, "note": "Level 3: c=null removed; b={} (empty)"},
+    {"step": 2, "result": {"a": {}}, "note": "Level 2: b={} empty, removed; a={} (empty)"},
+    {"step": 3, "result": {}, "note": "Level 1: a={} empty, removed"}
+  ],
+  "normalized": {},
+  "pre_image": "{}",
+  "pre_image_bytes_hex": "7b7d",
+  "digest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "top_down_wrong_normalized": {"a": {"b": {}}},
+  "top_down_wrong_pre_image": "{\"a\":{\"b\":{}}}",
+  "mutation_probe": "Removing the recursion from normalize() (making it process only the top level) would produce {\"a\":{\"b\":{}}} (digest differs from the pinned value above). The test fails if normalize() is replaced with a single-level filter.",
+  "note": "The digest 44136fa3... is the SHA-256 of the two bytes 0x7B 0x7D ('{}' in UTF-8). Any implementation that produces a different digest has not applied absent-field normalization bottom-up across all three levels."
+}
