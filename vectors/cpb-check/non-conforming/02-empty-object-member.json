@@ -1,0 +1,13 @@
+{
+  "id": "cpb-check-nonconforming-02",
+  "description": "P violation: empty object member. A dict member with value {} is not in normal form.",
+  "expected_verdict": "non-conforming",
+  "expected_violations": [
+    {"path": "$[\"metadata\"]", "rule": "P"}
+  ],
+  "record": {
+    "type": "action",
+    "payload": {"action": "approve"},
+    "metadata": {}
+  }
+}

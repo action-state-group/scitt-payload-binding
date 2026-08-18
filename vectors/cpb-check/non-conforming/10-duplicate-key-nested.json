@@ -1,0 +1,10 @@
+{
+  "id": "cpb-check-nonconforming-10",
+  "description": "R violation: duplicate key inside a nested object. Duplicate detection applies at every level, not just the top level.",
+  "expected_verdict": "non-conforming",
+  "expected_violations": [
+    {"path": "$[\"payload\"][\"action\"]", "rule": "R"}
+  ],
+  "record_raw": "{\"type\":\"action\",\"payload\":{\"action\":\"approve\",\"actor\":\"agent\",\"action\":\"override\"}}",
+  "mutant_note": "A collapsing parser returns {'type': 'action', 'payload': {'action': 'override', 'actor': 'agent'}} — the first value of 'action' is lost."
+}
