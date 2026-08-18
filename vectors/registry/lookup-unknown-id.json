@@ -1,0 +1,15 @@
+{
+  "id": "registry-lookup-unknown-id-01",
+  "kind": "registry-lookup",
+  "description": "VERDICT unknown-id: a genuinely unregistered canonicalization algorithm id checked against an authoritative (non-pinned) registry. The id does not appear in any known snapshot, past or present. A fail-closed verifier returns unknown-id and MUST reject the record.",
+  "spec_ref": "cpb-registry-json-machine-readable §Verdict taxonomy",
+  "snapshot": "snapshot-v1.json",
+  "algorithm_id": "not-a-real-alg",
+  "pinned": false,
+  "expected_verdict": "unknown-id",
+  "mutant": {
+    "description": "Change algorithm_id to a registered id; verdict MUST flip to verified.",
+    "algorithm_id": "jcs-n",
+    "expected_verdict": "verified"
+  }
+}
