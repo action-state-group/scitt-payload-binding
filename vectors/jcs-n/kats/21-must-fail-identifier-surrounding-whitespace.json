@@ -20,6 +20,8 @@
     "correct_derived_id_bare_hex": "2f9bba43e30273e2e87c7ef659a0f36f1e11f8e0c10489afe4d267c996505c37"
   },
   "typed_reference_with_wrong_representation": {
+    "type": "cpb-day2-artifact",
+    "digest_alg": "SHA-256",
     "digest": " 2f9bba43e30273e2e87c7ef659a0f36f1e11f8e0c10489afe4d267c996505c37 "
   },
   "note": "Leading-tab padding (U+0009) fails for the identical reason; kept out of this vector so each whitespace class stays separately attributable."

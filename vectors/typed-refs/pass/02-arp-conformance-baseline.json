@@ -1,0 +1,35 @@
+{
+  "id": "typed-ref-cpb01-01",
+  "description": "PASS: conformance baseline for CPB-01 \u00a77. The registry entry, the carried digest_alg, the carried representation and the recomputed digest are all mutually consistent. A verifier MUST report this reference as verified. Present so the set is two-sided: four MUST-FAIL vectors can detect a verifier that is too loose and structurally cannot detect one that is too strict.",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 \u00a77, \u00a77.1",
+  "finding_class": "conformance_baseline",
+  "must_fail": false,
+  "artifact_type_registry_entry": {
+    "name": "authorization-doc",
+    "digest_context": "jcs-n; exclusion set {doc_id}; 64-char lowercase hex",
+    "algorithm": "jcs-n",
+    "exclusion_set": [
+      "doc_id"
+    ],
+    "representation": "bare_hex"
+  },
+  "cited_artifact": {
+    "payload": {
+      "doc_id": null,
+      "subject": "WS-42",
+      "scope": "temperature-write",
+      "issued_at": "2026-07-24T00:00:00Z"
+    },
+    "pre_image": "{\"issued_at\":\"2026-07-24T00:00:00Z\",\"scope\":\"temperature-write\",\"subject\":\"WS-42\"}",
+    "derived_id": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+  },
+  "typed_reference": {
+    "type": "authorization-doc",
+    "digest_alg": "SHA-256",
+    "digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+  },
+  "expected": {
+    "verified": true,
+    "recomputed_digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+  }
+}

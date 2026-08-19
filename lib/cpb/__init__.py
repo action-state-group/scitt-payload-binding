@@ -5,6 +5,8 @@ Implements only the mechanisms defined in draft-mih-sokolov-scitt-payload-bindin
   §3.1  Algorithm jcs-n: normalize → JCS → SHA-256 → lowercase hex
   §4    Derived identifier: CANONICAL-DIGEST(A, payload minus exclusion_set)
   §6    Typed digest reference: construction and verification
+  §13   Registry snapshot lookup (machine-readable registry.json)
+  check Grammar conformance checker (P/R rules, Phase 1)
 
 No payload semantics from any specific profile are included here.
 """
@@ -24,10 +26,29 @@ from .typed_ref import (
     ContextMismatchError,
     RepresentationMismatchError,
     DigestAlgorithmMismatchError,
+    PurposeMismatchError,
     make_typed_ref,
     verify_typed_ref,
     hex_to_raw,
     raw_to_hex,
+)
+from .registry import (
+    VERDICT_VERIFIED,
+    VERDICT_RESERVED,
+    VERDICT_UNKNOWN_ID,
+    VERDICT_ID_UNKNOWN_TO_SNAPSHOT,
+    SnapshotIntegrityError,
+    RegistrySnapshot,
+    compute_snapshot_sha256,
+)
+
+from .check import (
+    Verdict,
+    Violation,
+    CheckResult,
+    check,
+    check_p,
+    check_r,
 )
 
 __all__ = [
@@ -46,8 +67,23 @@ __all__ = [
     "ContextMismatchError",
     "RepresentationMismatchError",
     "DigestAlgorithmMismatchError",
+    "PurposeMismatchError",
     "make_typed_ref",
     "verify_typed_ref",
     "hex_to_raw",
     "raw_to_hex",
+    "VERDICT_VERIFIED",
+    "VERDICT_RESERVED",
+    "VERDICT_UNKNOWN_ID",
+    "VERDICT_ID_UNKNOWN_TO_SNAPSHOT",
+    "SnapshotIntegrityError",
+    "RegistrySnapshot",
+    "compute_snapshot_sha256",
+    # Grammar checker (Phase 1)
+    "Verdict",
+    "Violation",
+    "CheckResult",
+    "check",
+    "check_p",
+    "check_r",
 ]

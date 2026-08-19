@@ -1,0 +1,39 @@
+{
+  "id": "typed-ref-cpb01-02",
+  "description": "MUST-FAIL: digest_alg is inconsistent with the digest context registered for the artifact type. \u00a713.1 registers jcs-n with SHA-256. The reference carries digest_alg 'SHA-512' while carrying the correct SHA-256 derived identifier, so the digest comparison at step 4 succeeds and the reference still MUST NOT be reported as verified. The check that fails is the one that has no effect on the bytes, which is why nothing catches it by accident.",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 \u00a77.1 ('It MUST confirm that digest_alg identifies a hash algorithm consistent with that context.'), \u00a713.1 (jcs-n: 'RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex'), and \u00a77 (the digest_alg row: 'The canonicalization context of the cited artifact is resolved from its artifact type's registry entry (Section 13.2), not from this field.')",
+  "finding_class": "revision_uplift_gap",
+  "revision_note": "The reference library declares its target in lib/cpb/typed_ref.py line 4: 'Reference: draft-mih-sokolov-scitt-payload-binding-00 \u00a76' -00 \u00a77.1 requires the verifier to confirm that the carried IDENTIFIER is consistent with the established context; it says nothing about digest_alg. The digest_alg sentence is new in -01. So the library is conformant to the revision it targets and this is not a defect in it. It is what a -01 uplift has to add.",
+  "must_fail": true,
+  "failure_reason": "digest_alg_inconsistent_with_registered_context",
+  "artifact_type_registry_entry": {
+    "name": "authorization-doc",
+    "digest_context": "jcs-n; exclusion set {doc_id}; 64-char lowercase hex",
+    "algorithm": "jcs-n",
+    "exclusion_set": [
+      "doc_id"
+    ],
+    "representation": "bare_hex",
+    "hash_algorithm_registered_by_algorithm_entry": "SHA-256"
+  },
+  "cited_artifact": {
+    "payload": {
+      "doc_id": null,
+      "subject": "WS-42",
+      "scope": "temperature-write",
+      "issued_at": "2026-07-24T00:00:00Z"
+    },
+    "pre_image": "{\"issued_at\":\"2026-07-24T00:00:00Z\",\"scope\":\"temperature-write\",\"subject\":\"WS-42\"}",
+    "derived_id": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+  },
+  "typed_reference": {
+    "type": "authorization-doc",
+    "digest_alg": "SHA-512",
+    "digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+  },
+  "expected": {
+    "verified": false,
+    "reason": "digest_alg_inconsistent_with_registered_context"
+  },
+  "note_second_form": "The same missing check admits an unregistered algorithm name entirely. Measured on the same code path: 'SHA-512', 'not-a-hash-algorithm', 'MD5' and the empty string are all accepted. Recorded here rather than as four more vectors because it is one missing check, not four."
+}

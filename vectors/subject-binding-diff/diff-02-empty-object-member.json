@@ -1,0 +1,25 @@
+{
+  "id": "subject-binding-diff-02",
+  "diverge": true,
+  "description": "Action with an empty-object member. Composition 6.3.2 specifies SHA-256(JCS(action)) — plain RFC 8785 — which retains empty objects in the canonical form. Prior to the jcs registry entry, CPB's Canonicalization Algorithm Registry had no entry for that construction — only jcs-n, which removes empty-object members via the normalization pass (E3). The two constructions produce different bytes and different digests for the same action. Note that the jcs-n digest is identical to diff-01 (both actions strip to the same two-member object) while the plain-JCS digests differ — confirming that both sources of divergence are real and independent.",
+  "stakes_ref": "draft-mih-sokolov-scitt-payload-binding §13.1 (Canonicalization Algorithm Registry); draft-mih-sato-agent-accountability-composition §6.3.2",
+  "action": {
+    "task": "write-report",
+    "tags": {},
+    "device": "sensor-01"
+  },
+  "jcs": {
+    "algorithm": "RFC 8785 (plain JCS, no normalization pass)",
+    "spec_ref": "draft-mih-sato-agent-accountability-composition §6.3.2",
+    "pre_image": "{\"device\":\"sensor-01\",\"tags\":{},\"task\":\"write-report\"}",
+    "pre_image_bytes_hex": "7b22646576696365223a2273656e736f722d3031222c2274616773223a7b7d2c227461736b223a2277726974652d7265706f7274227d",
+    "digest": "0fdd12257dcbe7edffe732fb8014026f0d0b39abc0b21aa5e03725be9e493335"
+  },
+  "jcs_n": {
+    "algorithm": "jcs-n (RFC 8785 + null/empty-member normalization)",
+    "spec_ref": "draft-mih-sokolov-scitt-payload-binding §3.1 / §13",
+    "pre_image": "{\"device\":\"sensor-01\",\"task\":\"write-report\"}",
+    "pre_image_bytes_hex": "7b22646576696365223a2273656e736f722d3031222c227461736b223a2277726974652d7265706f7274227d",
+    "digest": "163468697dd1eca263fef4dc5311a0711eb32b8fcc4083b6447973b7f5b42a5d"
+  }
+}

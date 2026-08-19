@@ -1,0 +1,52 @@
+{
+  "id": "typed-ref-fail-05",
+  "description": "MUST-FAIL: digest_alg inconsistent with the referenced artifact type's registered canonicalization context. The typed reference carries the correct SHA-256 digest for the cited artifact under its jcs-n/authorization-doc context, but labels digest_alg with a hash algorithm other than the one that context actually uses. A verifier that recomputes and compares the digest bytes without independently confirming digest_alg would find the comparison succeeds and wrongly accept the reference.",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 \u00a77.1 ('It MUST use the `type` field to resolve the referenced artifact's registered digest context. It MUST confirm that `digest_alg` identifies a hash algorithm consistent with that context. It MUST then recompute the referenced artifact's digest under that context and compare the recomputed value with the value carried in the `digest` field.') together with \u00a713.1 (Canonicalization Algorithm Registry: jcs-n's registered hash algorithm is SHA-256).",
+  "must_fail": true,
+  "failure_reason": "digest_algorithm_inconsistent_with_context",
+  "cited_artifact": {
+    "type": "authorization-doc",
+    "registry_entry": {
+      "name": "authorization-doc",
+      "algorithm": "jcs-n",
+      "digest_context": "jcs-n; exclusion set {doc_id}; hash algorithm SHA-256 (per the jcs-n Algorithm Registry entry); 64-char lowercase hex",
+      "exclusion_set": [
+        "doc_id"
+      ]
+    },
+    "payload": {
+      "doc_id": null,
+      "subject": "WS-42",
+      "scope": "temperature-write",
+      "issued_at": "2026-07-24T00:00:00Z"
+    }
+  },
+  "correct_recomputed_digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb",
+  "typed_references_with_mislabeled_digest_alg": [
+    {
+      "digest_alg": "SHA-512",
+      "digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb",
+      "note": "Names a different, longer-digest hash algorithm; the carried digest is still the correct 32-byte SHA-256 value."
+    },
+    {
+      "digest_alg": "MD5",
+      "digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb",
+      "note": "Names a hash algorithm with a shorter native digest; the carried digest is still the correct SHA-256 value."
+    },
+    {
+      "digest_alg": "unregistered-alg-x",
+      "digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb",
+      "note": "Names a string that identifies no hash algorithm in any registry."
+    },
+    {
+      "digest_alg": "",
+      "digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb",
+      "note": "The empty string is not a valid hash-algorithm identifier."
+    }
+  ],
+  "verification": {
+    "note": "For every example above, the carried digest equals correct_recomputed_digest, so a verifier that only performs recompute-and-compare (skipping the digest_alg check) would find step 4's comparison succeeds and wrongly accept the reference. \u00a77.1 requires confirming digest_alg is consistent with the registered context's hash algorithm (SHA-256) BEFORE relying on that comparison. A conforming verifier MUST reject digest_alg values that do not name 'SHA-256' (case-insensitive) for a jcs-n-context reference, regardless of whether the carried digest bytes are otherwise correct.",
+    "result": "FAIL (for each of the four digest_alg examples above)"
+  },
+  "provenance": "Locally authored to close a revision-uplift gap: an earlier state of this library bound digest_alg into TypedRef without validating it, so SHA-512, MD5, an unregistered name, and the empty string were all wrongly accepted against a jcs-n entry as long as the carried digest bytes were correct. This vector is not a fold of any external vector file; no external source file has been verified for this vector."
+}

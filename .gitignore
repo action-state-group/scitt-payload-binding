@@ -1,7 +1,7 @@
-# Python bytecode and caches, repository-wide.
-# lib/.gitignore already covered the library; a .pyc from .github/ still slipped in.
+# Python bytecode — never tracked; see the .pyc pair that reached main in 097570a
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+
+# pytest / ruff
 .pytest_cache/
 .ruff_cache/

@@ -20,6 +20,8 @@
     "correct_derived_id_bare_hex": "2f9bba43e30273e2e87c7ef659a0f36f1e11f8e0c10489afe4d267c996505c37"
   },
   "typed_reference_with_wrong_representation": {
+    "type": "cpb-day2-artifact",
+    "digest_alg": "SHA-256",
     "digest": "2f9bba43e30273e2e87c7ef659a0f36f1e11f8e0c10489afe4d267c996505c37\n"
   },
   "note": "The first 64 characters are the correct digest; the realistic provenance is an identifier read from a file written by a shell redirect. This vector is also the regression test for the checker's own identifier grammar: with a ^...$ anchored pattern Python's $ matches before a trailing newline, so the checker itself would classify this carried representation as syntactically valid bare hex. The pattern must be anchored with backslash-A and backslash-Z."

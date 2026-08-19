@@ -1,0 +1,10 @@
+{
+  "id": "cpb-check-nonconforming-06",
+  "description": "R violation: float number token. Only integer-token form is permitted.",
+  "expected_verdict": "non-conforming",
+  "expected_violations": [
+    {"path": "$[\"amount\"]", "rule": "R"}
+  ],
+  "record_raw": "{\"type\":\"payment\",\"amount\":12.50,\"currency\":\"USD\"}",
+  "note": "12.50 is a float token. Must be represented as the exact decimal string \"12.50\" or an integer if no fractional part."
+}
