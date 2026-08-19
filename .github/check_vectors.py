@@ -123,6 +123,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import math
 import re
 import sys
 import unicodedata
@@ -221,6 +222,18 @@ def _jcs(obj: object) -> str:
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
 
 
+def _reject_json_constant(name: str) -> object:
+    """Refuse Infinity / -Infinity / NaN, which Python's json accepts by default.
+
+    RFC 8259 defines none of them, so a vector carrying one is not a JSON text
+    that another implementation would read at all.
+    """
+    raise ValueError(
+        f"JSON constant {name!r} is not valid JSON (RFC 8259 defines no such "
+        f"literal); a vector must not carry it"
+    )
+
+
 def _jcs_rfc8785(obj: object) -> str:
     """Plain RFC 8785 JCS — identical to _jcs() except floats are allowed.
 
@@ -258,6 +271,16 @@ def _jcs_rfc8785(obj: object) -> str:
                 f"in IEEE 754 double: {obj!r}"
             )
     if isinstance(obj, float):
+        # Non-finite first: json.dumps emits Infinity / -Infinity / NaN by default
+        # (allow_nan=True), none of which contain an 'e' or end in '.0', so the
+        # form guard below waved them through as a canonical pre-image. RFC 8785
+        # section 3.2.2.3 admits only finite values, and those three tokens are
+        # not JSON at all.
+        if not math.isfinite(obj):
+            raise ValueError(
+                f"non-finite number cannot appear in a canonical pre-image: {obj!r} "
+                f"(RFC 8785 section 3.2.2.3 admits finite values only)"
+            )
         s = json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
         if "e" in s or "E" in s or s.endswith(".0"):
             raise ValueError(
@@ -1971,9 +1994,17 @@ def check_vectors(root: Path) -> int:
     for vec_path in sorted(root.rglob("*.json")):
         raw = vec_path.read_text(encoding="utf-8")
         try:
-            v = json.loads(raw)
+            # parse_constant rejects the Infinity / -Infinity / NaN literals that
+            # Python accepts by default and RFC 8259 does not define. Without it a
+            # vector could carry a token no other JSON reader would accept, and the
+            # suite would happily compute a digest over it.
+            v = json.loads(raw, parse_constant=_reject_json_constant)
         except json.JSONDecodeError as exc:
             errors.append(f"{vec_path}: invalid JSON: {exc}")
+            failed += 1
+            continue
+        except ValueError as exc:
+            errors.append(f"{vec_path}: {exc}")
             failed += 1
             continue
 
