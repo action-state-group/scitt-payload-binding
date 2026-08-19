@@ -350,7 +350,62 @@ def _handle_duplicate_key(v: dict) -> None:
         json.loads(raw, object_pairs_hook=_no_dup_keys)
 
 
+def _handle_assembled_preimage_member_mapping_undeclared(v: dict) -> None:
+    """jcs-n-assembled-01: a declared field set does not determine the pre-image.
+
+    Executable form of the defect: both implementations carry exactly the values
+    found at the declared source paths, each once and nothing else, so each is a
+    conforming reading of the same declaration -- and the reference library
+    derives a different identifier from each. The library is correct in both
+    cases; it is the declaration that fails to pick one.
+    """
+    ctx = v["declared_digest_context"]
+    assert ctx.get("member_mapping") is None, (
+        "the absence of a member mapping is the condition under test"
+    )
+
+    source = v["source_object"]
+
+    def _resolve(pointer: str):
+        # RFC 6901, re-derived here rather than imported: a dotted path could not
+        # tell a literal member "a.b" from the nested one, and this suite is meant
+        # to be a second reading of the vector rather than a call into the checker.
+        assert pointer.startswith("/"), f"not a JSON Pointer: {pointer!r}"
+        cur = source
+        for token in pointer.split("/")[1:]:
+            cur = cur[token.replace("~1", "/").replace("~0", "~")]
+        return cur
+
+    # Compare values canonically, not by repr(): dict repr follows insertion
+    # order, so two equal objects that differ only in key order would compare
+    # unequal and the assertion would pass for the wrong reason.
+    def _canon(value) -> str:
+        return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+    selected = sorted(_canon(_resolve(p)) for p in v["selected_source_pointers"])
+
+    digests = []
+    for side in ("implementation_a", "implementation_b"):
+        assembled = v[side]["assembled"]
+        # Each side is a conforming reading: same values, once each, nothing else.
+        assert sorted(_canon(m) for m in assembled.values()) == selected, (
+            f"{side} is not a conforming reading of the declared field set"
+        )
+        got = canonical_digest(assembled)
+        assert got == v[side]["digest"], (
+            f"{side} digest drifted from the pinned value: {got} != {v[side]['digest']}"
+        )
+        digests.append(got)
+
+    assert digests[0] != digests[1], (
+        "no fork demonstrated: the declared field set did fix the bytes here"
+    )
+
+
 _HANDLERS = {
+    "assembled_preimage_member_mapping_undeclared": (
+        _handle_assembled_preimage_member_mapping_undeclared
+    ),
     "float_in_digest_bearing_field": _handle_float_in_digest_bearing_field,
     "unsafe_integer_in_digest_bearing_field": _handle_unsafe_integer_in_digest_bearing_field,
     "integer_formatting_divergence": _handle_integer_formatting_divergence,
@@ -460,3 +515,33 @@ def test_wire_layer_check_is_scoped_to_the_input_member() -> None:
         _json.loads(genuine), "scope-probe-2", [], raw_text=genuine, _probe_mutants=False
     )
     assert ok2, f"a genuine wire-layer rejection stopped being certified: {errors2}"
+
+
+def test_non_finite_numbers_never_become_a_canonical_pre_image() -> None:
+    """json.dumps emits Infinity / -Infinity / NaN by default, and none of those
+    contain an 'e' or end in '.0', so the float-form guard passed them straight
+    through as a canonical pre-image. RFC 8785 section 3.2.2.3 admits finite
+    values only, and those three tokens are not JSON at all.
+    """
+    import importlib.util
+    import math as _math
+    import pathlib as _pathlib
+
+    import pytest as _pytest
+
+    checker_path = _pathlib.Path(__file__).resolve().parents[2] / ".github" / "check_vectors.py"
+    spec = importlib.util.spec_from_file_location("_cv_finite", checker_path)
+    cv = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cv)
+
+    for bad in (_math.inf, -_math.inf, _math.nan):
+        with _pytest.raises(ValueError, match="non-finite"):
+            cv._jcs_rfc8785(bad)
+
+    # The one pinned float in the corpus still serializes.
+    assert cv._jcs_rfc8785(0.95) == "0.95"
+
+    # And a vector file carrying the literal is refused at load, not digested.
+    with _pytest.raises(ValueError, match="not valid JSON"):
+        import json as _json
+        _json.loads('{"x": Infinity}', parse_constant=cv._reject_json_constant)

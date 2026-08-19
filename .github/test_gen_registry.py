@@ -267,7 +267,11 @@ def test_artifact_type_status_is_validated_too():
 
 def test_committed_registry_passes_its_own_validation():
     data = gen_registry.generate(_REGISTRY_MD)
-    errors = gen_registry._validate_structure(data, gen_registry._parse_status_vocabulary(_MD_LINES))
+    errors = gen_registry._validate_structure(
+        data,
+        gen_registry._parse_status_vocabulary(_MD_LINES),
+        gen_registry._parse_legacy_rows(_MD_LINES),
+    )
     assert errors == [], errors
 
 
@@ -323,3 +327,44 @@ class TestMalformedRowsFailClosed:
         ]
         rows = gen_registry._parse_md_table(lines)
         assert rows == [{"name": "alg-x", "description": "fine"}]
+
+
+# ---------------------------------------------------------------------------
+# Legacy spellings are closed to new entries (#45).
+# ---------------------------------------------------------------------------
+
+def test_legacy_rows_are_a_closed_list_read_from_registry_md():
+    rows = gen_registry._parse_legacy_rows(_MD_LINES)
+    assert rows == {"jcs-n", "cde-n", "as-transmitted", "agent-action-capsule"}, rows
+
+
+def test_a_new_entry_cannot_use_a_legacy_spelling():
+    """The gap in #40: _normalize_status prefix-matches the legacy spellings, so
+    a NEW entry writing `Registered - owner-confirmed (thread)` normalized to
+    `Registered` and passed -- while the vocabulary requires its terms verbatim
+    and scopes the legacy ones to rows that predate it."""
+    legal = gen_registry._parse_status_vocabulary(_MD_LINES)
+    legacy = gen_registry._parse_legacy_rows(_MD_LINES)
+
+    def check(name, status, kind="canonicalization_algorithms"):
+        data = {
+            "schema_version": "1",
+            "snapshot_sha256": "0" * 64,
+            "canonicalization_algorithms": {},
+            "artifact_types": {},
+        }
+        entry = ({"description": "d", "reference": "r", "status": status}
+                 if kind == "canonicalization_algorithms"
+                 else {"reference": "r", "status": status, "digest_contexts": []})
+        data[kind][name] = entry
+        return gen_registry._validate_structure(data, legal, legacy)
+
+    assert any("legacy spelling" in e for e in check("brand-new-alg", "Registered")), \
+        "a new entry was allowed to use a legacy spelling"
+    assert check("jcs-n", "Registered") == [], \
+        "a row that predates the vocabulary must keep its spelling"
+    assert check("brand-new-alg", "owner-confirmed") == [], \
+        "a new entry using a vocabulary term verbatim must pass"
+    assert any("legacy spelling" in e for e in
+               check("brand-new-type", "Registered", "artifact_types")), \
+        "the same rule must bind artifact types"

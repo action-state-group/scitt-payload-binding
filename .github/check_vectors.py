@@ -78,6 +78,31 @@ For must_fail vectors — each MUST match at least one category (enforced):
      Letter reserved by Anton 2026-08-19: main owns A-J (through #31's diverge-vector
      category J); #16 takes K; this category takes L.
 
+  I. Assembled pre-image, member mapping undeclared: 'implementation_a' + 'implementation_b'
+     + 'declared_digest_context'
+     -> REQUIRES declared_digest_context.member_mapping to be absent or null (that absence
+        IS the condition under test; a vector carrying a mapping proves the opposite thing
+        and is a hard failure).  REQUIRES source_object + selected_source_pointers, and each
+        implementation to carry assembled/pre_image/pre_image_bytes_hex/digest.  Recompute
+        jcs_n over each 'assembled' and verify it equals that side's pinned pre_image, hex
+        and digest; assert the two pre_images AND the two digests differ (the fork is real);
+        assert BOTH assembled objects carry exactly the multiset of values found at
+        selected_source_pointers in source_object, each once and nothing else -- that is what
+        makes both of them conforming readings of the SAME declared field set, and without
+        it the vector would only show that two different objects hash differently.
+     SCOPE, stated so it is not mistaken for more: the conforming-reading test is against
+        the vector's own selected_source_pointers, NOT against a parse of the prose in
+        declared_digest_context.field_set, which is free text this checker does not read.
+        It also compares TOP-LEVEL member values, so it treats flat assembly as given and
+        would reject a nesting-preserving reading of the same field set.
+
+  J. Member-mapping derivation: 'declared_digest_context.member_mapping' non-null
+     -> REQUIRES source_object + 'input'.  Applies the mapping to source_object and asserts
+        the derived object equals 'input' exactly.  Runs for PASS vectors too, so the
+        "sufficient declaration" half of a pair is executed rather than asserted in prose;
+        a mapping naming an absent source path, writing a pre-image path twice, or yielding
+        a different object is a hard failure.
+
 A must_fail vector matching NONE of the above is a hard failure -- 'ran_any_check' is
 enforced.  A bare {'must_fail': true} fails the suite.
 
@@ -98,6 +123,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import math
 import re
 import sys
 import unicodedata
@@ -196,6 +222,18 @@ def _jcs(obj: object) -> str:
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
 
 
+def _reject_json_constant(name: str) -> object:
+    """Refuse Infinity / -Infinity / NaN, which Python's json accepts by default.
+
+    RFC 8259 defines none of them, so a vector carrying one is not a JSON text
+    that another implementation would read at all.
+    """
+    raise ValueError(
+        f"JSON constant {name!r} is not valid JSON (RFC 8259 defines no such "
+        f"literal); a vector must not carry it"
+    )
+
+
 def _jcs_rfc8785(obj: object) -> str:
     """Plain RFC 8785 JCS — identical to _jcs() except floats are allowed.
 
@@ -233,6 +271,16 @@ def _jcs_rfc8785(obj: object) -> str:
                 f"in IEEE 754 double: {obj!r}"
             )
     if isinstance(obj, float):
+        # Non-finite first: json.dumps emits Infinity / -Infinity / NaN by default
+        # (allow_nan=True), none of which contain an 'e' or end in '.0', so the
+        # form guard below waved them through as a canonical pre-image. RFC 8785
+        # section 3.2.2.3 admits only finite values, and those three tokens are
+        # not JSON at all.
+        if not math.isfinite(obj):
+            raise ValueError(
+                f"non-finite number cannot appear in a canonical pre-image: {obj!r} "
+                f"(RFC 8785 section 3.2.2.3 admits finite values only)"
+            )
         s = json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
         if "e" in s or "E" in s or s.endswith(".0"):
             raise ValueError(
@@ -553,6 +601,25 @@ def _mutant_L(v: dict) -> dict | None:
     return m
 
 
+def _mutant_K(v: dict) -> dict | None:
+    """Collapse implementation B onto A: the declared field set now DOES fix
+    the bytes, so the vector demonstrates nothing and Category K must flip to
+    failure.
+    """
+    m = copy.deepcopy(v)
+    impl_a = m.get("implementation_a")
+    impl_b = m.get("implementation_b")
+    if not impl_a or not impl_b:
+        return None
+    # Collapse B onto A: the declared field set now DOES fix the bytes, so the
+    # vector demonstrates nothing and the checker must flip to failure.
+    for key in ("assembled", "pre_image", "pre_image_bytes_hex", "digest"):
+        if key not in impl_a:
+            return None
+        impl_b[key] = copy.deepcopy(impl_a[key])
+    return m
+
+
 _MUTANT_GENERATORS: dict[str, object] = {
     "A": _mutant_A,
     "B": _mutant_B,
@@ -561,8 +628,165 @@ _MUTANT_GENERATORS: dict[str, object] = {
     "G": _mutant_G,
     "H": _mutant_H,
     "I": _mutant_I,
+    "K": _mutant_K,
     "L": _mutant_L,
 }
+
+
+def _unescape_pointer_token(token: str) -> str:
+    """RFC 6901 section 3/4: the only escapes are ~0 and ~1, and ~1 unescapes first.
+
+    A bare `~`, or `~` followed by anything other than 0 or 1, is not valid pointer
+    syntax.  A plain str.replace() silently passes those through as literal text, so
+    `/a~2b` would address a member named "a~2b" that RFC 6901 cannot name at all.
+    Validate before unescaping, and the order of the two replacements stays normative.
+    """
+    i = 0
+    while i < len(token):
+        if token[i] == "~":
+            if i + 1 >= len(token) or token[i + 1] not in "01":
+                found = token[i:i + 2] if i + 1 < len(token) else "~ at end of token"
+                raise ValueError(
+                    f"invalid RFC 6901 escape {found!r} in reference token {token!r}: "
+                    "the only valid escapes are ~0 and ~1"
+                )
+            i += 2
+            continue
+        i += 1
+    return token.replace("~1", "/").replace("~0", "~")
+
+
+def _parse_json_pointer(pointer: str) -> list[str]:
+    """Parse an RFC 6901 JSON Pointer into reference tokens.
+
+    Dotted paths were ambiguous: with a source object of {"a.b": 1, "a": {"b": 2}},
+    "a.b" named both the literal top-level member and the nested one, and the literal
+    member could not be addressed at all.  A JSON Pointer distinguishes them as
+    "/a.b" and "/a/b".
+    """
+    if not isinstance(pointer, str):
+        raise ValueError(f"JSON Pointer must be a string, got {type(pointer).__name__}")
+    if pointer == "":
+        raise ValueError("the empty JSON Pointer addresses the whole document; name a member")
+    if not pointer.startswith("/"):
+        raise ValueError(f"JSON Pointer must start with '/': {pointer!r}")
+    return [_unescape_pointer_token(t) for t in pointer.split("/")[1:]]
+
+
+def _resolve_source_pointer(obj: dict, pointer: str):
+    """Resolve an RFC 6901 pointer against a source object.
+
+    Raises KeyError if any token is missing, so a vector naming a member the
+    source object does not have is a hard failure rather than a silent skip.
+    Object members only: arrays are out of scope for this template element, and a
+    numeric token against a list is rejected rather than guessed at.
+    """
+    cur = obj
+    for token in _parse_json_pointer(pointer):
+        if isinstance(cur, list):
+            raise ValueError(
+                f"{pointer!r} traverses an array; array members are out of scope for member_mapping"
+            )
+        if not isinstance(cur, dict) or token not in cur:
+            raise KeyError(pointer)
+        cur = cur[token]
+    return cur
+
+
+def _check_destination_collisions(destinations: list[str]) -> None:
+    """Every destination shares one namespace, whatever produced it.
+
+    Three collisions are rejected, and constants and fields are checked together
+    because a constant colliding with a field is the same defect as two fields
+    colliding.
+    """
+    parsed = [(d, _parse_json_pointer(d)) for d in destinations]
+    for i, (ptr_a, toks_a) in enumerate(parsed):
+        for ptr_b, toks_b in parsed[i + 1:]:
+            if toks_a == toks_b:
+                raise ValueError(f"member_mapping writes {ptr_a!r} twice")
+            shorter, longer = sorted((toks_a, toks_b), key=len)
+            if longer[: len(shorter)] == shorter:
+                raise ValueError(
+                    f"member_mapping destinations collide: {ptr_a!r} and {ptr_b!r} "
+                    "(one is an ancestor of the other)"
+                )
+
+
+def _apply_member_mapping(source: dict, mapping: dict) -> dict:
+    """Derive the assembled pre-image object from a source object and a mapping.
+
+    The mapping is a function from source pointers to pre-image pointers, plus
+    constants that are not source fields at all.  Applying it must yield exactly
+    one object, which is the whole point of declaring it.
+    """
+    fields = mapping.get("fields") or []
+    constants = mapping.get("constants") or []
+    _check_destination_collisions(
+        [f["preimage_pointer"] for f in fields] + [c["preimage_pointer"] for c in constants]
+    )
+
+    out: dict = {}
+    for dest, value in (
+        [(f["preimage_pointer"], _resolve_source_pointer(source, f["source_pointer"])) for f in fields]
+        + [(c["preimage_pointer"], c["value"]) for c in constants]
+    ):
+        tokens = _parse_json_pointer(dest)
+        cur = out
+        for token in tokens[:-1]:
+            nxt = cur.setdefault(token, {})
+            if not isinstance(nxt, dict):
+                raise ValueError(f"member_mapping writes through a non-object at {dest!r}")
+            cur = nxt
+        cur[tokens[-1]] = value
+    return out
+
+
+_ABSENT = object()
+
+
+def _check_member_mapping_derivation(v: dict) -> list[str]:
+    """Category K: a declared member mapping MUST derive the vector's `input`.
+
+    Without this, a vector could declare a mapping naming a nonexistent source
+    path, or one producing a different object, and still pass every other check
+    -- the declaration would be prose the suite never reads.
+    """
+    ctx = v.get("declared_digest_context") or {}
+    # A sentinel, not None: JSON `null` deserializes to None, so testing `is None`
+    # made an explicitly declared null mapping indistinguishable from no mapping at
+    # all -- the same bypass as `member_mapping: {}`, one notch narrower. Absence is
+    # the key not being there; anything present, null included, is a declaration and
+    # must derive `input`.
+    mapping = ctx.get("member_mapping", _ABSENT)
+    if mapping is _ABSENT:
+        return []
+    if mapping is None:
+        return ["member_mapping is declared as null; a declared mapping MUST name at "
+                "least one field or constant, or the key must be absent"]
+    if not isinstance(mapping, dict):
+        return [f"member_mapping must be an object, got {type(mapping).__name__}"]
+    if not (mapping.get("fields") or mapping.get("constants")):
+        return ["declared member_mapping is empty; a declared mapping MUST name at least "
+                "one field or constant, or be absent"]
+    source = v.get("source_object")
+    if not isinstance(source, dict):
+        return ["declared member_mapping but no source_object to apply it to"]
+    if "input" not in v:
+        return ["declared member_mapping but no `input` to derive"]
+    try:
+        derived = _apply_member_mapping(source, mapping)
+    except KeyError as exc:
+        return [f"member_mapping names a source path absent from source_object: {exc}"]
+    except Exception as exc:
+        return [f"member_mapping could not be applied: {exc!r}"]
+    if _jcs(derived) != _jcs(v["input"]):
+        return [
+            "applying member_mapping to source_object does not yield `input`\n"
+            f"  derived: {_jcs(derived)}\n"
+            f"  input:   {_jcs(v['input'])}"
+        ]
+    return []
 
 
 # ---------------------------------------------------------------------------
@@ -795,6 +1019,91 @@ def _exercise_must_fail(
                         )
                 except Exception as exc:
                     vec_errors.append(f"{art_key}: jcs_n_pre_image raised: {exc!r}")
+
+    # K. Assembled pre-image with no declared member mapping
+    if "implementation_a" in v and "implementation_b" in v and "declared_digest_context" in v:
+        ran_any_check = True
+        categories_fired.append("K")
+        ctx = v.get("declared_digest_context") or {}
+        source_object = v.get("source_object")
+        selected = v.get("selected_source_pointers")
+
+        if ctx.get("member_mapping") is not None:
+            vec_errors.append(
+                "Category I vector declares a member_mapping — the absence of the "
+                "mapping IS the condition under test, so a vector carrying one "
+                "demonstrates the opposite property"
+            )
+        if not isinstance(source_object, dict) or not selected:
+            vec_errors.append(
+                "Category I vector missing source_object/selected_source_pointers — "
+                "without them there is no way to check that both implementations "
+                "satisfy the SAME declared field set"
+            )
+        else:
+            try:
+                want = sorted(
+                    _jcs(_resolve_source_pointer(source_object, p)) for p in selected
+                )
+            except KeyError as exc:
+                want = None
+                vec_errors.append(
+                    f"selected_source_pointers names a pointer absent from source_object: {exc}"
+                )
+
+            sides = {}
+            for side in ("implementation_a", "implementation_b"):
+                impl = v.get(side) or {}
+                missing = [
+                    k for k in ("assembled", "pre_image", "pre_image_bytes_hex", "digest")
+                    if k not in impl
+                ]
+                if missing:
+                    vec_errors.append(f"{side} missing required field(s): {missing}")
+                    continue
+                try:
+                    computed = _jcs(impl["assembled"])
+                except Exception as exc:
+                    vec_errors.append(f"{side}: jcs raised: {exc!r}")
+                    continue
+                if computed != impl["pre_image"]:
+                    vec_errors.append(
+                        f"{side} pre_image != recomputed canonical form\n"
+                        f"  expected: {impl['pre_image']!r}\n"
+                        f"  got:      {computed!r}"
+                    )
+                if computed.encode("utf-8").hex() != impl["pre_image_bytes_hex"]:
+                    vec_errors.append(f"{side} pre_image_bytes_hex does not encode pre_image")
+                got = _sha256_hex(computed)
+                if got != impl["digest"]:
+                    vec_errors.append(
+                        f"{side} digest mismatch\n"
+                        f"  expected: {impl['digest']}\n  got:      {got}"
+                    )
+                if want is not None:
+                    have = sorted(_jcs(m) for m in impl["assembled"].values())
+                    if have != want:
+                        vec_errors.append(
+                            f"{side} does not carry exactly the selected source values, "
+                            f"each once and nothing else — it is not a conforming reading "
+                            f"of the declared field set, so the fork it shows is not the "
+                            f"one this category is about"
+                        )
+                sides[side] = impl
+
+            if len(sides) == 2:
+                a_impl, b_impl = sides["implementation_a"], sides["implementation_b"]
+                if a_impl["pre_image"] == b_impl["pre_image"]:
+                    vec_errors.append(
+                        "implementation_a.pre_image == implementation_b.pre_image — "
+                        "no divergence demonstrated; the declared field set does fix "
+                        "the bytes for this pair"
+                    )
+                if a_impl["digest"] == b_impl["digest"]:
+                    vec_errors.append(
+                        "implementation_a.digest == implementation_b.digest — no digest "
+                        "fork demonstrated"
+                    )
 
     # G. Cited-artifact derived-id: recompute AND assert carried representation is REJECTED
     cited = v.get("cited_artifact", {})
@@ -1552,6 +1861,119 @@ def _run_self_tests() -> None:
             "float direction (jcs.digest == jcs_n.digest but exerciser accepted)"
         )
 
+    # Category K: a mapping that does not derive `input` MUST be rejected.
+    _k_good = {
+        "declared_digest_context": {"member_mapping": {
+            "fields": [{"source_pointer": "/a/b", "preimage_pointer": "/x"}],
+            "constants": [{"preimage_pointer": "/k", "value": "v"}],
+        }},
+        "source_object": {"a": {"b": 1}},
+        "input": {"x": 1, "k": "v"},
+    }
+    if _check_member_mapping_derivation(_k_good):
+        errors.append("SELF-TEST FAIL: a correct member_mapping derivation was rejected")
+    _k_bad = copy.deepcopy(_k_good)
+    _k_bad["declared_digest_context"]["member_mapping"]["fields"][0]["preimage_pointer"] = "/WRONG"
+    if not _check_member_mapping_derivation(_k_bad):
+        errors.append(
+            "SELF-TEST FAIL: a member_mapping that does not derive `input` was accepted "
+            "-- Category K is assertion-free"
+        )
+    _k_absent = copy.deepcopy(_k_good)
+    _k_absent["declared_digest_context"]["member_mapping"]["fields"][0]["source_pointer"] = "/a/nope"
+    if not _check_member_mapping_derivation(_k_absent):
+        errors.append(
+            "SELF-TEST FAIL: a member_mapping naming an absent source pointer was accepted"
+        )
+
+    # An empty declared mapping is DECLARED, not absent.  With a falsy absence test this
+    # returned no errors and skipped Category K entirely, so a vector could declare a
+    # mapping and derive nothing.
+    _k_empty = {
+        "declared_digest_context": {"member_mapping": {}},
+        "source_object": {"a": 1},
+        "input": {"wrong": 2},
+    }
+    if not _check_member_mapping_derivation(_k_empty):
+        errors.append(
+            "SELF-TEST FAIL: `member_mapping: {}` was treated as absent -- an empty declared "
+            "mapping bypasses Category K"
+        )
+    for _empty in ({"fields": []}, {"constants": []}, {"fields": [], "constants": []}):
+        _k_e = copy.deepcopy(_k_empty)
+        _k_e["declared_digest_context"]["member_mapping"] = _empty
+        if not _check_member_mapping_derivation(_k_e):
+            errors.append(f"SELF-TEST FAIL: declared but empty mapping {_empty} bypassed Category K")
+    _k_null = copy.deepcopy(_k_good)
+    _k_null["declared_digest_context"]["member_mapping"] = None
+    if not _check_member_mapping_derivation(_k_null):
+        errors.append(
+            "SELF-TEST FAIL: `member_mapping: null` was treated as absent -- JSON null "
+            "deserializes to None, so an explicitly declared null mapping derived nothing "
+            "and skipped Category K entirely"
+        )
+    _k_gone = copy.deepcopy(_k_good)
+    _k_gone["declared_digest_context"].pop("member_mapping", None)
+    if _check_member_mapping_derivation(_k_gone):
+        errors.append(
+            "SELF-TEST FAIL: an absent member_mapping was rejected -- absence is the "
+            "condition Category K vectors exist to document"
+        )
+    _k_type = copy.deepcopy(_k_empty)
+    _k_type["declared_digest_context"]["member_mapping"] = []
+    if not _check_member_mapping_derivation(_k_type):
+        errors.append("SELF-TEST FAIL: a non-object member_mapping was accepted")
+    _k_none = copy.deepcopy(_k_good)
+    _k_none["declared_digest_context"].pop("member_mapping")
+    if _check_member_mapping_derivation(_k_none):
+        errors.append("SELF-TEST FAIL: an ABSENT member_mapping was treated as declared")
+
+    # RFC 6901: the literal member "a.b" and the nested one are different addresses.
+    _amb = {"a.b": 1, "a": {"b": 2}}
+    if _resolve_source_pointer(_amb, "/a.b") != 1 or _resolve_source_pointer(_amb, "/a/b") != 2:
+        errors.append("SELF-TEST FAIL: JSON Pointer does not separate a literal dot from nesting")
+    for _bad_ptr in ("a/b", "", "a.b"):
+        try:
+            _parse_json_pointer(_bad_ptr)
+        except ValueError:
+            pass
+        else:
+            errors.append(f"SELF-TEST FAIL: {_bad_ptr!r} was accepted as a JSON Pointer")
+    if _resolve_source_pointer({"a/b": 1}, "/a~1b") != 1 or _resolve_source_pointer({"a~b": 1}, "/a~0b") != 1:
+        errors.append("SELF-TEST FAIL: RFC 6901 ~1/~0 escaping is not honoured")
+    for _bad_esc in ("/a~2b", "/a~", "/~", "/a~b", "/a~~0b"):
+        try:
+            _parse_json_pointer(_bad_esc)
+        except ValueError:
+            pass
+        else:
+            errors.append(
+                f"SELF-TEST FAIL: {_bad_esc!r} was accepted; only ~0 and ~1 are valid escapes"
+            )
+    _k_bad_esc = copy.deepcopy(_k_good)
+    _k_bad_esc["declared_digest_context"]["member_mapping"]["fields"][0]["source_pointer"] = "/a~2b"
+    if not _check_member_mapping_derivation(_k_bad_esc):
+        errors.append("SELF-TEST FAIL: a mapping using an invalid tilde escape was accepted")
+
+    # Destination collisions, all three kinds, constants and fields in one namespace.
+    for _dests in (["/x", "/x"], ["/a", "/a/b"], ["/a/b", "/a"]):
+        try:
+            _check_destination_collisions(_dests)
+        except ValueError:
+            pass
+        else:
+            errors.append(f"SELF-TEST FAIL: colliding destinations {_dests} were accepted")
+    _k_const_clash = copy.deepcopy(_k_good)
+    _k_const_clash["declared_digest_context"]["member_mapping"]["constants"][0]["preimage_pointer"] = "/x"
+    if not _check_member_mapping_derivation(_k_const_clash):
+        errors.append("SELF-TEST FAIL: a constant colliding with a field destination was accepted")
+    try:
+        _resolve_source_pointer({"a": [1, 2]}, "/a/0")
+    except ValueError:
+        pass
+    else:
+        errors.append("SELF-TEST FAIL: an array traversal was accepted; arrays are out of scope")
+
     if errors:
         print("SELF-TEST FAILURES:")
         for e in errors:
@@ -1572,9 +1994,17 @@ def check_vectors(root: Path) -> int:
     for vec_path in sorted(root.rglob("*.json")):
         raw = vec_path.read_text(encoding="utf-8")
         try:
-            v = json.loads(raw)
+            # parse_constant rejects the Infinity / -Infinity / NaN literals that
+            # Python accepts by default and RFC 8259 does not define. Without it a
+            # vector could carry a token no other JSON reader would accept, and the
+            # suite would happily compute a digest over it.
+            v = json.loads(raw, parse_constant=_reject_json_constant)
         except json.JSONDecodeError as exc:
             errors.append(f"{vec_path}: invalid JSON: {exc}")
+            failed += 1
+            continue
+        except ValueError as exc:
+            errors.append(f"{vec_path}: {exc}")
             failed += 1
             continue
 
@@ -1591,6 +2021,15 @@ def check_vectors(root: Path) -> int:
                     + "\n".join(f"  {e}" for e in vec_errors)
                 )
                 failed += 1
+
+        # J. Member-mapping derivation.  Runs for ANY vector (pass or must_fail)
+        # that declares a mapping, so the "here is the sufficient declaration"
+        # half of a pair is executed rather than asserted in prose.
+        map_errs = _check_member_mapping_derivation(v)
+        if map_errs:
+            for e in map_errs:
+                errors.append(f"FAIL {vid} (member-mapping derivation): {e}")
+            failed += 1
             continue
 
         if v.get("must_fail"):
