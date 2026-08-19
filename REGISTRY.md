@@ -251,7 +251,8 @@ normative definition, not invented for this row.
 
 **Owner:** Anton Sokolov, Tyche Institute
 **Reference:** `tyche-institute/machine-mandate` @ `524e6a3129b7f1ab850dd9471967458d3cb6f4cd`
-**Status:** Registered — owner-confirmed (PR #4 thread, 2026-08-09 and 2026-08-13); second Artifact Type Registry entry
+**Status:** owner-confirmed
+**Provenance:** confirmed by the owner in the PR #4 thread (2026-08-09 and 2026-08-13); the second Artifact Type Registry entry.
 **Disclosure:** the owner is a co-author of the CPB draft and a co-editor of this registry; this entry is owner-authored and is not independent or third-party validation.
 
 | Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |

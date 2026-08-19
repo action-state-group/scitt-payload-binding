@@ -20,6 +20,11 @@
       "description": "No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex",
       "reference": "draft-mih-sokolov-scitt-payload-binding",
       "status": "Registered"
+    },
+    "json-sk-cp": {
+      "description": "RFC 8785 subset. Object members serialized in ascending key order by Unicode code point; no insignificant whitespace; UTF-8 encoding; no member removal (null, empty array and empty object members are retained and serialized); numbers restricted to integers, since ES6 number formatting per RFC 8785 \u00a73.2.2 is not implemented. Digest: SHA-256. Representation: lowercase hex.",
+      "reference": "draft-mih-sokolov-scitt-payload-binding (registration text: Anton Sokolov, Tyche Institute)",
+      "status": "Registered"
     }
   },
   "artifact_types": {
@@ -38,7 +43,33 @@
           "representation": "64-char lowercase hex"
         }
       ]
+    },
+    "machine-mandate": {
+      "reference": "tyche-institute/machine-mandate @ 524e6a3129b7f1ab850dd9471967458d3cb6f4cd",
+      "status": "owner-confirmed",
+      "digest_contexts": [
+        {
+          "purpose": "identifier",
+          "profile_version": "N/A",
+          "algorithm": "as-transmitted",
+          "field_set": "byte-boundary selector \u2014 the issuer-signed JWS component of the SD-JWT (RFC 7515 \u00a77.1 compact serialization; the first ~-separated component exactly as transmitted); everything after the first ~ is outside the pre-image",
+          "exclusion_set": "N/A (as-transmitted has no field set)",
+          "domain_separation": "none",
+          "pre_image_encoding": "N/A (no separate encoding step)",
+          "representation": "bare 64-char lowercase hex"
+        },
+        {
+          "purpose": "equivalence",
+          "profile_version": "N/A",
+          "algorithm": "json-sk-cp",
+          "field_set": "{action_id, outcome}, closed",
+          "exclusion_set": "none",
+          "domain_separation": "none",
+          "pre_image_encoding": "json-sk-cp UTF-8 octets (per json-sk-cp)",
+          "representation": "sha256: + 64-char lowercase hex, as carried in the in-document action_hash claim"
+        }
+      ]
     }
   },
-  "snapshot_sha256": "fa1055bec7e3849d8df032b125447be0eec9fdf1af7b91d4c10cd04f6a5aa048"
+  "snapshot_sha256": "7b455318b5dc821a40b683a2ed6b3ba6e41973cb6b205625821fe7e78752cc3c"
 }
