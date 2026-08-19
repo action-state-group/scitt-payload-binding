@@ -1,5 +1,5 @@
 {
-  "id": "jcs-n-kat-24",
+  "id": "jcs-n-kat-31",
   "description": "Nested tool schema: JSON Schema structure as a payload. JCS sorts all object keys at every level by UTF-16 code unit order. The canonical form here has 'input_schema' before 'name' at the 'tool' level (because 'i' < 'n'), and within 'input_schema', 'properties' before 'type' (because 'p' < 't'). Nested schemas are common in tool-use records; this vector pins the sort behavior across schema vocabulary keys.",
   "algorithm": "jcs-n",
   "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1",

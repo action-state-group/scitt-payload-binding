@@ -1,5 +1,5 @@
 {
-  "id": "jcs-n-kat-26",
+  "id": "jcs-n-kat-33",
   "description": "Safe integer boundary: both Number.MAX_SAFE_INTEGER (2^53 - 1 = 9007199254740991) and its negation are exactly representable in IEEE 754 double and therefore permitted by §3.1. JCS serializes them as their full decimal string without scientific notation. This vector is the PASS complement of kat-17 (MUST-FAIL for integers outside this range): an implementation that rejects all large integers is incorrect.",
   "algorithm": "jcs-n",
   "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1",

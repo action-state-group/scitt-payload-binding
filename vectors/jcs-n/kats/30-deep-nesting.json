@@ -1,5 +1,5 @@
 {
-  "id": "jcs-n-kat-23",
+  "id": "jcs-n-kat-30",
   "description": "Deep nesting (4 levels): absent-field normalization and JCS key ordering apply at every nesting level. The pre-image is produced bottom-up: inner objects are normalized first, then their parents. This demonstrates that the bottom-up rule is not depth-limited.",
   "algorithm": "jcs-n",
   "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1",

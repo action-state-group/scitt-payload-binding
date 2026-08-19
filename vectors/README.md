@@ -96,11 +96,15 @@ Each vector is a self-contained JSON object. Common fields:
 | jcs-n-esc-uppercase-contrast | MUST-FAIL: `\u001B` (uppercase B) is non-conforming; pins correct and wrong digests for harness check | — |
 | jcs-n-tab-long-form-contrast | MUST-FAIL: `\u0009` instead of `\t` is non-conforming; pins correct and wrong digests | — |
 | jcs-n-control-key-escaped-sort-contrast | MUST-FAIL: sorting keys by escaped bytes is wrong; pins correct (code-unit) and wrong (escaped) digests | — |
-| jcs-n-kat-23 | 4-level deep nesting | `27e20f85...` |
-| jcs-n-kat-24 | Nested tool schema (JSON Schema vocabulary) | `ca37149a...` |
-| jcs-n-kat-25 | MUST-FAIL: exponent notation (`1e2`) | — |
-| jcs-n-kat-26 | `{"count":9007199254740991,"limit":-9007199254740991}` — max safe integer boundary | `00eac020...` |
-| jcs-n-kat-27 | 13-field mixed-type payload | `cb6f355c...` |
+| jcs-n-kat-30 | 4-level deep nesting | `27e20f85...` |
+| jcs-n-kat-31 | Nested tool schema (JSON Schema vocabulary) | `ca37149a...` |
+| jcs-n-kat-32 | MUST-FAIL: exponent notation (`1e2`) | — |
+| jcs-n-kat-33 | `{"count":9007199254740991,"limit":-9007199254740991}` — max safe integer boundary | `00eac020...` |
+| jcs-n-kat-34 | 13-field mixed-type payload | `cb6f355c...` |
+| jcs-n-kat-35 | MUST-FAIL: `-0` token rejected by the wire rule `(0|-?[1-9][0-9]*)` | — |
+| jcs-n-kat-36 | `{"count":0}` — integer zero (token `0`) is a valid wire value | `618de7d9...` |
+| jcs-n-kat-37 | MUST-FAIL: duplicate key `a` after NFC normalization | — |
+| jcs-n-kat-38 | Control characters ESC (U+001B) and HT (U+0009) escaped as `\u001b` / `\t` | `d149a22a...` |
 
 **E3 boundary group** (KATs 02–07): null, empty array, empty object, absent
 field, nested-null, and nested-empty-array (bottom-up) all produce the same

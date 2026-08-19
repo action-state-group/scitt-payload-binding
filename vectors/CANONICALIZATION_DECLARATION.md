@@ -210,7 +210,7 @@ A conforming test suite MUST demonstrate that each of the following inputs is re
 
 2. **Float in a digest-bearing field** — A JSON float (e.g. `12.50`, `1e2`) in any
    member of the input MUST cause the implementation to signal an error rather than
-   produce a digest.  (Vectors `jcs-n-kat-10`, `jcs-n-kat-24`.)
+   produce a digest.  (Vectors `jcs-n-kat-10`, `jcs-n-kat-32`.)
 
 3. **Missing algorithm identifier** — A digest that is not accompanied by an algorithm
    identifier is ambiguous: a second implementation cannot reproduce the pre-image
@@ -226,10 +226,10 @@ A conforming test suite MUST demonstrate that each of the following inputs is re
    `jcs-n-kat-20`, `jcs-n-kat-21`, `typed-ref-fail-03`.)
 
 6. **Negative zero (`-0`)** — The wire token `-0` MUST be rejected even though many
-   parsers silently normalize it to `0`. (Vector `jcs-n-kat-28`.)
+   parsers silently normalize it to `0`. (Vector `jcs-n-kat-35`.)
 
 7. **Duplicate keys** — An input JSON with duplicate keys MUST be rejected, detected
-   after NFC normalization of key strings. (Vector `jcs-n-kat-30`.)
+   after NFC normalization of key strings. (Vector `jcs-n-kat-37`.)
 
 ---
 

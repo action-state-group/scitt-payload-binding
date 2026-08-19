@@ -1,5 +1,5 @@
 {
-  "id": "jcs-n-kat-25",
+  "id": "jcs-n-kat-32",
   "description": "MUST-FAIL: exponent notation in a digest-bearing field. The value 1e2 is a JSON floating-point number (type 'float' in Python). §3.1 prohibits floats in digest-bearing fields — quantity values MUST be exact decimal strings. An implementation that silently coerces 1e2 to the integer 100 and continues is non-conforming: the pre-image would differ from an implementation that rejects, making the digest non-reproducible. Split from kat-10 (which uses 12.50) to separately pin the exponent case; an implementation might tolerate exponents while rejecting fractional-part floats.",
   "algorithm": "jcs-n",
   "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1",

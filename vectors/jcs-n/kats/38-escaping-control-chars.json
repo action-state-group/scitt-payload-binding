@@ -1,5 +1,5 @@
 {
-  "id": "jcs-n-kat-31",
+  "id": "jcs-n-kat-38",
   "algorithm": "jcs-n",
   "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 §7",
   "description": "PASS: control characters (ESC U+001B and HT U+0009) must be escaped as \\u001b and \\t in the pre-image",

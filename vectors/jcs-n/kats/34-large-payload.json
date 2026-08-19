@@ -1,5 +1,5 @@
 {
-  "id": "jcs-n-kat-27",
+  "id": "jcs-n-kat-34",
   "description": "Large payload: 13 top-level fields of mixed types. JCS sorts all 13 keys by UTF-16 code unit order and produces a single flat canonical form. Boolean values and nested objects are included. This exercises the full member-sort path at scale and demonstrates that absent-field normalization is applied to the nested 'filters' object before the outer sort.",
   "algorithm": "jcs-n",
   "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1",

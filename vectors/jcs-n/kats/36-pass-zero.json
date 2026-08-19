@@ -1,5 +1,5 @@
 {
-  "id": "jcs-n-kat-29",
+  "id": "jcs-n-kat-36",
   "algorithm": "jcs-n",
   "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 §7",
   "description": "PASS: integer zero (token '0') is a valid wire value",

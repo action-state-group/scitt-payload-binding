@@ -284,7 +284,6 @@ def _handle_invalid_wire_number_token(v: dict) -> None:
     is a wire-level gate that must be applied to the raw text.  We verify
     that the raw vector text fails the strict wire-rule parse."""
     import re as _re
-    import unicodedata as _ud
 
     _WIRE_NUMBER_RE = _re.compile(r'^(0|-?[1-9][0-9]*)$')
     _SAFE_INT_MAX = (1 << 53) - 1

@@ -189,6 +189,56 @@ def _reference_impl_main() -> int:
 # verify-impl mode: run external command against our vectors
 # ---------------------------------------------------------------------------
 
+_span_decoder = json.JSONDecoder()
+
+
+def _top_level_member_spans(text: str) -> dict[str, str]:
+    """Return, for each top-level object member in *text*, the RAW JSON text
+    of its value -- a literal substring of *text*, never a re-serialization.
+
+    Uses JSONDecoder.raw_decode only to locate where each value ends; the
+    parsed value it returns is discarded, so number tokens like "-0" and
+    escaped-string content are never round-tripped through json.dumps.
+    Duplicate keys are last-wins, matching json.loads.  This is what D4's
+    field-stripping needs: build a smaller object without ever parsing +
+    re-serializing the fields that survive (the exact bug D1 reintroduced).
+    """
+    spans: dict[str, str] = {}
+    n = len(text)
+
+    def _skip_ws(i: int) -> int:
+        while i < n and text[i] in " \t\n\r":
+            i += 1
+        return i
+
+    p = _skip_ws(0)
+    if p >= n or text[p] != "{":
+        raise ValueError("expected top-level object")
+    p = _skip_ws(p + 1)
+    if p < n and text[p] == "}":
+        return spans
+    while True:
+        p = _skip_ws(p)
+        key, p = _span_decoder.raw_decode(text, p)
+        if not isinstance(key, str):
+            raise ValueError(f"expected string key at position {p}")
+        p = _skip_ws(p)
+        if p >= n or text[p] != ":":
+            raise ValueError(f"expected ':' at position {p}")
+        p = _skip_ws(p + 1)
+        value_start = p
+        _, value_end = _span_decoder.raw_decode(text, p)
+        spans[key] = text[value_start:value_end]
+        p = _skip_ws(value_end)
+        if p < n and text[p] == ",":
+            p += 1
+            continue
+        if p < n and text[p] == "}":
+            break
+        raise ValueError(f"expected ',' or '}}' at position {p}")
+    return spans
+
+
 def _run_command(command: str, vector_json: str) -> tuple[int, str, str]:
     """Run command with vector_json on stdin.  Returns (exit_code, stdout, stderr)."""
     try:
@@ -234,9 +284,15 @@ def verify_impl(command: str, root: Path) -> int:
             continue
 
         if is_algo_rejection:
-            stripped = {k: w for k, w in v.items()
-                        if k in ("input", "exclusion_set", "algorithm")}
-            vector_json_to_send = json.dumps(stripped)
+            # D1 survives inside D4 if this rebuilds the stripped object from
+            # `v` (already collapsed by the plain json.loads() above) and
+            # re-serializes it: -0 becomes 0 and duplicate keys collapse
+            # before the external impl ever sees them.  Slice the RAW byte
+            # spans of the surviving fields out of the original file text
+            # instead -- never re-derive them from the parsed value.
+            spans = _top_level_member_spans(raw_text)
+            parts = [f'"{k}":{spans[k]}' for k in ("input", "exclusion_set", "algorithm") if k in spans]
+            vector_json_to_send = "{" + ",".join(parts) + "}"
             rc, stdout, stderr = _run_command(command, vector_json_to_send)
             if rc == 0:
                 failures.append(
