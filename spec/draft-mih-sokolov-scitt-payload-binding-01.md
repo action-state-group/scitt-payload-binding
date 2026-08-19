@@ -552,6 +552,96 @@ registered artifact type may fill a citation slot -- applies to
 citation-binding interoperability only and does not extend to any appraisal
 or authorization semantics defined by the artifact type or consuming profile.
 
+# Declaring a Binding's Context -- `canonicalization_id` {#canonicalization-id}
+
+A binding a record carries about itself -- most notably an additional
+composition binding under the self-reference mechanism of
+{{I-D.mih-sato-agent-accountability-composition}} -- states a complete digest
+context: a canonicalization algorithm, a field set (or byte-boundary
+selector), an exclusion set, a domain separation value, a pre-image encoding,
+and an output representation ({{iana-art}}). Restating every element of that
+context inline, on every record, duplicates what a registered digest context
+already states once.
+
+`canonicalization_id` is the compact form of that restatement. It is a
+string-valued field, carried inside the signed payload as part of the
+binding it describes, whose value is a token from the Canonicalization
+Algorithm Registry ({{iana-alg}}). Read together with the artifact type and
+purpose label that already identify which of that artifact type's registered
+digest contexts ({{iana-art}}) governs the binding, `canonicalization_id`
+lets a producer declare that context by reference instead of by restatement.
+A binding MAY additionally carry per-binding parameters that are not part of
+the digest context itself -- for example, the key identifier a keyed
+equivalence derivation uses -- alongside `canonicalization_id`; such
+parameters select an input to the registered construction and do not change
+which construction is registered.
+
+This specification defines no new record field beyond `canonicalization_id`
+itself: the slot it occupies is the additional-binding slot the composition
+specification already defines, so a producer that already emits that binding
+needs only to populate this one value. This section defines the resolution
+mechanism only; it registers no new digest context. A payload class wishing
+to use `canonicalization_id` on an additional binding whose purpose is not
+yet registered (for example, an `equivalence` context for
+`agent-action-capsule`) does so once that context is registered
+({{iana-art}}), not before.
+
+## Precedence {#canonicalization-id-precedence}
+
+A verifier resolves the digest context that governs a binding independently
+of `canonicalization_id` -- from the record's artifact type and the
+binding's purpose label, per {{iana-art}} -- before it looks at the declared
+value. **The declaration confirms the registry; it never overrides it.** The
+verifier then cross-checks the two:
+
+* If the token named by `canonicalization_id` equals the canonicalization
+  algorithm of the independently resolved digest context, the declaration is
+  confirmed and the binding is evaluated under that resolved context --
+  never under a context reconstructed from the declaration alone.
+* If the token names a different registered algorithm, the declaration MUST
+  be treated as a defect and the binding MUST NOT be reported as verified.
+* If the token names no entry in the Canonicalization Algorithm Registry at
+  all, or names an entry that is Reserved but not yet defined
+  ({{algorithms}} -- a Reserved entry binds its token only and has no
+  defined behavior to confirm against), the same failure applies: an unknown
+  identifier and a reserved-but-undefined one are indistinguishable to a
+  verifier deciding whether to trust the record, whatever a Designated
+  Expert's registry table shows about the difference between them.
+
+A verifier MUST NOT accept a record on the strength of `canonicalization_id`
+alone, and MUST NOT infer any element of the digest context -- field set,
+exclusion set, domain separation, pre-image encoding, or representation --
+from the declared value; every element not named by the token itself comes
+from the registry entry the token resolves into.
+
+## Relationship to the Discovery Mirror {#canonicalization-id-vs-discovery}
+
+`canonicalization_id` MUST NOT be conflated with the Discovery Mirror
+({{discovery}}). The mirror is an unprotected header parameter: advisory,
+recomputed and reported by a verifier, and never itself a binding. The
+integrity requirement governing where a binding's declaration may live is
+already normative in {{I-D.mih-sato-agent-accountability-composition}} and
+is not restated here; it is sufficient to note that a `canonicalization_id`
+value placed only in an unprotected header carries no authority under that
+requirement, whatever its content. The mirror finds records; the binding,
+including its `canonicalization_id`, verifies them; only the binding carries
+authority.
+
+## Verdict Narration {#canonicalization-id-narration}
+
+This section is informative. A display or logging layer consuming the
+verdict from {{canonicalization-id-precedence}} SHOULD distinguish, at
+minimum, two outcomes that a bare pass/fail collapses: a record that
+**declares X, confirmed against the registry** (the common, healthy case),
+and a record that **declares X, unregistered** (no entry, or an entry
+reserved but not yet defined -- the case most likely to indicate a producer
+running ahead of a registry update rather than a tampered record). A verdict
+of **declares X, contradicted by the registry** (a registered token that
+does not match the resolved context) is a third, distinguishable outcome and
+SHOULD NOT be narrated identically to either of the other two: it is the
+strongest signal of the three that the record's bytes were altered after
+signing rather than produced against a stale registry snapshot.
+
 # Profile Independence {#profile-independence}
 
 A payload profile MUST NOT impose requirements on the internal structure or field
