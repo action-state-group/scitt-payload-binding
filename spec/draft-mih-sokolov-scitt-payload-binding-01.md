@@ -601,6 +601,105 @@ addressed in a companion document that payload profiles MUST reference rather th
 developing an incompatible per-profile variant. Defining any of these facilities
 per-profile would violate the constraint established in {{profile-independence}}.
 
+# Compatibility with -00 Records {#transition}
+
+The posted revision of this document is -00. This revision, -01, is a single,
+complete resubmission: it carries every open correction against -00 together
+-- a second, plain `jcs` canonicalization algorithm entry and its
+digest-context wire grammar ({{iana-alg}}), the disposition of the `cde-n`
+reserved entry ({{algo-cde-n}}), a context-declaration field that lets a
+record confirm by reference which registered digest context governs a
+binding it carries, and a normative rule for number encoding in
+digest-bearing fields -- rather than in a sequence of smaller revisions. -01
+posts once, complete. This document does not anticipate a CPB -02 revision
+carrying errata against -00; the next substantive change is a new complete
+revision in its own right.
+
+This section states, for a record produced under either revision and a
+verifier implementing either revision, what a verifier does. The terms used
+are:
+
+Pre-id record:
+: A record produced before its artifact type's context-declaration field was
+  available to it: the record carries no such declaration.
+
+Post-id record:
+: A record produced by a producer that populates the context-declaration
+  field, declaring by reference the registered digest context governing a
+  binding the record carries.
+
+-00-era verifier:
+: A verifier implementing only this document's -00 revision. It has no
+  knowledge of the context-declaration field, the `jcs` algorithm entry, or
+  the number-encoding rule.
+
+-01 verifier:
+: A verifier implementing this revision.
+
+The table states normative verifier behavior for every combination of
+record vintage, verifier revision, and artifact type, illustrated with the
+one artifact type this document currently registers ({{art-agent-action-capsule}},
+"capsule") and, to state the general rule for an artifact type without
+`jcs-n`-era history, a second, illustrative artifact type referred to here
+as "mesh." No artifact type named `mesh` is registered by this document;
+the label stands in for any artifact type whose registered history contains
+exactly one canonicalization algorithm.
+
+| Record vintage | Capsule, -00-era verifier | Capsule, -01 verifier | Mesh, -00-era verifier | Mesh, -01 verifier |
+|---|---|---|---|---|
+| pre-id | Verifies exactly as under -00: resolves `jcs-n` from the artifact type alone. Unaffected by this revision. | Resolves the digest context from the artifact type alone, exactly as a -00-era verifier does, then applies the G4a Resolution Text ({{g4a}}). | Verifies exactly as under -00: resolves the artifact type's sole algorithm. Unaffected by this revision. | Resolves unambiguously to the artifact type's sole registered algorithm ({{mesh-vintage}}); MUST NOT reject the record for predating the context-declaration field. |
+| post-id | Does not recognize the context-declaration field or the binding that carries it. Ignores it under {{ignore-unknown-binding}} and verifies every other check normally. | Resolves the declared digest context, cross-checks the declaration against the registry per {{iana-art}}, and evaluates the binding under the resolved context -- never under a context reconstructed from the declaration alone. | Does not recognize the context-declaration field or the binding that carries it. Ignores it under {{ignore-unknown-binding}} and verifies every other check normally. | Resolves the declared digest context, cross-checks the declaration against the registry per {{iana-art}}, and evaluates the binding under the resolved context. |
+
+## The G4a Resolution Text {#g4a}
+
+How a -01 verifier resolves the digest context of a pre-id capsule record
+depends on a pending decision between two mutually exclusive texts, each
+already drafted: one withdraws `jcs-n` entirely, on proof that its output is
+byte-identical to the new `jcs` entry, and directs a -01 verifier to resolve
+every capsule record -- pre-id and post-id alike -- to `jcs`; the other
+retains `jcs-n` permanently for pre-id capsule records under a vintage rule,
+forbids its use in any newly produced record, and directs a -01 verifier to
+resolve a pre-id capsule record to `jcs-n` by vintage. This document does
+not select between them.
+
+**G4a Resolution Text** is the name this document gives to whichever of the
+two the pending decision fixes. It is a placeholder, not a default: neither
+candidate text applies until the decision is made, and this section is not
+complete until one is substituted in. Both candidate texts agree on the
+invariant that governs every other cell of the table above and MUST survive
+into whichever text is substituted: a -01 verifier MUST NOT reject a pre-id
+capsule record solely for predating the context-declaration field.
+
+## Vintage Resolution for Single-Algorithm Artifact Types {#mesh-vintage}
+
+An artifact type whose registered history contains exactly one
+canonicalization algorithm has no vintage ambiguity for its pre-id records,
+whether or not it has ever registered a second algorithm entry: a -01
+verifier resolves such a record to that sole algorithm regardless of
+whether the record carries the context-declaration field, because there is
+only one candidate context to resolve to. This is the general rule that
+{{g4a}} is the exception to -- an exception that exists only because the
+capsule artifact type has registered two canonicalization algorithms
+(`jcs-n` and, as of this revision, `jcs`) over its history. A fail-closed
+-01 verifier MUST apply this rule rather than reject a pre-id record of a
+single-algorithm artifact type for the field's absence; an accidental
+reject of that kind is not a consequence of any decision this document
+makes and MUST NOT be attributed to it.
+
+## Unrecognized Bindings at a -00-era Verifier {#ignore-unknown-binding}
+
+The context-declaration field is carried inside a signed, self-describing
+binding of the kind {{I-D.mih-sato-agent-accountability-composition}}
+defines. That document already states the rule a verifier applies to a
+binding it does not recognize: a verifier that encounters an unrecognized
+purpose label MUST report the binding as present and uninterpreted and MUST
+NOT fail the record on that ground. A -00-era verifier meeting a post-id
+record is exactly that case, restated rather than redefined here: the
+binding carrying the context-declaration field is unrecognized in full by a
+-00-era verifier, which MUST treat it as present and uninterpreted and MUST
+NOT fail the record because of it. Every other check the -00-era verifier
+knows how to perform on the record proceeds unaffected.
+
 # Security Considerations {#security}
 
 ## Preimages Are Bytes, Not Renderings
