@@ -71,10 +71,12 @@ For must_fail vectors — each MUST match at least one category (enforced):
         algorithm (the mismatch is real). Examples are read from either
         typed_references_with_mislabeled_digest_alg (a list) or typed_reference (a single
         object) -- vector files fold from different sources with different shapes.
-  J. Domain-transform stream-incomplete: 'domain_transforms' present + 'source' present
+  L. Domain-transform stream-incomplete: 'domain_transforms' present + 'source' present
      + no 'input' field + failure_reason == 'stream_incomplete'
      -> apply _stream_reassemble(source); assert it raises ValueError.
      Mutant: append a terminal chunk so reassembly succeeds -- checker must flip to failure.
+     Letter reserved by Anton 2026-08-19: main owns A-J (through #31's diverge-vector
+     category J); #16 takes K; this category takes L.
 
 A must_fail vector matching NONE of the above is a hard failure -- 'ran_any_check' is
 enforced.  A bare {'must_fail': true} fails the suite.
@@ -299,7 +301,7 @@ def _digest_alg_examples(v: dict) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Domain-transform helpers (Category J)
+# Domain-transform helpers (Category L)
 # ---------------------------------------------------------------------------
 
 def _stream_reassemble(source: list) -> dict:
@@ -527,11 +529,11 @@ def _mutant_I(v: dict) -> dict | None:
     return m
 
 
-def _mutant_J(v: dict) -> dict | None:
+def _mutant_L(v: dict) -> dict | None:
     """Append a terminal chunk so _stream_reassemble succeeds on the mutant.
     The real vector has no terminal chunk; adding one makes the reassembler
     return a valid (possibly empty or partial) object instead of raising,
-    which should flip the Category J check to failure.
+    which should flip the Category L check to failure.
     """
     m = copy.deepcopy(v)
     source = m.get("source")
@@ -559,7 +561,7 @@ _MUTANT_GENERATORS: dict[str, object] = {
     "G": _mutant_G,
     "H": _mutant_H,
     "I": _mutant_I,
-    "J": _mutant_J,
+    "L": _mutant_L,
 }
 
 
@@ -864,7 +866,7 @@ def _exercise_must_fail(
                         f"demonstrated"
                     )
 
-    # J. Domain-transform stream-incomplete
+    # L. Domain-transform stream-incomplete
     domain_transforms = v.get("domain_transforms")
     source = v.get("source")
     if (
@@ -874,7 +876,7 @@ def _exercise_must_fail(
         and v.get("failure_reason") == "stream_incomplete"
     ):
         ran_any_check = True
-        categories_fired.append("J")
+        categories_fired.append("L")
         try:
             _apply_domain_transforms(domain_transforms, source)
             vec_errors.append(
