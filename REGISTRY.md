@@ -95,7 +95,7 @@ CANONICAL-DIGEST values. Registration template: **Name**, **Description**,
 |---|---|---|---|
 | `jcs-n` | RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex | draft-mih-sokolov-scitt-payload-binding | Registered |
 | `jcs` | RFC 8785 JCS over a JSON object (no normalization pass; null, empty-array, and empty-object members are retained as-is); SHA-256; lowercase hex | RFC 8785 §3 | `standards-referenced` |
-| `cde-n` | Deterministic CBOR canonicalization profile; SHA-256 | draft-mih-sokolov-scitt-payload-binding | **Reserved** (defined in a subsequent revision) |
+| `cde-n` | Withdrawn — the token was reserved for a deterministic CBOR canonicalization profile and never assigned a definition | draft-mih-sokolov-scitt-payload-binding | `withdrawn` |
 | `as-transmitted` | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex | draft-mih-sokolov-scitt-payload-binding | Registered |
 
 **as-transmitted — byte-boundary selector is mandatory, not descriptive.**
@@ -249,6 +249,7 @@ registrars MUST use them verbatim.
 | `third-party-documented` | Registered by someone other than the owner, from publicly pinned artifacts (spec revision + repo commit). Registrant is named in the entry. Owner has been notified and invited to review. Not yet confirmed by owner. |
 | `provisional` | A reference resolves but the vector set is incomplete or the specification is insufficiently pinned. Entry is held in [`spec/cpb-provisional-registry.md`](spec/cpb-provisional-registry.md) until vectors and pinning are complete. |
 | `standards-referenced` | The entry's construction is fully specified by a published standard (RFC, ISO, or equivalent) rather than by a party who can acknowledge anything. There is no owner to ack, so `owner-confirmed` is unreachable by construction and its absence is not a provenance gap. Gates A and B still apply, and the Reference row MUST cite the standard to section precision. |
+| `withdrawn` | The token was reserved and stays bound, but was never assigned a definition and never will be. A terminal state, not a deletion: the name is not reassigned, and a later construction of the same kind registers under a different token. Nothing verifies against it — a verifier meeting it MUST fail closed. |
 
 Statuses are not permanent — see [Entry Lifecycle](#entry-lifecycle) below.
 
@@ -274,8 +275,9 @@ mapping so policy and record do not contradict:
   registered as a live entry.
 
 **The legacy spellings are closed to new entries, and the list is finite.** Exactly
-four rows predate this vocabulary: the algorithm entries `jcs-n`, `cde-n` and
-`as-transmitted`, and the artifact type `agent-action-capsule`. No other entry may
+three rows predate this vocabulary and keep a legacy spelling: the algorithm entries `jcs-n` and
+`as-transmitted`, and the artifact type `agent-action-capsule`. (`cde-n` predates it
+too, but carries the vocabulary term `withdrawn` rather than a legacy spelling.) No other entry may
 carry `Registered` or `Reserved`. Naming them here rather than describing them is
 deliberate: the generator has no history to consult, so without a closed list it
 cannot tell a pre-existing row from a new one writing a legacy spelling — and a new

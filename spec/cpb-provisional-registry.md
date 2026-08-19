@@ -76,8 +76,10 @@ specify a CPB-compatible canonicalization algorithm for
    sorting, or encoding step is specified in -00. For CPB, the Digest Context
    requires a named canonicalization algorithm (from the CPB Canonicalization
    Algorithm Registry, §11.1) or a new one registered alongside this entry.
-   Please specify which algorithm applies — for example: jcs-n (CPB Suite 1),
-   cde-n (CPB Suite 2, pending), or a new entry you define.
+   Please specify which algorithm applies — for example: jcs-n, jcs (plain
+   RFC 8785), as-transmitted, or a new entry you define. (`cde-n` appeared in
+   an earlier version of this question; it has since been withdrawn and is not
+   available.)
 
 3. **Exclusion set** — Which fields (if any) of `verifiable-agent-record`
    are excluded from the canonical form before the derived identifier is

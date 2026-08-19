@@ -72,7 +72,14 @@ _LIVE_STATUSES = frozenset({
     "third-party-documented",
     "standards-referenced",
 })
-_HELD_STATUSES = frozenset({"Reserved", "provisional"})
+_HELD_STATUSES = frozenset({
+    "Reserved",
+    "provisional",
+    # A withdrawn token stays bound and is never reassigned, but names no
+    # definition and never will -- so there is nothing to verify against, and a
+    # verifier meeting it must fail closed exactly as for a reserved name.
+    "withdrawn",
+})
 
 
 class SnapshotIntegrityError(ValueError):

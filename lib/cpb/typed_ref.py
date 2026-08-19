@@ -365,7 +365,11 @@ def verify_typed_ref(
     # of the canonicalization CONTEXT check below, which always comes from
     # registry_entry -- never from digest_alg.
     expected_alg = _ALGORITHM_DIGEST_ALG[registry_entry.algorithm]
-    if ref.digest_alg.upper() != expected_alg.upper():
+    # Exact octets, not case-folded: the draft requires byte-for-byte comparison
+    # because the IANA registries an implementer might reach for disagree on
+    # spelling ("sha-256" vs "SHA-256"), and tolerating either silently accepts a
+    # reference naming a different registry's token.
+    if ref.digest_alg != expected_alg:
         raise DigestAlgorithmMismatchError(
             declared=ref.digest_alg,
             expected=expected_alg,

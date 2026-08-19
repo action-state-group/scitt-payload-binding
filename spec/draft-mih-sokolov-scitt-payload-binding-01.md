@@ -257,7 +257,9 @@ Algorithm Registry ({{iana-alg}}) are:
 Entries in the Canonicalization Algorithm Registry are immutable: new
 behavior requires a new entry, never a retroactive edit to an existing one.
 A reserved entry binds its token only; its summary is provisional until the
-entry is defined, at which point the full entry becomes immutable.
+entry is defined, at which point the full entry becomes immutable. A reserved
+entry may instead be withdrawn ({{algo-cde-n}}), which is terminal: the token
+stays bound, no definition is ever assigned, and the name is not reassigned.
 The hash function is part of each algorithm's definition; migration to a
 different hash (for example, a future post-quantum function) is performed by
 registering a new algorithm entry, never by reinterpreting an existing one.
@@ -538,6 +540,16 @@ reinterpreting an existing one.
 
 It MUST then recompute the referenced artifact's digest under that context and
 compare the recomputed value with the value carried in the `digest` field.
+
+**Comparison is byte-for-byte.** A verifier compares `digest_alg` against the
+name the resolved digest context mandates as an exact octet sequence: no case
+folding, no alias table, no whitespace trimming. `sha-256` does not match
+`SHA-256`. The two IANA registries an implementer is likely to reach for
+disagree on spelling for the same function, so a case-insensitive or
+alias-tolerant comparison silently accepts a reference that names a different
+registry's token — and once one implementation tolerates it, the field stops
+being a consistency declaration and becomes decoration. The registered name is
+the one the Canonicalization Algorithm Registry entry states.
 
 A `digest_alg` value that does not name the hash algorithm mandated by the
 resolved digest context is a defect in the reference. The verifier MUST treat

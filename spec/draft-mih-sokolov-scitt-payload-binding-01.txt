@@ -5,8 +5,8 @@
 SCITT                                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
 Intended status: Standards Track                              A. Sokolov
-Expires: 20 February 2027                                Tyche Institute
-                                                          19 August 2026
+Expires: 21 February 2027                                Tyche Institute
+                                                          20 August 2026
 
 
    Canonical Payload Binding: A Signed Statement Construction Profile
@@ -53,7 +53,7 @@ Status of This Memo
 
 
 
-Mih & Sokolov           Expires 20 February 2027                [Page 1]
+Mih & Sokolov           Expires 21 February 2027                [Page 1]
 
 Internet-Draft          Canonical Payload Binding            August 2026
 
@@ -68,7 +68,7 @@ Internet-Draft          Canonical Payload Binding            August 2026
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 20 February 2027.
+   This Internet-Draft will expire on 21 February 2027.
 
 Copyright Notice
 
@@ -93,7 +93,7 @@ Table of Contents
      3.1.  Algorithm jcs-n . . . . . . . . . . . . . . . . . . . . .   6
      3.2.  Algorithm cde-n (Withdrawn) . . . . . . . . . . . . . . .   7
      3.3.  Algorithm as-transmitted  . . . . . . . . . . . . . . . .   8
-   4.  The Derived Identifier  . . . . . . . . . . . . . . . . . . .   8
+   4.  The Derived Identifier  . . . . . . . . . . . . . . . . . . .   9
      4.1.  Representation  . . . . . . . . . . . . . . . . . . . . .   9
    5.  Envelope Conventions  . . . . . . . . . . . . . . . . . . . .  10
    6.  Statement-to-Receipt Binding  . . . . . . . . . . . . . . . .  10
@@ -101,36 +101,36 @@ Table of Contents
    7.  Typed Digest References . . . . . . . . . . . . . . . . . . .  11
      7.1.  Cross-Profile Comparability . . . . . . . . . . . . . . .  13
      7.2.  Verification Scope  . . . . . . . . . . . . . . . . . . .  14
-   8.  Profile Independence  . . . . . . . . . . . . . . . . . . . .  14
+   8.  Profile Independence  . . . . . . . . . . . . . . . . . . . .  15
    9.  Discovery Mirror  . . . . . . . . . . . . . . . . . . . . . .  15
    10. Extensibility and Cross-Cutting Facilities  . . . . . . . . .  15
-   11. Security Considerations . . . . . . . . . . . . . . . . . . .  15
+   11. Security Considerations . . . . . . . . . . . . . . . . . . .  16
      11.1.  Preimages Are Bytes, Not Renderings  . . . . . . . . . .  16
 
 
 
-Mih & Sokolov           Expires 20 February 2027                [Page 2]
+Mih & Sokolov           Expires 21 February 2027                [Page 2]
 
 Internet-Draft          Canonical Payload Binding            August 2026
 
 
      11.2.  Low-Entropy Fields . . . . . . . . . . . . . . . . . . .  16
      11.3.  Float Values and Digest Reproducibility  . . . . . . . .  16
-     11.4.  Immutable Coordinates  . . . . . . . . . . . . . . . . .  16
+     11.4.  Immutable Coordinates  . . . . . . . . . . . . . . . . .  17
      11.5.  Tamper Evidence and Runtime Honesty  . . . . . . . . . .  17
      11.6.  Long-Term Verifiability Considerations . . . . . . . . .  17
    12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  17
    13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  18
      13.1.  Canonicalization Algorithm Registry  . . . . . . . . . .  18
-     13.2.  Artifact Type Registry . . . . . . . . . . . . . . . . .  19
+     13.2.  Artifact Type Registry . . . . . . . . . . . . . . . . .  20
        13.2.1.  agent-action-capsule . . . . . . . . . . . . . . . .  22
    14. Related Work  . . . . . . . . . . . . . . . . . . . . . . . .  23
    15. References  . . . . . . . . . . . . . . . . . . . . . . . . .  24
      15.1.  Normative References . . . . . . . . . . . . . . . . . .  24
-     15.2.  Informative References . . . . . . . . . . . . . . . . .  24
+     15.2.  Informative References . . . . . . . . . . . . . . . . .  25
    Appendix A.  Synthetic Registration Walkthrough . . . . . . . . .  26
-   Appendix B.  Synthetic Two-Slot Composition . . . . . . . . . . .  27
-   Appendix C.  Field-Verified Instances . . . . . . . . . . . . . .  28
+   Appendix B.  Synthetic Two-Slot Composition . . . . . . . . . . .  28
+   Appendix C.  Field-Verified Instances . . . . . . . . . . . . . .  29
      C.1.  Deep Mechanism Instances  . . . . . . . . . . . . . . . .  29
        C.1.1.  Glyphzero Byte-Agreement — Algorithm Determinism  . .  29
        C.1.2.  GAR Session Block — Leaf Construction Rule  . . . . .  29
@@ -165,7 +165,7 @@ Internet-Draft          Canonical Payload Binding            August 2026
 
 
 
-Mih & Sokolov           Expires 20 February 2027                [Page 3]
+Mih & Sokolov           Expires 21 February 2027                [Page 3]
 
 Internet-Draft          Canonical Payload Binding            August 2026
 
@@ -221,7 +221,7 @@ Internet-Draft          Canonical Payload Binding            August 2026
 
 
 
-Mih & Sokolov           Expires 20 February 2027                [Page 4]
+Mih & Sokolov           Expires 21 February 2027                [Page 4]
 
 Internet-Draft          Canonical Payload Binding            August 2026
 
@@ -277,7 +277,7 @@ Internet-Draft          Canonical Payload Binding            August 2026
 
 
 
-Mih & Sokolov           Expires 20 February 2027                [Page 5]
+Mih & Sokolov           Expires 21 February 2027                [Page 5]
 
 Internet-Draft          Canonical Payload Binding            August 2026
 
@@ -308,10 +308,13 @@ Internet-Draft          Canonical Payload Binding            August 2026
    behavior requires a new entry, never a retroactive edit to an
    existing one.  A reserved entry binds its token only; its summary is
    provisional until the entry is defined, at which point the full entry
-   becomes immutable.  The hash function is part of each algorithm's
-   definition; migration to a different hash (for example, a future
-   post-quantum function) is performed by registering a new algorithm
-   entry, never by reinterpreting an existing one.
+   becomes immutable.  A reserved entry may instead be withdrawn
+   (Section 3.2), which is terminal: the token stays bound, no
+   definition is ever assigned, and the name is not reassigned.  The
+   hash function is part of each algorithm's definition; migration to a
+   different hash (for example, a future post-quantum function) is
+   performed by registering a new algorithm entry, never by
+   reinterpreting an existing one.
 
 3.1.  Algorithm jcs-n
 
@@ -327,16 +330,17 @@ Internet-Draft          Canonical Payload Binding            August 2026
        the exclusion set is removed (Section 4) and before JCS
        serialization.  The semantic equivalence among JSON null, an
        empty array, an empty object, and the absence of a field is a
-       payload-class (profile) decision; jcs-n defines only the byte
-       construction after the profile's declared normalization has been
-       applied.
 
 
 
-Mih & Sokolov           Expires 20 February 2027                [Page 6]
+Mih & Sokolov           Expires 21 February 2027                [Page 6]
 
 Internet-Draft          Canonical Payload Binding            August 2026
 
+
+       payload-class (profile) decision; jcs-n defines only the byte
+       construction after the profile's declared normalization has been
+       applied.
 
    2.  Apply JCS [RFC8785] to produce the canonical UTF-8 octet string.
 
@@ -379,20 +383,21 @@ Internet-Draft          Canonical Payload Binding            August 2026
    specified, is registered under a new token rather than by assigning a
    definition to cde-n.
 
+
+
+
+
+
+
+Mih & Sokolov           Expires 21 February 2027                [Page 7]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
    A payload class or typed digest reference that names cde-n cannot be
    verified: the token names no defined algorithm and never will, so a
    verifier encountering it MUST fail closed — MUST NOT report the
    payload class or typed digest reference as verified.
-
-
-
-
-
-
-Mih & Sokolov           Expires 20 February 2027                [Page 7]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
 3.3.  Algorithm as-transmitted
 
@@ -437,18 +442,19 @@ Internet-Draft          Canonical Payload Binding            August 2026
    are stated explicitly here as part of this entry, not inherited
    silently from the generic CANONICAL-DIGEST definition (Section 2).
 
+
+
+
+Mih & Sokolov           Expires 21 February 2027                [Page 8]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
 4.  The Derived Identifier
 
    The derived identifier of a record is computed as:
 
    id = CANONICAL-DIGEST(A, payload minus exclusion_set)
-
-
-
-Mih & Sokolov           Expires 20 February 2027                [Page 8]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
    where A is the canonicalization algorithm declared by the payload
    class and the exclusion set is the set of fields declared by the
@@ -492,19 +498,19 @@ Internet-Draft          Canonical Payload Binding            August 2026
    field containing or referencing a derived identifier.  A verifier
    MUST NOT silently coerce among representations.
 
+
+
+
+Mih & Sokolov           Expires 21 February 2027                [Page 9]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
    A deterministic conversion MAY be applied only where this
    specification or the applicable payload profile expressly defines
    both the conversion and the resulting comparison representation.
    Such a conversion is an explicit protocol operation and does not make
    the original representations byte-identical.
-
-
-
-
-Mih & Sokolov           Expires 20 February 2027                [Page 9]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
 5.  Envelope Conventions
 
@@ -549,18 +555,16 @@ Internet-Draft          Canonical Payload Binding            August 2026
    (VDS) of the Transparency Service; this profile imposes no VDS
    requirement.
 
-   A verifier MUST NOT report receipt-backed status without having
-   verified a Receipt from a Transparency Service under a key the
-   verifier trusts.
 
 
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 10]
+Mih & Sokolov           Expires 21 February 2027               [Page 10]
 
 Internet-Draft          Canonical Payload Binding            August 2026
 
+
+   A verifier MUST NOT report receipt-backed status without having
+   verified a Receipt from a Transparency Service under a key the
+   verifier trusts.
 
    A verifier determining which VDS to apply when verifying a Receipt
    MUST read the VDS identifier from the protected header of the
@@ -609,11 +613,7 @@ Internet-Draft          Canonical Payload Binding            August 2026
 
 
 
-
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 11]
+Mih & Sokolov           Expires 21 February 2027               [Page 11]
 
 Internet-Draft          Canonical Payload Binding            August 2026
 
@@ -669,7 +669,7 @@ Internet-Draft          Canonical Payload Binding            August 2026
 
 
 
-Mih & Sokolov           Expires 20 February 2027               [Page 12]
+Mih & Sokolov           Expires 21 February 2027               [Page 12]
 
 Internet-Draft          Canonical Payload Binding            August 2026
 
@@ -716,20 +716,31 @@ Internet-Draft          Canonical Payload Binding            August 2026
    context and compare the recomputed value with the value carried in
    the digest field.
 
+   *Comparison is byte-for-byte.* A verifier compares digest_alg against
+   the name the resolved digest context mandates as an exact octet
+   sequence: no case folding, no alias table, no whitespace trimming.
+   sha-256 does not match SHA-256.  The two IANA registries an
+   implementer is likely to reach for disagree on spelling for the same
+   function, so a case-insensitive or alias-tolerant comparison silently
+
+
+
+Mih & Sokolov           Expires 21 February 2027               [Page 13]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
+   accepts a reference that names a different registry's token — and
+   once one implementation tolerates it, the field stops being a
+   consistency declaration and becomes decoration.  The registered name
+   is the one the Canonicalization Algorithm Registry entry states.
+
    A digest_alg value that does not name the hash algorithm mandated by
    the resolved digest context is a defect in the reference.  The
    verifier MUST treat this as a failure and MUST NOT attempt to
    reconcile the inconsistency — for example, by silently proceeding
    with the algorithm the registry mandates and ignoring the mislabeled
    field.  More generally, if the context established from the type and
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 13]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
-
    digest_alg fields cannot be reconciled with the context used to
    recompute the referenced artifact, or if a required deterministic
    conversion to a common comparison representation is not expressly
@@ -763,6 +774,18 @@ Internet-Draft          Canonical Payload Binding            August 2026
    appraisal or authorization semantics defined by the artifact type or
    consuming profile.
 
+
+
+
+
+
+
+
+Mih & Sokolov           Expires 21 February 2027               [Page 14]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
 8.  Profile Independence
 
    A payload profile MUST NOT impose requirements on the internal
@@ -778,13 +801,6 @@ Internet-Draft          Canonical Payload Binding            August 2026
    be aware of, profiles they neither produce nor consume, and a new
    profile may be registered without revalidating existing profiles or
    implementations.
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 14]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
 9.  Discovery Mirror
 
@@ -819,6 +835,13 @@ Internet-Draft          Canonical Payload Binding            August 2026
    timestamps and validity periods, batch aggregation, and profile
    versioning.
 
+
+
+Mih & Sokolov           Expires 21 February 2027               [Page 15]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
    This specification does not define these facilities in this document.
    Each will be addressed in a companion document that payload profiles
    MUST reference rather than developing an incompatible per-profile
@@ -826,21 +849,6 @@ Internet-Draft          Canonical Payload Binding            August 2026
    the constraint established in Section 8.
 
 11.  Security Considerations
-
-
-
-
-
-
-
-
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 15]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
 11.1.  Preimages Are Bytes, Not Renderings
 
@@ -876,6 +884,20 @@ Internet-Draft          Canonical Payload Binding            August 2026
    therefore cannot be verified.  Exact decimal strings are the only
    portable encoding for monetary and quantity values.
 
+
+
+
+
+
+
+
+
+
+Mih & Sokolov           Expires 21 February 2027               [Page 16]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
 11.4.  Immutable Coordinates
 
    A mutable reference — a branch name, a tag that can be moved, a
@@ -886,17 +908,6 @@ Internet-Draft          Canonical Payload Binding            August 2026
    that pin the content by its CANONICAL-DIGEST.  Names, labels, and
    human-readable identifiers MAY appear alongside a typed reference for
    display purposes but carry no evidentiary weight.
-
-
-
-
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 16]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
 11.5.  Tamper Evidence and Runtime Honesty
 
@@ -935,6 +946,14 @@ Internet-Draft          Canonical Payload Binding            August 2026
    therefore payload-blind to any verifier that does not independently
    possess the referenced artifacts.
 
+
+
+
+Mih & Sokolov           Expires 21 February 2027               [Page 17]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
    Payload privacy is the responsibility of the payload class.  A
    payload class that includes fields identifying persons, sessions, or
    request content SHOULD document the privacy properties of those
@@ -946,13 +965,6 @@ Internet-Draft          Canonical Payload Binding            August 2026
    is append-only and a registered record persists.  Payload classes
    SHOULD specify which fields, if any, must not be present in a record
    that is intended to be anchored.
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 17]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
 13.  IANA Considerations
 
@@ -989,26 +1001,21 @@ Internet-Draft          Canonical Payload Binding            August 2026
    *  Name: A short ASCII identifier suitable for use in protocol
       fields.
 
+
+
+
+
+Mih & Sokolov           Expires 21 February 2027               [Page 18]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
    *  Description: A normative prose description sufficient to implement
       the algorithm deterministically.
 
    *  Reference: The document that specifies the algorithm.
 
    Initial contents:
-
-
-
-
-
-
-
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 18]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
    +================+===================================+=============+
    | Name           | Description                       | Reference   |
@@ -1046,6 +1053,19 @@ Internet-Draft          Canonical Payload Binding            August 2026
    deletion.  A verifier encountering it MUST fail closed (MUST NOT
    report verified).  See Section 3.2.
 
+
+
+
+
+
+
+
+
+Mih & Sokolov           Expires 21 February 2027               [Page 19]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
    An artifact type entry MUST NOT register as-transmitted without a
    byte-boundary selector that cites a named production in the container
    specification (Section 3.3).  Without that selector, an as-
@@ -1057,14 +1077,6 @@ Internet-Draft          Canonical Payload Binding            August 2026
 
    This registry records the artifact types that may appear in the type
    field of a typed digest reference (Section 7).
-
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 19]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
    An artifact type declares one or more digest contexts.  More than one
    is needed whenever an artifact type has more than one digest that a
@@ -1101,6 +1113,15 @@ Internet-Draft          Canonical Payload Binding            August 2026
          example, a type identifier that names a type but not a
          version).
 
+
+
+
+
+Mih & Sokolov           Expires 21 February 2027               [Page 20]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
       -  Canonicalization algorithm: the algorithm name from
          Section 13.1 (MAY be as-transmitted).  This token also pins the
          digest context's hash algorithm and output representation,
@@ -1111,16 +1132,6 @@ Internet-Draft          Canonical Payload Binding            August 2026
          When the canonicalization algorithm is an identity algorithm
          with no field set (such as as-transmitted), this element is
          instead the byte-boundary selector that algorithm requires.
-
-
-
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 20]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
       -  Exclusion set: the fields omitted from the field set before
          digesting.  Not applicable to a context using an identity
@@ -1151,6 +1162,22 @@ Internet-Draft          Canonical Payload Binding            August 2026
    The initial vocabulary, extensible by the same Specification-Required
    process as the registries in this section:
 
+
+
+
+
+
+
+
+
+
+
+
+Mih & Sokolov           Expires 21 February 2027               [Page 21]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
       +=============+==============================================+
       | Label       | Meaning                                      |
       +=============+==============================================+
@@ -1169,14 +1196,6 @@ Internet-Draft          Canonical Payload Binding            August 2026
    This is CPB's first published definition of this namespace; neither
    this document nor a companion may register a second purpose-label
    vocabulary that overlaps this one in meaning.
-
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 21]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
    A CPB purpose label is orthogonal to, not competing with, any role a
    companion composition profile assigns a digest within a cross-
@@ -1207,6 +1226,14 @@ Internet-Draft          Canonical Payload Binding            August 2026
 
    Reference: [I-D.mih-scitt-agent-action-capsule]
 
+
+
+
+Mih & Sokolov           Expires 21 February 2027               [Page 22]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
    Digest context (identifier):
 
    *  Profile version: N/A — draft-mih-scitt-agent-action-capsule does
@@ -1224,15 +1251,6 @@ Internet-Draft          Canonical Payload Binding            August 2026
    *  Pre-image encoding: JCS UTF-8 octets, per jcs-n (Section 3.1)
 
    *  Representation: 64-char lowercase hex
-
-
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 22]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
 14.  Related Work
 
@@ -1264,6 +1282,14 @@ Internet-Draft          Canonical Payload Binding            August 2026
    construction identifier by which a consumer can determine
    compatibility.
 
+
+
+
+Mih & Sokolov           Expires 21 February 2027               [Page 23]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
    [I-D.birkholz-verifiable-agent-conversations] defines trace-metadata
    conventions at the conversation grain (§7.4).  The discovery mirror
    in Section 9 is designed to be compatible with that convention so
@@ -1281,14 +1307,6 @@ Internet-Draft          Canonical Payload Binding            August 2026
    independent use cases — one shared binding layer serving SCITT-
    anchored agent records, RATS attestation composition, and multi-agent
    accountability chains.
-
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 23]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
 15.  References
 
@@ -1318,6 +1336,16 @@ Internet-Draft          Canonical Payload Binding            August 2026
               DOI 10.17487/RFC8785, June 2020,
               <https://www.rfc-editor.org/rfc/rfc8785>.
 
+
+
+
+
+
+Mih & Sokolov           Expires 21 February 2027               [Page 24]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
    [RFC9052]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
               Structures and Process", STD 96, RFC 9052,
               DOI 10.17487/RFC9052, August 2022,
@@ -1337,14 +1365,6 @@ Internet-Draft          Canonical Payload Binding            August 2026
               conversations-00, n.d.,
               <https://datatracker.ietf.org/doc/html/draft-birkholz-
               verifiable-agent-conversations-00>.
-
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 24]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
    [I-D.hillier-scitt-arp]
               Hillier, J., "Attestation Reconciliation Protocol", Work
@@ -1374,6 +1394,14 @@ Internet-Draft          Canonical Payload Binding            August 2026
               <https://datatracker.ietf.org/doc/html/draft-mih-sato-
               agent-accountability-composition-00>.
 
+
+
+
+Mih & Sokolov           Expires 21 February 2027               [Page 25]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
    [I-D.mih-scitt-agent-action-capsule]
               Mih, S., "An Agent Action Capsule Profile for SCITT", Work
               in Progress, Internet-Draft, draft-mih-scitt-agent-action-
@@ -1393,14 +1421,6 @@ Internet-Draft          Canonical Payload Binding            August 2026
               Internet-Draft, draft-sokolov-rats-aep-composition-03,
               n.d., <https://datatracker.ietf.org/doc/html/draft-
               sokolov-rats-aep-composition-03>.
-
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 25]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
    [RFC4998]  Gondrom, T., Brandner, R., and U. Pordesch, "Evidence
               Record Syntax (ERS)", RFC 4998, DOI 10.17487/RFC4998,
@@ -1427,6 +1447,17 @@ Appendix A.  Synthetic Registration Walkthrough
    Section 6 using a non-domain-specific payload class.  No domain
    vocabulary from any specific profile is used.
 
+
+
+
+
+
+
+Mih & Sokolov           Expires 21 February 2027               [Page 26]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
    *Payload class:* temperature-record.  Fields: station_id (string),
    timestamp (string), celsius (exact decimal string), record_id
    (string).  Exclusion set: {record_id}. Algorithm: jcs-n.
@@ -1445,18 +1476,6 @@ Appendix A.  Synthetic Registration Walkthrough
 
    Remove record_id (it is in the exclusion set).  After absent-field
    normalization (null members removed), the normalized object is:
-
-
-
-
-
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 26]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
    {
      "station_id": "WS-42",
@@ -1487,6 +1506,14 @@ Internet-Draft          Canonical Payload Binding            August 2026
 
    *Step 6 — Verify:*
 
+
+
+
+Mih & Sokolov           Expires 21 February 2027               [Page 27]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
    A verifier extracts the payload, strips record_id, normalizes,
    applies JCS, recomputes SHA-256, and compares to the carried
    record_id.  The verifier then verifies the envelope signature and, if
@@ -1503,16 +1530,6 @@ Appendix B.  Synthetic Two-Slot Composition
 
    *Authorization doc* (payload class authorization-doc; algorithm jcs-
    n):
-
-
-
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 27]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
    {
      "doc_id": "...",
@@ -1545,6 +1562,14 @@ Internet-Draft          Canonical Payload Binding            August 2026
    *Composability:* the verifier needs only the registry entry for
    authorization-doc — it does not need to understand the decision-
    record format to verify the citation binding.  For generic citation-
+
+
+
+Mih & Sokolov           Expires 21 February 2027               [Page 28]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
    binding verification, a CPB verifier can process a typed reference to
    any registered artifact type.  Whether a particular citation slot
    permits that artifact type is determined by the consuming profile.
@@ -1559,16 +1584,6 @@ Appendix C.  Field-Verified Instances
    system and the verification counterparty.  The common counterparty in
    each case is the AAC reference implementation, which is present as a
    verifier, not as the subject.
-
-
-
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 28]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
    *Owner consent status:* Anton Sokolov (Tyche Institute) — confirmed
    2026-07-24.  Tom Sato (GAR/SOOS) — confirmed 2026-07-25.  Tymofii
@@ -1601,6 +1616,16 @@ C.1.2.  GAR Session Block — Leaf Construction Rule
    Public record: GAR Session Block anchor, IETF 126 hackathon; gar-
    core.ts commit fe18f24; CT leaf 166.
 
+
+
+
+
+
+Mih & Sokolov           Expires 21 February 2027               [Page 29]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
    *What ran:* A GAR Session Block record was registered in a SCITT
    Transparency Service (RFC9162_SHA256 VDS).  The log leaf was
    constructed as SHA-256 of the raw bytes of the derived identifier —
@@ -1614,17 +1639,6 @@ C.1.2.  GAR Session Block — Leaf Construction Rule
    correct root.
 
    *Consent:* Tom Sato (GAR/SOOS) — confirmed 2026-07-25.
-
-
-
-
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 29]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
 C.1.3.  A2A Boundary Seal — Derived Identifier as Protocol Gate
 
@@ -1663,21 +1677,7 @@ C.2.  Field Table — IETF 126 Participants
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Mih & Sokolov           Expires 20 February 2027               [Page 30]
+Mih & Sokolov           Expires 21 February 2027               [Page 30]
 
 Internet-Draft          Canonical Payload Binding            August 2026
 
@@ -1733,7 +1733,7 @@ Internet-Draft          Canonical Payload Binding            August 2026
 
 
 
-Mih & Sokolov           Expires 20 February 2027               [Page 31]
+Mih & Sokolov           Expires 21 February 2027               [Page 31]
 
 Internet-Draft          Canonical Payload Binding            August 2026
 
@@ -1789,7 +1789,7 @@ Acknowledgments
 
 
 
-Mih & Sokolov           Expires 20 February 2027               [Page 32]
+Mih & Sokolov           Expires 21 February 2027               [Page 32]
 
 Internet-Draft          Canonical Payload Binding            August 2026
 
@@ -1845,4 +1845,4 @@ Authors' Addresses
 
 
 
-Mih & Sokolov           Expires 20 February 2027               [Page 33]
+Mih & Sokolov           Expires 21 February 2027               [Page 33]
