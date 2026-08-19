@@ -1,0 +1,52 @@
+{
+  "id": "domain-transform-pass-01",
+  "description": "PASS: streaming API response reassembled from Server-Sent Events (SSE) delta chunks before digest computation. The model-produced domain is the reassembled JSON object. The transport-delivered domain is the stream of delta chunks as they crossed the wire. The digest is computed over the reassembled form — the transport domain is not reproducible by a third-party verifier, but the model-produced domain is. This vector demonstrates that the transform table (stream-reassemble) is declared with a stable identifier so any divergence between the wire bytes and the pre-image bytes is attributable to that transform rather than treated as a substitution.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1",
+  "domain_transforms": [
+    {
+      "id": "stream-reassemble",
+      "version": "1",
+      "source_domain": "transport-delivered",
+      "target_domain": "model-produced",
+      "description": "Reassemble a stream of SSE delta chunks into a single JSON object by concatenating the 'chunk' field of each item in arrival order. The final chunk carries 'done: true'. The concatenated string is parsed as JSON to yield the target-domain object. This transform is deterministic given a complete stream."
+    }
+  ],
+  "source": [
+    {"chunk": "{\"finish_reason\":\"tool_calls\",\"tool_calls\":[{\"function\":{\"arguments\":\""},
+    {"chunk": "{\\\"location\\\": \\\"Paris\\\"}\",\"name\":\"get_weather\"},\"id\":\"call_abc123\",\"index\":0,\"type\":\"function\"}]}"},
+    {"chunk": "", "done": true}
+  ],
+  "input": {
+    "finish_reason": "tool_calls",
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"location\": \"Paris\"}",
+          "name": "get_weather"
+        },
+        "id": "call_abc123",
+        "index": 0,
+        "type": "function"
+      }
+    ]
+  },
+  "exclusion_set": [],
+  "normalized": {
+    "finish_reason": "tool_calls",
+    "tool_calls": [
+      {
+        "function": {
+          "arguments": "{\"location\": \"Paris\"}",
+          "name": "get_weather"
+        },
+        "id": "call_abc123",
+        "index": 0,
+        "type": "function"
+      }
+    ]
+  },
+  "pre_image": "{\"finish_reason\":\"tool_calls\",\"tool_calls\":[{\"function\":{\"arguments\":\"{\\\"location\\\": \\\"Paris\\\"}\",\"name\":\"get_weather\"},\"id\":\"call_abc123\",\"index\":0,\"type\":\"function\"}]}",
+  "pre_image_bytes_hex": "7b2266696e6973685f726561736f6e223a22746f6f6c5f63616c6c73222c22746f6f6c5f63616c6c73223a5b7b2266756e6374696f6e223a7b22617267756d656e7473223a227b5c226c6f636174696f6e5c223a205c2250617269735c227d222c226e616d65223a226765745f77656174686572227d2c226964223a2263616c6c5f616263313233222c22696e646578223a302c2274797065223a2266756e6374696f6e227d5d7d",
+  "digest": "f8dd75ac84c8b6347d29e8e0aa115c4dbfc8355a0c1cd5e91a64a623ff47fb50"
+}

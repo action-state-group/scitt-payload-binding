@@ -14,12 +14,37 @@ payload classes (`temperature-record`, `authorization-doc`, `decision-record`,
 
 ```
 vectors/
-  jcs-n/kats/           Known-Answer Tests for Algorithm jcs-n (§3.1)
-  jcs-n/derived-id/     Derived identifier construction (§4)
-  typed-refs/pass/      Typed digest reference verification — PASS cases (§6)
-  typed-refs/fail/      Typed digest reference verification — MUST-FAIL cases (§6)
-  profile-independence/pass/   Profile independence — conforming cases (§8)
-  profile-independence/fail/   Profile independence — non-conforming MUST-FAIL cases (§8)
+  CANONICALIZATION_DECLARATION.md   Versioned declaration of all transforms and domains
+  generate.py                       One-command validation / regeneration / mutation check
+  harness.py                        Cross-language conformance harness (both directions)
+  jcs-n/kats/                       Known-Answer Tests for Algorithm jcs-n (§3.1)
+  jcs-n/derived-id/                 Derived identifier construction (§4)
+  typed-refs/pass/                  Typed digest reference verification — PASS cases (§6)
+  typed-refs/fail/                  Typed digest reference verification — MUST-FAIL cases (§6)
+  profile-independence/pass/        Profile independence — conforming cases (§8)
+  profile-independence/fail/        Profile independence — non-conforming MUST-FAIL cases (§8)
+  domain-transforms/pass/           Domain transform PASS cases — stream reassembly (§3.1 + Declaration §6)
+  domain-transforms/fail/           Domain transform MUST-FAIL cases — truncated stream
+  multimodal/pass/                  Binary/multimodal content as base64 string (§3.1 + Declaration §7)
+```
+
+## One command
+
+```sh
+# Validate all pinned digests from inputs:
+python3 vectors/generate.py vectors/
+
+# Mutation check (flip one byte, verify digest changes):
+python3 vectors/generate.py --mutate vectors/
+
+# Test an external implementation against the full suite:
+python3 vectors/harness.py verify-impl "<your-command>" vectors/
+
+# Use our reference impl as the command in an external harness:
+python3 vectors/harness.py reference-impl
+
+# Run the standalone checker (no library dependencies):
+python3 .github/check_vectors.py vectors/
 ```
 
 ## Vector format
@@ -71,6 +96,15 @@ Each vector is a self-contained JSON object. Common fields:
 | jcs-n-esc-uppercase-contrast | MUST-FAIL: `\u001B` (uppercase B) is non-conforming; pins correct and wrong digests for harness check | — |
 | jcs-n-tab-long-form-contrast | MUST-FAIL: `\u0009` instead of `\t` is non-conforming; pins correct and wrong digests | — |
 | jcs-n-control-key-escaped-sort-contrast | MUST-FAIL: sorting keys by escaped bytes is wrong; pins correct (code-unit) and wrong (escaped) digests | — |
+| jcs-n-kat-30 | 4-level deep nesting | `27e20f85...` |
+| jcs-n-kat-31 | Nested tool schema (JSON Schema vocabulary) | `ca37149a...` |
+| jcs-n-kat-32 | MUST-FAIL: exponent notation (`1e2`) | — |
+| jcs-n-kat-33 | `{"count":9007199254740991,"limit":-9007199254740991}` — max safe integer boundary | `00eac020...` |
+| jcs-n-kat-34 | 13-field mixed-type payload | `cb6f355c...` |
+| jcs-n-kat-35 | MUST-FAIL: `-0` token rejected by the wire rule `(0|-?[1-9][0-9]*)` | — |
+| jcs-n-kat-36 | `{"count":0}` — integer zero (token `0`) is a valid wire value | `618de7d9...` |
+| jcs-n-kat-37 | MUST-FAIL: duplicate key `a` after NFC normalization | — |
+| jcs-n-kat-38 | Control characters ESC (U+001B) and HT (U+0009) escaped as `\u001b` / `\t` | `d149a22a...` |
 
 **E3 boundary group** (KATs 02–07): null, empty array, empty object, absent
 field, nested-null, and nested-empty-array (bottom-up) all produce the same
@@ -153,6 +187,21 @@ rule.
 |---|---|---|
 | profile-independence-pass-01 | PASS | Conforming: Profile A cites Profile B via typed ref only |
 | profile-independence-fail-01 | MUST-FAIL | Non-conforming: Profile A reads inside Profile B fields |
+
+## Domain transform summary
+
+| ID | Result | What it tests |
+|---|---|---|
+| domain-transform-pass-01 | PASS | Streaming API response reassembled from SSE delta chunks; digest over reassembled form |
+| domain-transform-fail-01 | MUST-FAIL | Stream truncated before terminal chunk; `stream_incomplete` |
+
+See `CANONICALIZATION_DECLARATION.md §5–6` for the domain and transform table.
+
+## Multimodal summary
+
+| ID | Result | What it tests |
+|---|---|---|
+| multimodal-pass-01 | PASS | Binary content carried as base64-encoded string; digest over the base64 string, not decoded bytes |
 
 ## Historical evidence — cited but not suite members
 

@@ -1,0 +1,23 @@
+{
+  "id": "multimodal-pass-01",
+  "description": "PASS: binary content carried as a base64-encoded string field. The digest is computed over the JSON representation — that is, over the base64 string as a JSON string, not over the decoded binary bytes. This is the correct encoding: jcs-n operates on the JSON payload as-is, so a 'content' field whose value is a base64 string is digested as a base64 string. A verifier that decodes the base64 before computing the digest would produce a different pre-image and a different digest; that verifier is non-conforming. The 'encoding' field is part of the payload and is included in the pre-image.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1",
+  "input": {
+    "content": "iVBORw0KGgoAAAANSUhEUg==",
+    "content_type": "image/png",
+    "encoding": "base64",
+    "name": "icon.png"
+  },
+  "exclusion_set": [],
+  "normalized": {
+    "content": "iVBORw0KGgoAAAANSUhEUg==",
+    "content_type": "image/png",
+    "encoding": "base64",
+    "name": "icon.png"
+  },
+  "pre_image": "{\"content\":\"iVBORw0KGgoAAAANSUhEUg==\",\"content_type\":\"image/png\",\"encoding\":\"base64\",\"name\":\"icon.png\"}",
+  "pre_image_bytes_hex": "7b22636f6e74656e74223a226956424f5277304b47676f414141414e5355684555673d3d222c22636f6e74656e745f74797065223a22696d6167652f706e67222c22656e636f64696e67223a22626173653634222c226e616d65223a2269636f6e2e706e67227d",
+  "digest": "d211536e15debfaf672f7654e377b6b5c29eb57ad33e87d4876e3eaf16add262",
+  "note": "The 17 source bytes (PNG magic + IHDR start) encode to 'iVBORw0KGgoAAAANSUhEUg=='. The pre-image and digest are computed over that string. An implementation that strips the base64 encoding before hashing would produce a 32-byte SHA-256 over the decoded bytes instead — a completely different value with no indication of the mismatch."
+}
