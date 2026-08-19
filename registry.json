@@ -6,6 +6,11 @@
       "reference": "draft-mih-sokolov-scitt-payload-binding",
       "status": "Registered"
     },
+    "jcs": {
+      "description": "RFC 8785 JCS over a JSON object (no normalization pass; null, empty-array, and empty-object members are retained as-is); SHA-256; lowercase hex",
+      "reference": "RFC 8785 \u00a73",
+      "status": "standards-referenced"
+    },
     "cde-n": {
       "description": "Deterministic CBOR canonicalization profile; SHA-256",
       "reference": "draft-mih-sokolov-scitt-payload-binding",
@@ -35,5 +40,5 @@
       ]
     }
   },
-  "snapshot_sha256": "2fa98e73c9958dbc7a827ca81d5f0d148cd9e85b02463ed1d41b9bfa980a3bb4"
+  "snapshot_sha256": "fa1055bec7e3849d8df032b125447be0eec9fdf1af7b91d4c10cd04f6a5aa048"
 }
