@@ -29,6 +29,17 @@ _STRICT_INT_RE = re.compile(r'^(?:0|-?[1-9][0-9]*)$')
 # Full JSON number grammar (RFC 8259 §6) — used to consume a token.
 _JSON_NUM_RE = re.compile(r'-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?')
 
+# Nesting bound for objects/arrays. The scanner is recursive-descent, so an
+# unbounded depth turns adversarial input into an uncaught RecursionError
+# instead of a verdict — for the most security-relevant component in this
+# checker, a crash is a worse failure mode than a rejection. Each nesting
+# level costs two Python stack frames (parse() -> _object()/_array()), so
+# against CPython's default recursion limit (1000) a bound of 500 is already
+# too tight once caller frames (CLI, test runner, pytest) are on the stack —
+# measured empirically failing at 500, passing at 400. 300 is well above any
+# legitimate CPB record depth and leaves real headroom below the crash line.
+_MAX_DEPTH = 300
+
 
 @dataclass(frozen=True)
 class RawViolation:
@@ -47,11 +58,12 @@ class _Scanner:
       checked against ``_STRICT_INT_RE``,
     - tracks JSON paths throughout the tree.
     """
-    __slots__ = ('_t', '_p', 'violations')
+    __slots__ = ('_t', '_p', '_depth', 'violations')
 
     def __init__(self, text: str) -> None:
         self._t: str = text
         self._p: int = 0
+        self._depth: int = 0
         self.violations: list[RawViolation] = []
 
     # ------------------------------------------------------------------
@@ -99,66 +111,81 @@ class _Scanner:
             return False
         raise ValueError(f'unexpected character {c!r} at position {p}')
 
+    def _push_depth(self, path: str) -> None:
+        self._depth += 1
+        if self._depth > _MAX_DEPTH:
+            raise ValueError(
+                f'nesting too deep at {path}: exceeds max depth {_MAX_DEPTH}'
+            )
+
     def _object(self, path: str) -> dict[str, Any]:
-        self._p += 1                            # consume '{'
-        result: dict[str, Any] = {}
-        seen: dict[str, int] = {}               # NFC(key) -> char-position of first occurrence
-        first = True
-        while True:
-            self._ws()
-            if self._p >= len(self._t):
-                raise ValueError(f'unterminated object at {path}')
-            c = self._t[self._p]
-            if c == '}':
-                self._p += 1
-                return result
-            if not first:
-                self._expect(',')
-            first = False
-            self._ws()
-            key = self._string()
-            self._ws()
-            self._expect(':')
-            member_path = f'{path}["{key}"]'
-            # Duplicate detection compares NFC-normalized keys: two members whose
-            # keys are distinct Unicode encodings of the same identifier (e.g. one
-            # NFC, one NFD) are the same wire-layer key and must not both survive —
-            # jcs-n itself does not normalize (CANONICALIZATION_DECLARATION.md §3),
-            # so an un-normalized duplicate check would let an attacker smuggle two
-            # "different" keys that collapse to one identifier downstream.
-            norm_key = unicodedata.normalize('NFC', key)
-            if norm_key in seen:
-                self.violations.append(RawViolation(
-                    path=member_path,
-                    code='duplicate_key',
-                    detail=(
-                        f'key "{key}" appears more than once in the object at '
-                        f'{path} (first occurrence at character {seen[norm_key]})'
-                    ),
-                ))
-            else:
-                seen[norm_key] = self._p
-            val = self.parse(member_path)
-            result[key] = val                   # last-wins, same as json.loads
+        self._push_depth(path)
+        try:
+            self._p += 1                            # consume '{'
+            result: dict[str, Any] = {}
+            seen: dict[str, int] = {}               # NFC(key) -> char-position of first occurrence
+            first = True
+            while True:
+                self._ws()
+                if self._p >= len(self._t):
+                    raise ValueError(f'unterminated object at {path}')
+                c = self._t[self._p]
+                if c == '}':
+                    self._p += 1
+                    return result
+                if not first:
+                    self._expect(',')
+                first = False
+                self._ws()
+                key = self._string()
+                self._ws()
+                self._expect(':')
+                member_path = f'{path}["{key}"]'
+                # Duplicate detection compares NFC-normalized keys: two members whose
+                # keys are distinct Unicode encodings of the same identifier (e.g. one
+                # NFC, one NFD) are the same wire-layer key and must not both survive —
+                # jcs-n itself does not normalize (CANONICALIZATION_DECLARATION.md §3),
+                # so an un-normalized duplicate check would let an attacker smuggle two
+                # "different" keys that collapse to one identifier downstream.
+                norm_key = unicodedata.normalize('NFC', key)
+                if norm_key in seen:
+                    self.violations.append(RawViolation(
+                        path=member_path,
+                        code='duplicate_key',
+                        detail=(
+                            f'key "{key}" appears more than once in the object at '
+                            f'{path} (first occurrence at character {seen[norm_key]})'
+                        ),
+                    ))
+                else:
+                    seen[norm_key] = self._p
+                val = self.parse(member_path)
+                result[key] = val                   # last-wins, same as json.loads
+        finally:
+            self._depth -= 1
 
     def _array(self, path: str) -> list[Any]:
-        self._p += 1                            # consume '['
-        result: list[Any] = []
-        first = True
-        while True:
-            self._ws()
-            if self._p >= len(self._t):
-                raise ValueError(f'unterminated array at {path}')
-            c = self._t[self._p]
-            if c == ']':
-                self._p += 1
-                return result
-            if not first:
-                self._expect(',')
-            first = False
-            idx = len(result)
-            val = self.parse(f'{path}[{idx}]')
-            result.append(val)
+        self._push_depth(path)
+        try:
+            self._p += 1                            # consume '['
+            result: list[Any] = []
+            first = True
+            while True:
+                self._ws()
+                if self._p >= len(self._t):
+                    raise ValueError(f'unterminated array at {path}')
+                c = self._t[self._p]
+                if c == ']':
+                    self._p += 1
+                    return result
+                if not first:
+                    self._expect(',')
+                first = False
+                idx = len(result)
+                val = self.parse(f'{path}[{idx}]')
+                result.append(val)
+        finally:
+            self._depth -= 1
 
     def _string(self) -> str:
         self._ws()

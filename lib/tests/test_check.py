@@ -553,3 +553,32 @@ class TestLex:
             else:
                 seen.add(key)
         assert not dup_found  # mutant treats the NFC/NFD pair as distinct keys
+
+    # --- nesting depth is bounded ---
+
+    def test_deep_nesting_rejected_not_crashed(self) -> None:
+        """20k-deep nesting must produce a typed ValueError, not an uncaught
+        RecursionError.  For the most security-relevant component in this
+        checker, a crash on adversarial input is a worse failure mode than a
+        rejection — a crash gives an attacker a denial-of-service on the
+        checker itself instead of a verdict."""
+        deeply_nested = ('[' * 20_000) + (']' * 20_000)
+        with pytest.raises(ValueError, match='nesting too deep'):
+            lex(deeply_nested)
+
+    def test_shallow_nesting_unaffected(self) -> None:
+        """The depth bound must not reject ordinary CPB records."""
+        value, violations = lex(b'{"a":{"b":{"c":[1,2,3]}}}')
+        assert value == {'a': {'b': {'c': [1, 2, 3]}}}
+        assert violations == []
+
+    def test_deep_nesting_mutant_crashes(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """MUTANT: raise the depth bound far above CPython's recursion limit --
+        the pre-fix behavior.  Demonstrates the guard is load-bearing: without
+        it, the same input that test_deep_nesting_rejected_not_crashed handles
+        cleanly instead crashes with RecursionError."""
+        import cpb._lex as lex_module
+        monkeypatch.setattr(lex_module, '_MAX_DEPTH', 1_000_000)
+        deeply_nested = ('[' * 20_000) + (']' * 20_000)
+        with pytest.raises(RecursionError):
+            lex_module.lex(deeply_nested)
