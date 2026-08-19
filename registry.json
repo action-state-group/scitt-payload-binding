@@ -29,10 +29,11 @@
           "field_set": "all capsule fields",
           "exclusion_set": "{capsule_id, chain}",
           "domain_separation": "none",
+          "pre_image_encoding": "JCS UTF-8 octets (per jcs-n)",
           "representation": "64-char lowercase hex"
         }
       ]
     }
   },
-  "snapshot_sha256": "3b066f74523ed69469899440c5948d6b945f6da6ba075051479e222f6f0748e7"
+  "snapshot_sha256": "2fa98e73c9958dbc7a827ca81d5f0d148cd9e85b02463ed1d41b9bfa980a3bb4"
 }

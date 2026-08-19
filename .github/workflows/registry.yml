@@ -37,10 +37,13 @@ jobs:
           python-version: "3.12"
 
       - name: install jsonschema
-        run: pip install "jsonschema>=4"
+        run: pip install "jsonschema>=4" "pytest>=7"
 
       - name: check committed registry.json matches generated output
         run: python3 .github/gen_registry.py --check
+
+      - name: cell-fidelity test (every cell round-trips from REGISTRY.md)
+        run: python3 -m pytest .github/test_gen_registry.py -v
 
       - name: validate registry.json against JSON Schema
         run: |

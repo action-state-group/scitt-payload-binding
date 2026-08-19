@@ -66,7 +66,7 @@ def _parse_md_table(lines: list[str]) -> list[dict[str, str]]:
             continue
         cells = [_strip_md(c) for c in stripped.strip("|").split("|")]
         if headers is None:
-            headers = [c.lower().replace(" ", "_") for c in cells]
+            headers = [c.lower().replace(" ", "_").replace("-", "_") for c in cells]
         elif all(re.match(r"^[-: ]+$", c) for c in cells):
             continue  # separator row
         else:
