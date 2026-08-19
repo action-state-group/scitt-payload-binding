@@ -47,6 +47,15 @@
 # >>> A PULL REQUEST. Do not do it. Add such a step to a separate workflow on
 # >>> `pull_request`, which correctly receives no secrets.
 #
+# The fork checkout carries `allow-unsafe-pr-checkout: true`. actions/checkout
+# began refusing fork checkouts under pull_request_target, which turned this
+# gate red at the checkout step on every fork PR — the exact failure mode
+# PR #23 introduced pull_request_target to remove, arriving from the other
+# direction. The flag names a risk that properties 1-5 above already exclude:
+# nothing from ./pr is ever executed, built, installed, or sourced. If a future
+# step breaks that, remove this flag in the same commit — the flag is only
+# sound for as long as the file's own >>> warning is obeyed.
+#
 # Scanning head.sha (what the contributor actually wrote) rather than the merge
 # ref is deliberate: `main` is independently gated on push, so the merge result
 # adds nothing, and a pinned sha avoids a race with concurrent pushes to main.
@@ -83,6 +92,13 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           path: pr
           persist-credentials: false
+          # actions/checkout refuses this combination by default now, and the
+          # refusal is right for the usual pull_request_target workflow, which
+          # goes on to build or test the code it just fetched. This one does
+          # not: see the five safety properties above, every one of which is
+          # what the default is protecting. The opt-in is the documented way to
+          # say "I have read that and this is the inert-data case".
+          allow-unsafe-pr-checkout: true
 
       - uses: actions/setup-python@v5
         with:
