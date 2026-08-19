@@ -569,6 +569,54 @@ _MUTANT_GENERATORS: dict[str, object] = {
 # must_fail vector exerciser (defined before _run_self_tests for forward reference)
 # ---------------------------------------------------------------------------
 
+_MEMBER_DECODER = json.JSONDecoder()
+
+
+def _member_raw_text(text: str, key: str) -> str | None:
+    """Raw JSON text of one top-level member's value, or None if absent.
+
+    A literal substring of *text*: raw_decode is used only to find where the
+    value ends, and the value it parses is discarded.  Wire-layer checks need
+    the member's own bytes -- `-0` and duplicate keys do not survive a parse,
+    which is the whole reason this exists.  Deliberately narrower than
+    harness.py's _top_level_member_spans: one member, no duplicate handling,
+    no exception on a non-object (callers treat None as "cannot check").
+    """
+    try:
+        n = len(text)
+        i = 0
+        while i < n and text[i] in " \t\n\r":
+            i += 1
+        if i >= n or text[i] != "{":
+            return None
+        i += 1
+        while True:
+            while i < n and text[i] in " \t\n\r":
+                i += 1
+            if i >= n or text[i] == "}":
+                return None
+            k, i = _MEMBER_DECODER.raw_decode(text, i)
+            while i < n and text[i] in " \t\n\r":
+                i += 1
+            if i >= n or text[i] != ":":
+                return None
+            i += 1
+            while i < n and text[i] in " \t\n\r":
+                i += 1
+            start = i
+            _, i = _MEMBER_DECODER.raw_decode(text, i)
+            if k == key:
+                return text[start:i]
+            while i < n and text[i] in " \t\n\r":
+                i += 1
+            if i < n and text[i] == ",":
+                i += 1
+                continue
+            return None
+    except (ValueError, TypeError):
+        return None
+
+
 def _exercise_must_fail(
     v: dict,
     vid: str,
@@ -592,13 +640,24 @@ def _exercise_must_fail(
     if "input" in v and "jcs_n_correct_digest" not in v and "pre_image" not in v:
         ran_any_check = True
         categories_fired.append("A")
+        # The wire layer sees tokens the parsed object cannot: `-0` is already 0
+        # and duplicate keys have already collapsed by the time jcs_n_pre_image
+        # runs.  So a vector whose rejection happens at the wire layer is proven
+        # by re-parsing its raw text with the wire hooks -- but ONLY the `input`
+        # member's raw text.  Parsing the whole file certifies a vector whose
+        # input is perfectly acceptable whenever any unrelated metadata field
+        # carries an offending token, which is a self-certification hole in the
+        # one check family that exists to prove rejection.
         token_rejected = False
         if raw_text is not None:
-            try:
-                json.loads(raw_text, parse_int=_parse_int_wire, parse_float=_reject_float_wire,
-                           object_pairs_hook=_no_dup_keys)
-            except ValueError:
-                token_rejected = True
+            input_raw = _member_raw_text(raw_text, "input")
+            if input_raw is not None:
+                try:
+                    json.loads(input_raw, parse_int=_parse_int_wire,
+                               parse_float=_reject_float_wire,
+                               object_pairs_hook=_no_dup_keys)
+                except ValueError:
+                    token_rejected = True
         if not token_rejected:
             try:
                 jcs_n_pre_image(v["input"], exclusion_set or None)

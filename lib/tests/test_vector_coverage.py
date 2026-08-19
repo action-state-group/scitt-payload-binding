@@ -415,3 +415,48 @@ def test_handler_registry_covers_every_failure_reason_on_disk() -> None:
     reasons_on_disk = {v.get("failure_reason") for v, _ in _MUST_FAIL_BY_ID.values()}
     missing = reasons_on_disk - set(_HANDLERS)
     assert not missing, f"failure_reason values with no handler: {missing}"
+
+
+def test_wire_layer_check_is_scoped_to_the_input_member() -> None:
+    """Category A proves a vector's rejection happens at the wire layer by
+    re-parsing raw text with the wire hooks. Parsing the WHOLE file certifies
+    a vector whose `input` is perfectly acceptable whenever any unrelated
+    metadata field carries an offending token -- self-certification in the one
+    check family that exists to prove rejection.
+    """
+    import importlib.util
+    import json as _json
+    import pathlib as _pathlib
+
+    checker_path = _pathlib.Path(__file__).resolve().parents[2] / ".github" / "check_vectors.py"
+    spec = importlib.util.spec_from_file_location("_cv_scope", checker_path)
+    cv = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cv)
+
+    decoy = """{
+  "id": "scope-probe",
+  "algorithm": "jcs-n",
+  "must_fail": true,
+  "failure_reason": "invalid_wire_number_token",
+  "input": {"ok": 1},
+  "unrelated_metadata": {"stray": -0}
+}"""
+    ok, errors = cv._exercise_must_fail(
+        _json.loads(decoy), "scope-probe", [], raw_text=decoy, _probe_mutants=False
+    )
+    assert not ok, (
+        "a must_fail vector whose input is acceptable was certified because an "
+        "unrelated metadata member carried -0"
+    )
+
+    genuine = """{
+  "id": "scope-probe-2",
+  "algorithm": "jcs-n",
+  "must_fail": true,
+  "failure_reason": "invalid_wire_number_token",
+  "input": {"count": -0}
+}"""
+    ok2, errors2 = cv._exercise_must_fail(
+        _json.loads(genuine), "scope-probe-2", [], raw_text=genuine, _probe_mutants=False
+    )
+    assert ok2, f"a genuine wire-layer rejection stopped being certified: {errors2}"

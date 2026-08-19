@@ -90,3 +90,47 @@ def test_algo_rejection_leg_forwards_raw_field_spans(tmp_path) -> None:
     assert got.count('"a"') == 2, f"duplicate key 'a' was collapsed: {got!r}"
     assert '"id"' not in got, f"harness metadata field 'id' was not stripped: {got!r}"
     assert '"must_fail"' not in got, f"must_fail flag was not stripped: {got!r}"
+
+
+def test_generated_stub_passes_the_suite_it_is_generated_from() -> None:
+    """The stub is the template an external implementer ports from, and it
+    announces itself as conforming. It shipped implementing neither the wire
+    number-token rule nor the duplicate-key rule, so it silently digested -0
+    and collapsed duplicates -- it failed this very suite, and nothing ran it.
+    """
+    stub = VECTORS_DIR / "stub_impl.py"
+    pre_existing = stub.exists()
+    subprocess.run([sys.executable, str(HARNESS_PATH), "generate-stub"],
+                   capture_output=True, text=True, check=True)
+    try:
+        run = subprocess.run(
+            [sys.executable, str(HARNESS_PATH), "verify-impl",
+             f'{sys.executable} "{stub}"'],
+            capture_output=True, text=True, check=False,
+        )
+        assert "0 FAILED" in run.stdout, (
+            f"the generated stub fails the suite it is generated from:\n"
+            f"{run.stdout}\n{run.stderr}"
+        )
+    finally:
+        if not pre_existing and stub.exists():
+            stub.unlink()
+
+
+def test_verify_impl_is_locale_independent() -> None:
+    """Byte fidelity must not depend on the machine's locale.
+
+    Everything upstream is careful about bytes, and then subprocess text mode
+    encoded stdin with the locale's preferred codec: under LC_ALL=C the run
+    died with UnicodeEncodeError on the first non-ASCII vector. A conformance
+    result that changes with the environment is not a conformance result.
+    """
+    env = {"LC_ALL": "C", "LANG": "C", "PYTHONCOERCECLOCALE": "0", "PYTHONUTF8": "0",
+           "PATH": "/usr/bin:/bin"}
+    run = subprocess.run(
+        [sys.executable, str(HARNESS_PATH), "verify-impl",
+         f'{sys.executable} "{HARNESS_PATH}" reference-impl'],
+        capture_output=True, text=True, env=env, check=False,
+    )
+    assert run.returncode == 0, f"C locale run failed:\n{run.stdout}\n{run.stderr}"
+    assert "0 FAILED" in run.stdout, run.stdout
