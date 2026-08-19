@@ -204,8 +204,16 @@ registrars MUST use them verbatim.
 | `owner-confirmed` | The profile's author or owner approved the entry text (via PR approval, email ack, or equivalent on-record confirmation). Highest-provenance status. |
 | `third-party-documented` | Registered by someone other than the owner, from publicly pinned artifacts (spec revision + repo commit). Registrant is named in the entry. Owner has been notified and invited to review. Not yet confirmed by owner. |
 | `provisional` | A reference resolves but the vector set is incomplete or the specification is insufficiently pinned. Entry is held in [`spec/cpb-provisional-registry.md`](spec/cpb-provisional-registry.md) until vectors and pinning are complete. |
+| `standards-referenced` | The entry's construction is fully specified by a published standard (RFC, ISO, or equivalent) rather than by a party who can acknowledge anything. There is no owner to ack, so `owner-confirmed` is unreachable by construction and its absence is not a provenance gap. Gates A and B still apply, and the Reference row MUST cite the standard to section precision. |
 
 Statuses are not permanent — see [Entry Lifecycle](#entry-lifecycle) below.
+
+**Designated Expert review is a merge precondition, not a status.** An entry in the
+live tables has, by definition, passed the gates required for its rung — that is what
+admission means. Pending DE review is therefore a state of the *pull request*, not of
+the entry, and MUST NOT be written into a Status cell: a merged entry whose status says
+"pending review" states a condition that merging already discharged. Statuses in the
+live tables are the vocabulary terms above, used verbatim.
 
 **Legacy mapping for pre-existing rows.** The live tables above predate this
 vocabulary and are NOT rewritten to it; they are read through the following
@@ -302,9 +310,11 @@ owner's behalf. If a required field cannot be sourced from public artifacts, the
 gate required for its rung is returned for correction and does not enter the live tables until
 every gate required for that rung passes. Gates A and B apply to every entry regardless of
 rung. Gate C's admission requirement differs by rung — see the rung-specific checkboxes within
-Gate C below: a Rung 1 entry needs the owner ACK (satisfied by the PR itself) at admission; a
-Rung 2 entry needs neither ACK at admission and is admitted as `third-party-documented` on
-satisfying the [Third-Party Registration Rules](#third-party-registration-rules) alone. These
+Gate C below: a Rung 1 entry needs the owner ACK (satisfied by the PR itself) plus a
+consuming-profile maintainer ACK, unless owner and maintainer are the same party; a Rung 2
+entry needs neither ACK at admission and is admitted as `third-party-documented` once it
+satisfies the [Third-Party Registration Rules](#third-party-registration-rules) — no ACK is
+required of it, but Gates A and B bind it exactly as they bind every other entry. These
 are the DE's verification steps; the [Required fields](#entry-template) table is the
 corresponding author-side declaration.
 
@@ -340,8 +350,9 @@ satisfy Gate A — it demonstrates compatibility, not distinguishability.
   same party.
 - [ ] **Rung 2 (third-party-documented) admission:** neither the owner ACK nor the
   consuming-profile ACK is required. The entry enters the live tables as
-  `third-party-documented` on satisfying the
-  [Third-Party Registration Rules](#third-party-registration-rules) alone.
+  `third-party-documented` once it satisfies the
+  [Third-Party Registration Rules](#third-party-registration-rules). No ACK is required
+  of a Rung 2 entry; Gates A and B still bind it.
 - [ ] **Upgrade to `owner-confirmed` (either rung):** any unambiguous acknowledgment from the
   entry's owner (or a named authorized delegate) — via PR approval, on-record email, or a
   GitHub comment on the PR from a confirmed owner identity — upgrades the entry. Consuming-
@@ -415,13 +426,19 @@ Algorithm Registry table is four columns; a fifth column makes it ragged):
 ⌙ Registrant: Registered by <registrant> from <spec-rev> / commit `<hash>`.
 ```
 
-**Artifact Type Registry — new row (owner-authored or owner-confirmed):**
+**Algorithm Registry — new row (any status):**
 
 ```
-| `<name>` | `<algorithm>`; exclusion set `{<fields>}`; <output format> | <draft or RFC reference> | `<status>` |
+| `<name>` | <description: construction; digest; representation> | <draft or RFC reference> | `<status>` |
 ```
 
-**Artifact Type Registry — new row (third-party-documented):**
+An Artifact Type entry is never a bare table row: every artifact type states one or
+more digest contexts, and every digest context states all eight parameters of the
+[digest-context template](#artifact-type-registry). Use the named-subsection forms
+below — a single-context entry is the degenerate case of that template, not a
+shorter one.
+
+**Artifact Type Registry — new entry (third-party-documented):**
 Use the named-subsection form (`### <name>`) to accommodate the `Registrant:` and any
 `Disclosure:` prose lines without adding a fifth column to a four-column table:
 
@@ -438,8 +455,8 @@ Use the named-subsection form (`### <name>`) to accommodate the `Registrant:` an
 | ... | ... | ... | ... | ... | ... | ... | ... |
 ```
 
-**Artifact Type Registry — new row (owner-authored or owner-confirmed):**
-Use the same named-subsection form for entries with multiple digest contexts. Add
+**Artifact Type Registry — new entry (owner-authored or owner-confirmed):**
+Use the same named-subsection form, with one digest-context row per context. Add
 `Discriminating-vector:` and `Consuming-profile:` prose lines; omit `Registrant:` for
 owner-authored entries:
 
@@ -473,7 +490,7 @@ as prose lines immediately following the table row (matching the pattern used by
 | Name | Yes | The controlled identifier used in the `type` field or algorithm name. |
 | Description / Digest Context | Yes | For algorithms: normalization + hash + output. For artifact types: algorithm, exclusion set, output format. |
 | Reference | Yes | Publicly available specification (Internet-Draft, RFC, or a pinned repository revision). When citing a repository, a commit hash is mandatory — a branch or tag alone is not a pin, since both can move after the fact. |
-| Status | Yes | For new entries: one of `owner-confirmed`, `third-party-documented`, `provisional` (expressed as a Status column or, in the named-subsection form, a prose `Status:` line). Legacy `Registered`/`Reserved` rows are read via the mapping in [Entry Status Vocabulary](#entry-status-vocabulary). |
+| Status | Yes | For new entries: one of `owner-confirmed`, `third-party-documented`, `provisional`, `standards-referenced`, used verbatim (expressed as a Status column or, in the named-subsection form, a prose `Status:` line). No qualifier text — see [Entry Status Vocabulary](#entry-status-vocabulary) on why "pending review" is not a status. Legacy `Registered`/`Reserved` rows are read via the mapping there. |
 | Registrant | Third-party only | Self-attestation: "Registered by X from Y at commit Z." Retained on upgrade to `owner-confirmed` when a `Disclosure` is also present — dropping it would destroy the provenance the disclosure exists to preserve. |
 | Vectors | Yes — all entries | Link to the vector set (owner's published set, or the entry's own if the owner produced it). Third-party entries MUST cite the owner's published vector set and MUST NOT fabricate one. Owner-authored entries that have not yet published a two-sided vector set are `provisional`. |
 | Discriminating-vector | Yes — all entries | A conformance test case (positive or MUST-FAIL) that distinguishes this entry's construction from every currently registered neighbour in the same registry table, both directions. Committed to `vectors/<name>/` in the same PR, or cited at a commit-pinned external URL — Rung 2 (third-party) entries MUST use the external-URL branch (the "same PR" branch is closed to them by Third-Party Registration Rule 4, which forbids fabricating vectors for someone else's construction). A vector identical to or shared with an existing entry does not satisfy this field. See [Designated Expert Admission Checklist](#designated-expert-admission-checklist), Gate A. |
