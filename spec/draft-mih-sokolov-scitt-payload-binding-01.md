@@ -508,14 +508,31 @@ and the digest recomputed over the referenced artifact are comparable only
 when both are interpreted under the same established referenced-artifact
 digest context and comparison representation.
 
-If the value of `type` is not present in the Artifact Type Registry
-({{iana-art}}), the verifier cannot resolve any digest context for the
-reference. The verifier MUST NOT report the typed reference as verified;
-the reference MUST be treated as present but not verified. The consuming
-profile determines the resulting disposition. A citation carrying an
-unregistered `type` value is not an error in the citing record: it
-becomes verifiable once a conforming Artifact Type Registry entry for that
-type exists. See {{appendix-d}} for a worked example.
+If the verifier cannot resolve a digest context for the value of `type`,
+it MUST NOT report the typed reference as verified; the reference is
+present but not verified. Two situations produce that outcome and a
+verifier MUST distinguish them in what it reports, because they call for
+different responses:
+
+* The type is absent from the Artifact Type Registry. Nothing is
+  registered under that name, and the citation becomes verifiable only
+  once a conforming entry exists.
+* The type is absent from the particular registry snapshot the verifier
+  holds, which may predate an entry that does exist. The remedy is to
+  obtain a current snapshot, not to seek a registration.
+
+A verifier that reports these as one condition sends an implementer to fix
+the wrong thing. A verifier that cannot tell them apart -- because it holds
+no snapshot version -- MUST report the weaker of the two, that its snapshot
+may be stale.
+
+The consuming profile determines the disposition, and a profile MUST state
+what it does with a present-but-not-verified reference. A citation carrying
+an unregistered `type` is not an error in the citing record. It is also not
+evidence: {{immutable-coordinates}} requires that citations pin content by
+CANONICAL-DIGEST precisely so that an unverified reference cannot be relied
+on, so a profile MUST NOT treat "not an error" as permission to proceed as
+though the reference had verified. See {{appendix-d}} for a worked example.
 
 A third party MAY author an Artifact Type Registry entry for an
 externally-defined artifact type without requiring participation by the
@@ -661,7 +678,7 @@ digest-bearing field silently produces implementation-dependent digests that
 cannot be reproduced and therefore cannot be verified. Exact decimal strings
 are the only portable encoding for monetary and quantity values.
 
-## Immutable Coordinates
+## Immutable Coordinates {#immutable-coordinates}
 
 A mutable reference — a branch name, a tag that can be moved, a content
 URL that is not a content-addressed URL — is not evidence. The moment a
@@ -1170,7 +1187,7 @@ type exists.
   "type": "oci-image-manifest",
   "purpose": "identifier",
   "digest_alg": "SHA-256",
-  "digest": "44136fa355ba77b9ad7b7c41d8...86785"
+  "digest": "<64 lowercase hex characters>"
 }
 ~~~
 
@@ -1202,12 +1219,30 @@ Name: `oci-image-manifest`
 Reference: the citable specification produced by the registrant,
 describing OCI image manifest digest construction per {{OCI-image-spec}}.
 
+This example is worth following closely, because the obvious entry is not
+a conforming one. `as-transmitted` looks like the natural algorithm here --
+an OCI manifest is content-addressed over its exact serialized bytes, and
+re-canonicalizing them would break that binding. But {{algo-as-transmitted}}
+requires an `as-transmitted` entry to state a byte-boundary selector that
+cites *the name the referenced specification gives* to the byte sequence,
+as `RFC 7515 §5.1, JWS Signing Input` does. The OCI Image Format
+Specification does not give that byte sequence a name: it is organized as
+unnumbered documents and defines no production for the serialized manifest
+octets. {{algo-as-transmitted}} says what follows -- an artifact type whose
+container specification does not name the bytes as a discrete production
+MUST NOT use `as-transmitted`, and registers a canonicalization algorithm
+instead. The registrant's citable specification is what supplies the
+missing definition:
+
 Digest context (`identifier`):
 
 * Profile version: N/A
-* Canonicalization algorithm: `as-transmitted`
-* Byte-boundary selector: the complete serialized byte sequence of the OCI
-  image manifest JSON document as defined in Section 5 of {{OCI-image-spec}}.
+* Canonicalization algorithm: the algorithm the registrant registers for
+  this purpose, whose specification states exactly which octets form the
+  pre-image -- for an OCI manifest, the serialized JSON document as
+  transmitted, defined by the registrant rather than borrowed from a name
+  {{OCI-image-spec}} does not provide.
+* Field set: as stated by that algorithm's specification
 * Exclusion set: N/A
 * Domain separation: none
 * Pre-image encoding: raw bytes
