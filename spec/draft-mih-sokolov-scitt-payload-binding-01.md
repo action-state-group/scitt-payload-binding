@@ -98,6 +98,12 @@ informative:
       - ins: Y. Lee
         name: Yong Bok Lee
         organization: Meridian Verity Group
+  OCI-image-spec:
+    title: "OCI Image Format Specification, Version 1.1.0"
+    target: https://specs.opencontainers.org/image-spec/
+    author:
+      - org: Open Container Initiative
+    date: 2024
 
 --- abstract
 
@@ -510,6 +516,43 @@ and the digest recomputed over the referenced artifact are comparable only
 when both are interpreted under the same established referenced-artifact
 digest context and comparison representation.
 
+If the verifier cannot resolve a digest context for the value of `type`,
+it MUST NOT report the typed reference as verified; the reference is
+present but not verified. Two situations produce that outcome and a
+verifier MUST distinguish them in what it reports, because they call for
+different responses:
+
+* The type is absent from the Artifact Type Registry. Nothing is
+  registered under that name, and the citation becomes verifiable only
+  once a conforming entry exists.
+* The type is absent from the particular registry snapshot the verifier
+  holds, which may predate an entry that does exist. The remedy is to
+  obtain a current snapshot, not to seek a registration.
+
+A verifier that reports these as one condition sends an implementer to fix
+the wrong thing. A verifier that cannot tell them apart -- because it holds
+no snapshot version -- MUST report the weaker of the two, that its snapshot
+may be stale.
+
+The consuming profile determines the disposition, and a profile MUST state
+what it does with a present-but-not-verified reference. A citation carrying
+an unregistered `type` is not an error in the citing record. It is also not
+evidence: {{immutable-coordinates}} requires that citations pin content by
+CANONICAL-DIGEST precisely so that an unverified reference cannot be relied
+on, so a profile MUST NOT treat "not an error" as permission to proceed as
+though the reference had verified. See {{appendix-d}} for a worked example.
+
+A third party MAY author an Artifact Type Registry entry for an
+externally-defined artifact type without requiring participation by the
+body that owns or defines that type. The Specification Required policy
+({{RFC8126}}, Section 4.6) requires a citable specification describing the
+digest context; it does not require that the body controlling the external
+type be the registrant. An implementer or profile author who can produce a
+citable specification for the pre-image construction of, for example, an
+OCI image manifest {{OCI-image-spec}}, a SEV-SNP measurement, a TDX quote,
+or an in-toto subject digest may submit a registry entry for that type
+independently.
+
 To verify the reference, the verifier MUST use the `type` field, together
 with the `purpose` field when the resolved artifact type registers more than
 one digest context, to resolve exactly one of the referenced artifact's
@@ -669,7 +712,7 @@ digest-bearing field silently produces implementation-dependent digests that
 cannot be reproduced and therefore cannot be verified. Exact decimal strings
 are the only portable encoding for monetary and quantity values.
 
-## Immutable Coordinates
+## Immutable Coordinates {#immutable-coordinates}
 
 A mutable reference — a branch name, a tag that can be moved, a content
 URL that is not a content-addressed URL — is not evidence. The moment a
@@ -679,6 +722,14 @@ use typed digest references ({{typed-refs}}) that pin the content by its
 CANONICAL-DIGEST. Names, labels, and human-readable identifiers MAY appear
 alongside a typed reference for display purposes but carry no evidentiary
 weight.
+
+When an externally-defined artifact type cited in an immutable coordinate
+has no entry in the Artifact Type Registry at verification time, the
+citation is present but not verified; the consuming profile determines the
+disposition ({{comparability}}). This is not a defect in the citing record:
+the citation becomes verifiable once a conforming registry entry exists, and
+that entry may be authored by a third party independently of the body that
+defines the external artifact type.
 
 ## Tamper Evidence and Runtime Honesty
 
@@ -1219,6 +1270,101 @@ cross-verifications complete.
 The PermitReceipt × MachineMandate composition is excluded from this appendix.
 It is recorded in the AAC interop registry (INTEROP.md).
 
+
+# Verifier Behavior for an Unregistered Artifact Type: OCI Image Manifest Digest {#appendix-d}
+
+This appendix is informative.
+
+An OCI image manifest is content-addressed by the SHA-256 digest of its
+serialized JSON bytes, as specified by the OCI Image Format Specification
+{{OCI-image-spec}}. A record that cites a specific OCI image MAY use a
+typed digest reference. This appendix illustrates conforming verifier
+behavior before and after an Artifact Type Registry entry for this artifact
+type exists.
+
+**Typed digest reference (illustrative):**
+
+~~~json
+{
+  "type": "oci-image-manifest",
+  "purpose": "identifier",
+  "digest_alg": "SHA-256",
+  "digest": "<64 lowercase hex characters>"
+}
+~~~
+
+The type name `oci-image-manifest` used here is illustrative; the actual
+registered name would be whatever token an Artifact Type Registry entry
+establishes.
+
+**Before registration.** No entry named `oci-image-manifest` (or any other
+token for this artifact type) exists in the Artifact Type Registry. A
+conforming verifier:
+
+1. Looks up the `type` value in the Artifact Type Registry — no entry found.
+2. MUST NOT report the typed reference as verified.
+3. Treats the reference as present but not verified.
+4. Returns the error disposition to the consuming profile for the profile
+   to resolve; the citing record is not defective.
+
+The Open Container Initiative need not register this type. A third party —
+an implementer or profile author — may author a registry entry by producing
+a citable specification describing the pre-image construction. The
+Specification Required policy ({{RFC8126}}, Section 4.6) requires a citable
+specification, not participation by the artifact type's owning body.
+
+**After registration.** Suppose a third party produces a citable
+specification and a Designated Expert approves the following entry:
+
+Name: `oci-image-manifest`
+
+Reference: the citable specification produced by the registrant,
+describing OCI image manifest digest construction per {{OCI-image-spec}}.
+
+This example is worth following closely, because the obvious entry is not
+a conforming one. `as-transmitted` looks like the natural algorithm here --
+an OCI manifest is content-addressed over its exact serialized bytes, and
+re-canonicalizing them would break that binding. But {{algo-as-transmitted}}
+requires an `as-transmitted` entry to state a byte-boundary selector that
+cites *the name the referenced specification gives* to the byte sequence,
+as `RFC 7515 §5.1, JWS Signing Input` does. The OCI Image Format
+Specification does not give that byte sequence a name: it is organized as
+unnumbered documents and defines no production for the serialized manifest
+octets. {{algo-as-transmitted}} says what follows -- an artifact type whose
+container specification does not name the bytes as a discrete production
+MUST NOT use `as-transmitted`, and registers a canonicalization algorithm
+instead. The registrant's citable specification is what supplies the
+missing definition:
+
+Digest context (`identifier`):
+
+* Profile version: N/A
+* Canonicalization algorithm: the algorithm the registrant registers for
+  this purpose, whose specification states exactly which octets form the
+  pre-image -- for an OCI manifest, the serialized JSON document as
+  transmitted, defined by the registrant rather than borrowed from a name
+  {{OCI-image-spec}} does not provide.
+* Field set: as stated by that algorithm's specification
+* Exclusion set: N/A
+* Domain separation: none
+* Pre-image encoding: raw bytes
+* Representation: 64-character lowercase hexadecimal
+
+A conforming verifier can now:
+
+1. Look up `oci-image-manifest` in the Artifact Type Registry — entry found.
+2. Use `purpose` (`identifier`) to select the single registered digest
+   context.
+3. Confirm `digest_alg` is consistent with the registered context (SHA-256).
+4. Recompute SHA-256 over the manifest byte sequence and compare to the
+   `digest` field.
+5. Report the typed reference as verified if the values match, or not
+   verified if they do not.
+
+The citing record is unchanged between the two scenarios; only the registry
+state differs. This is the verifiable-once-registered property: a citation
+with an unregistered type is a present-but-unverified citation awaiting a
+conforming registry entry, not a structural defect in the citing record.
 
 # Acknowledgments {#acknowledgments}
 {:numbered="false"}
