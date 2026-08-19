@@ -6,17 +6,18 @@ verifies its content-address (snapshot_sha256), and reports the snapshot
 version in verdicts so external parties know which snapshot was used.
 
 Verdict taxonomy — distinct by design; MUST NOT be conflated:
-  VERDICT_VERIFIED              — id found in snapshot AND status ==
-                                   "Registered"; entry returned.
-  VERDICT_RESERVED               — id found in snapshot but its status is a
-                                   pre-registration hold (e.g. "Reserved"), not
-                                   "Registered". The id has no defined semantics
-                                   yet; a fail-closed verifier MUST NOT treat this
-                                   the same as VERDICT_VERIFIED. Entry is
-                                   returned (the caller may want the
-                                   status/reference), but is never mistaken for
-                                   a verified id because the verdict string
-                                   itself differs.
+  VERDICT_VERIFIED              — id found in snapshot AND its status is a live
+                                   registration (_LIVE_STATUSES); entry returned.
+  VERDICT_RESERVED               — id found in snapshot but held rather than live:
+                                   "Reserved" (a pre-registration hold on a name)
+                                   or "provisional" (kept out of the live tables
+                                   until vectors and pinning are complete). Neither
+                                   has semantics to verify against, so a fail-closed
+                                   verifier MUST NOT treat this the same as
+                                   VERDICT_VERIFIED. Entry is returned (the caller
+                                   may want the status/reference), but is never
+                                   mistaken for a verified id because the verdict
+                                   string itself differs.
   VERDICT_UNKNOWN_ID            — authoritative check (pinned=False); id is
                                   genuinely absent from the registry.
   VERDICT_ID_UNKNOWN_TO_SNAPSHOT — pinned-snapshot check (pinned=True); id is
@@ -54,10 +55,24 @@ VERDICT_RESERVED = "reserved"
 VERDICT_UNKNOWN_ID = "unknown-id"
 VERDICT_ID_UNKNOWN_TO_SNAPSHOT = "id-unknown-to-snapshot"
 
-#: status values (registry.json "status" field) that constitute a live,
-#: verifiable registration. Anything else present in the snapshot (e.g.
-#: "Reserved") is a pre-registration hold with no defined semantics.
-_LIVE_STATUS = "Registered"
+#: Status values (registry.json "status" field) that constitute a live,
+#: verifiable registration. Mirrors REGISTRY.md's Entry Status Vocabulary:
+#: the legacy "Registered" spelling plus the vocabulary terms that denote an
+#: entry in the live tables. "Reserved" is a pre-registration hold on a name,
+#: and "provisional" is held out of the live tables until its vectors and
+#: pinning are complete — neither has semantics to verify against.
+#:
+#: This mirrors the vocabulary rather than reading it: the library consumes
+#: registry.json, which carries no vocabulary. test_registry.py cross-checks
+#: this set against the statuses actually present in the committed snapshot,
+#: so a new status cannot enter the registry without being classified here.
+_LIVE_STATUSES = frozenset({
+    "Registered",              # legacy spelling, pre-vocabulary rows
+    "owner-confirmed",
+    "third-party-documented",
+    "standards-referenced",
+})
+_HELD_STATUSES = frozenset({"Reserved", "provisional"})
 
 
 class SnapshotIntegrityError(ValueError):
@@ -140,14 +155,14 @@ class RegistrySnapshot:
         Returns:
             ``(verdict, entry)`` where entry is a dict on VERDICT_VERIFIED or
             VERDICT_RESERVED, or None on any other verdict. An entry present
-            in the snapshot but not in ``Registered`` status (e.g. a
-            pre-registration ``Reserved`` hold) is VERDICT_RESERVED, never
-            VERDICT_VERIFIED — presence alone does not verify an id.
+            in the snapshot but held rather than live (``Reserved`` or
+            ``provisional``) is VERDICT_RESERVED, never VERDICT_VERIFIED —
+            presence alone does not verify an id.
         """
         algorithms: dict = self._data.get("canonicalization_algorithms", {})
         entry = algorithms.get(algorithm_id)
         if entry is not None:
-            if entry.get("status") == _LIVE_STATUS:
+            if entry.get("status") in _LIVE_STATUSES:
                 return (VERDICT_VERIFIED, dict(entry))
             return (VERDICT_RESERVED, dict(entry))
         if pinned:
@@ -165,7 +180,7 @@ class RegistrySnapshot:
         types: dict = self._data.get("artifact_types", {})
         entry = types.get(type_name)
         if entry is not None:
-            if entry.get("status") == _LIVE_STATUS:
+            if entry.get("status") in _LIVE_STATUSES:
                 return (VERDICT_VERIFIED, dict(entry))
             return (VERDICT_RESERVED, dict(entry))
         if pinned:

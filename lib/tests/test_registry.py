@@ -351,3 +351,50 @@ class TestLoadFromDisk:
             if entry.get("status") == "Registered":
                 verdict, _ = snap.lookup_algorithm(alg_id)
                 assert verdict == VERDICT_VERIFIED, f"registered id {alg_id!r} not found"
+
+
+# ---------------------------------------------------------------------------
+# The live/held classification must cover every status the registry actually
+# uses. registry.json carries no vocabulary, so the set in registry.py mirrors
+# REGISTRY.md rather than reading it -- this is the guard on that mirror.
+# ---------------------------------------------------------------------------
+
+def test_every_status_in_the_snapshot_is_classified():
+    """A status that is neither live nor held would silently read as held.
+
+    That is the failure this catches: `jcs` merged with status
+    `standards-referenced`, which was not in the live set, and a fully
+    specified RFC 8785 entry reported as a pre-registration hold.
+    """
+    import json as _json
+    import pathlib as _pathlib
+    from cpb.registry import _HELD_STATUSES, _LIVE_STATUSES
+
+    snapshot = _json.loads(
+        (_pathlib.Path(__file__).resolve().parents[2] / "registry.json").read_text(encoding="utf-8")
+    )
+    present = {e.get("status") for e in snapshot["canonicalization_algorithms"].values()}
+    present |= {e.get("status") for e in snapshot["artifact_types"].values()}
+
+    unclassified = present - _LIVE_STATUSES - _HELD_STATUSES
+    assert not unclassified, (
+        f"registry.json carries status(es) {sorted(unclassified)} that registry.py "
+        f"classifies as neither live nor held; a lookup would report them held. "
+        f"Classify them against REGISTRY.md's Entry Status Vocabulary."
+    )
+    assert not (_LIVE_STATUSES & _HELD_STATUSES), "a status cannot be both live and held"
+
+
+def test_live_entries_verify_and_held_entries_do_not():
+    """Two-sided, against the committed snapshot rather than a fixture."""
+    import pathlib as _pathlib
+    from cpb.registry import VERDICT_RESERVED, VERDICT_VERIFIED, RegistrySnapshot
+
+    snap = RegistrySnapshot.load(_pathlib.Path(__file__).resolve().parents[2] / "registry.json")
+    assert snap.lookup_algorithm("jcs")[0] == VERDICT_VERIFIED, (
+        "a standards-referenced entry is a live registration"
+    )
+    assert snap.lookup_algorithm("jcs-n")[0] == VERDICT_VERIFIED
+    assert snap.lookup_algorithm("cde-n")[0] == VERDICT_RESERVED, (
+        "a Reserved name has no defined semantics to verify against"
+    )
