@@ -174,3 +174,90 @@ class TestAlgorithmRegistryCellFidelity:
                 )
 
         assert checked > 0, "no algorithm cells found to check -- test is vacuous"
+
+
+# ---------------------------------------------------------------------------
+# Status vocabulary: REGISTRY.md is the single source, and the check is exact.
+# ---------------------------------------------------------------------------
+
+_MD_LINES = _REGISTRY_MD.read_text(encoding="utf-8").splitlines(keepends=True)
+
+
+def _vocabulary_from_markdown():
+    """Read the vocabulary the way a human reads it: the first column of the
+    table under 'Entry Status Vocabulary', by hand, not via gen_registry."""
+    lines = _REGISTRY_MD.read_text(encoding="utf-8").splitlines()
+    start = next(i for i, l in enumerate(lines) if l.startswith("## Entry Status Vocabulary"))
+    terms, seen_table = [], False
+    for line in lines[start + 1:]:
+        if line.startswith("## "):
+            break
+        if not line.startswith("|"):
+            if seen_table:
+                break
+            continue
+        seen_table = True
+        cell = line.strip("|").split("|")[0].strip()
+        if cell.lower() == "status" or re.match(r"^[-: ]+$", cell):
+            continue
+        terms.append(re.sub(r"`", "", cell))
+    return terms
+
+
+def test_validator_reads_its_statuses_from_registry_md():
+    """The legal-status set is parsed from REGISTRY.md, not hardcoded, so the
+    policy text and the validator cannot drift apart."""
+    from_validator = gen_registry._parse_status_vocabulary(_MD_LINES)
+    for term in _vocabulary_from_markdown():
+        assert term in from_validator, (
+            f"status {term!r} is in REGISTRY.md's vocabulary table but the "
+            f"validator would reject it; parsed set: {sorted(from_validator)}"
+        )
+    assert {"Registered", "Reserved"} <= from_validator, (
+        "legacy spellings must stay legal — the live tables still use them"
+    )
+
+
+@pytest.mark.parametrize("bad_status", [
+    "Provisional — pending Designated Expert review",  # qualifier text
+    "provisional (held)",                              # trailing note
+    "Owner-Confirmed",                                 # wrong case
+    "",                                                # missing
+])
+def test_status_must_be_verbatim(bad_status):
+    """Vocabulary terms are required verbatim: a qualifier is not a status.
+    Prefix-matching here would let 'provisional — pending X' pass as
+    'provisional', which is exactly the drift this check exists to catch."""
+    legal = gen_registry._parse_status_vocabulary(_MD_LINES)
+    data = {
+        "schema_version": "1",
+        "snapshot_sha256": "0" * 64,
+        "canonicalization_algorithms": {
+            "example": {"description": "d", "reference": "r", "status": bad_status}
+        },
+        "artifact_types": {},
+    }
+    errors = gen_registry._validate_structure(data, legal)
+    assert any("status must be one of" in e for e in errors), (
+        f"status {bad_status!r} was accepted; errors were {errors}"
+    )
+
+
+def test_artifact_type_status_is_validated_too():
+    """Artifact-type statuses were previously unvalidated — an unknown status
+    flowed straight through into registry.json."""
+    legal = gen_registry._parse_status_vocabulary(_MD_LINES)
+    data = {
+        "schema_version": "1",
+        "snapshot_sha256": "0" * 64,
+        "canonicalization_algorithms": {},
+        "artifact_types": {"example": {"reference": "r", "status": "made-up", "digest_contexts": []}},
+    }
+    errors = gen_registry._validate_structure(data, legal)
+    assert any("artifact type 'example'" in e for e in errors), errors
+
+
+def test_committed_registry_passes_its_own_validation():
+    data = gen_registry.generate(_REGISTRY_MD)
+    errors = gen_registry._validate_structure(data, gen_registry._parse_status_vocabulary(_MD_LINES))
+    assert errors == [], errors
