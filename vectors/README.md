@@ -14,13 +14,82 @@ payload classes (`temperature-record`, `authorization-doc`, `decision-record`,
 
 ```
 vectors/
-  jcs-n/kats/           Known-Answer Tests for Algorithm jcs-n (§3.1)
-  jcs-n/derived-id/     Derived identifier construction (§4)
-  typed-refs/pass/      Typed digest reference verification — PASS cases (§6)
-  typed-refs/fail/      Typed digest reference verification — MUST-FAIL cases (§6)
-  profile-independence/pass/   Profile independence — conforming cases (§8)
-  profile-independence/fail/   Profile independence — non-conforming MUST-FAIL cases (§8)
+  CANONICALIZATION_DECLARATION.md   Versioned declaration of all transforms and domains
+  generate.py                       One-command validation / regeneration / mutation check
+  harness.py                        Cross-language conformance harness (both directions)
+  jcs-n/kats/                       Known-Answer Tests for Algorithm jcs-n (§3.1)
+  jcs-n/derived-id/                 Derived identifier construction (§4)
+  jcs-n/assembled-preimage/         Assembled pre-images: member mapping (§4, §13.2)
+  typed-refs/pass/                  Typed digest reference verification — PASS cases (§6)
+  typed-refs/fail/                  Typed digest reference verification — MUST-FAIL cases (§6)
+  profile-independence/pass/        Profile independence — conforming cases (§8)
+  profile-independence/fail/        Profile independence — non-conforming MUST-FAIL cases (§8)
+  domain-transforms/pass/           Domain transform PASS cases — stream reassembly (§3.1 + Declaration §6)
+  domain-transforms/fail/           Domain transform MUST-FAIL cases — truncated stream
+  multimodal/pass/                  Binary/multimodal content as base64 string (§3.1 + Declaration §7)
 ```
+
+## One command
+
+```sh
+# Validate all pinned digests from inputs:
+python3 vectors/generate.py vectors/
+
+# Mutation check (flip one byte, verify digest changes):
+python3 vectors/generate.py --mutate vectors/
+
+# Test an external implementation against the full suite:
+python3 vectors/harness.py verify-impl "<your-command>" vectors/
+
+# Use our reference impl as the command in an external harness:
+python3 vectors/harness.py reference-impl
+
+# Run the standalone checker (no library dependencies):
+python3 .github/check_vectors.py vectors/
+```
+
+## Assembled pre-images — family summary
+
+Some payload classes bind neither the payload nor the payload minus an
+exclusion set, but an object **assembled** from selected source fields. For
+those, the algorithm plus the selected field set does not determine the
+pre-image: the assembled object's member names and nesting are chosen by the
+producer and are part of the bytes.
+
+| ID | What it pins | Digest |
+|---|---|---|
+| jcs-n-assembled-01 | MUST-FAIL: two conforming readings of one declared field set produce different pre-images, differing only in one member name | `9707290f…` vs `7dd1096d…` |
+| jcs-n-assembled-02 | The sufficient declaration: a `member_mapping` from source pointers to pre-image pointers, plus declared constants, from which exactly one pre-image is derivable | `9a43989d…` |
+
+`jcs-n-assembled-02` is executed, not asserted: Category K in
+`.github/check_vectors.py` applies the declared mapping to the source object and
+requires the result to equal the vector's `input` exactly.
+
+### `member_mapping` addressing and collision rules
+
+Both `source_pointer` and `preimage_pointer` are **JSON Pointers (RFC 6901)**, not
+dotted paths. A dotted path cannot address a literal member containing a dot: given
+`{"a.b": 1, "a": {"b": 2}}`, `a.b` names both and resolves to the nested one, so the
+top-level member is unreachable. As pointers these are `/a.b` and `/a/b`. The `~1`
+and `~0` escapes are honoured in that order, so a member named `a/b` is `/a~1b`.
+
+A mapping is **absent** or it is **declared**. `member_mapping: {}` is declared and
+is rejected: a declared mapping MUST name at least one field or constant. Absence is
+tested with `is None`, never with falsiness, because an empty declared mapping that
+read as absent would skip Category K entirely.
+
+All destinations share one namespace, whichever side produced them, and three
+collisions are rejected:
+
+| collision | example | why |
+|---|---|---|
+| duplicate destination | `/x` twice | two values claim one member; the pre-image is not determined |
+| ancestor/descendant | `/a` and `/a/b` | one destination is inside the other; the result depends on write order |
+| constant against field | field `/x`, constant `/x` | constants and fields are not separate namespaces |
+
+**Arrays are out of scope** for this template element. A pointer that traverses an
+array is rejected rather than guessed at, so array handling stays an explicit future
+decision instead of an accident of implementation.
 
 ## Vector format
 
@@ -64,6 +133,22 @@ Each vector is a self-contained JSON object. Common fields:
 | jcs-n-kat-20 | MUST-FAIL: typed-ref digest with a trailing newline (representation mismatch) | — |
 | jcs-n-kat-21 | MUST-FAIL: typed-ref digest with surrounding whitespace (representation mismatch) | — |
 | jcs-n-kat-22 | `{"id":"x","sub":{"id":"y"}}` excl `{id}` — exclusion-set matching is top-level only | `1fa18622...` |
+| jcs-n-kat-23 | ESC character (U+001B) in a value — canonical form uses `\u001b` (lowercase) | `f5d570fa...` |
+| jcs-n-kat-24 | TAB character (U+0009) in a value — canonical form uses `\t` (short form, not `\u0009`) | `7ac9c6bd...` |
+| jcs-n-kat-25 | Full control-character taxonomy: NUL, SOH, BEL, BS, TAB, LF, FF, CR, ESC, US in one value | `ed3c5000...` |
+| jcs-n-kat-26 | Control character in a KEY: sort is by code unit (U+001F < U+0020), not by escaped bytes | `64e35d3d...` |
+| jcs-n-esc-uppercase-contrast | MUST-FAIL: `\u001B` (uppercase B) is non-conforming; pins correct and wrong digests for harness check | — |
+| jcs-n-tab-long-form-contrast | MUST-FAIL: `\u0009` instead of `\t` is non-conforming; pins correct and wrong digests | — |
+| jcs-n-control-key-escaped-sort-contrast | MUST-FAIL: sorting keys by escaped bytes is wrong; pins correct (code-unit) and wrong (escaped) digests | — |
+| jcs-n-kat-30 | 4-level deep nesting | `27e20f85...` |
+| jcs-n-kat-31 | Nested tool schema (JSON Schema vocabulary) | `ca37149a...` |
+| jcs-n-kat-32 | MUST-FAIL: exponent notation (`1e2`) | — |
+| jcs-n-kat-33 | `{"count":9007199254740991,"limit":-9007199254740991}` — max safe integer boundary | `00eac020...` |
+| jcs-n-kat-34 | 13-field mixed-type payload | `cb6f355c...` |
+| jcs-n-kat-35 | MUST-FAIL: `-0` token rejected by the wire rule `(0|-?[1-9][0-9]*)` | — |
+| jcs-n-kat-36 | `{"count":0}` — integer zero (token `0`) is a valid wire value | `618de7d9...` |
+| jcs-n-kat-37 | MUST-FAIL: duplicate key `a` after NFC normalization | — |
+| jcs-n-kat-38 | Control characters ESC (U+001B) and HT (U+0009) escaped as `\u001b` / `\t` | `d149a22a...` |
 
 **E3 boundary group** (KATs 02–07): null, empty array, empty object, absent
 field, nested-null, and nested-empty-array (bottom-up) all produce the same
@@ -87,6 +172,37 @@ of the same name nested inside a member's value is not removed. KAT 22 pins
 this behavior for `{"id":"x","sub":{"id":"y"}}` excluding `{id}` — the
 top-level `id` is stripped but `sub.id` survives. A recursive-stripping
 implementation forks on this vector.
+
+**String-escape group** (KATs 23–26 + contrast vectors 27–29): JCS (RFC 8785
+§3.2.2.2) defines two categories of string-character escaping:
+
+1. **Named two-character escapes** for specific control characters: `\b`
+   (U+0008), `\t` (U+0009), `\n` (U+000A), `\f` (U+000C), `\r` (U+000D),
+   `\"` (U+0022), and `\\` (U+005C). These MUST be used where applicable;
+   using the longer `\uXXXX` form for any of these characters is
+   non-conforming and produces a different pre-image.
+
+2. **Lowercase `\uXXXX` escapes** for all other control characters in
+   U+0000–U+001F. The four hexadecimal digits MUST be lowercase (e.g.,
+   `\u001b` for ESC, not `\u001B`). An uppercase hex digit changes the
+   byte sequence and therefore the digest.
+
+Characters above U+001F (other than `"` and `\`) are output as UTF-8 without
+escaping, even if the source JSON used `\uXXXX` for them.
+
+Key escaping follows the same rules: member names (keys) containing control
+characters are escaped per RFC 8785 §3.2.2.2, and their sort order is
+determined by the UTF-16 code units of the **unescaped** key string (RFC 8785
+§3.2.3) — not by the byte sequence of the escaped serialization. KATs 23–26
+pin the correct canonical bytes for each case. The three contrast vectors
+(27–29) pin both the conforming digest and the non-conforming digest that a
+miscapitalized, long-form, or escaped-sort implementation would produce, so
+that a test harness can assert the library produces one and not the other.
+
+🔴 **Cross-linked from `REGISTRY.md` §jcs-n implementation note** — this
+group was added explicitly because prior vector sets had zero escaping coverage,
+leaving a third-party Rust implementer with no KAT to build against for this
+rule.
 
 ## Derived identifier summary
 
@@ -115,6 +231,21 @@ implementation forks on this vector.
 |---|---|---|
 | profile-independence-pass-01 | PASS | Conforming: Profile A cites Profile B via typed ref only |
 | profile-independence-fail-01 | MUST-FAIL | Non-conforming: Profile A reads inside Profile B fields |
+
+## Domain transform summary
+
+| ID | Result | What it tests |
+|---|---|---|
+| domain-transform-pass-01 | PASS | Streaming API response reassembled from SSE delta chunks; digest over reassembled form |
+| domain-transform-fail-01 | MUST-FAIL | Stream truncated before terminal chunk; `stream_incomplete` |
+
+See `CANONICALIZATION_DECLARATION.md §5–6` for the domain and transform table.
+
+## Multimodal summary
+
+| ID | Result | What it tests |
+|---|---|---|
+| multimodal-pass-01 | PASS | Binary content carried as base64-encoded string; digest over the base64 string, not decoded bytes |
 
 ## Historical evidence — cited but not suite members
 

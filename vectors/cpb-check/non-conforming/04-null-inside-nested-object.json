@@ -1,0 +1,18 @@
+{
+  "id": "cpb-check-nonconforming-04",
+  "description": "P violation: null member deep inside a nested object. P rule applies at any depth.",
+  "expected_verdict": "non-conforming",
+  "expected_violations": [
+    {"path": "$[\"payload\"][\"nested\"][\"deep_null\"]", "rule": "P"}
+  ],
+  "record": {
+    "type": "action",
+    "payload": {
+      "action": "approve",
+      "nested": {
+        "valid": "yes",
+        "deep_null": null
+      }
+    }
+  }
+}

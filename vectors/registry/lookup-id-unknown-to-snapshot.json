@@ -1,0 +1,15 @@
+{
+  "id": "registry-lookup-id-unknown-to-snapshot-01",
+  "kind": "registry-lookup",
+  "description": "VERDICT id-unknown-to-snapshot: as-transmitted IS registered in the current registry (snapshot-v1) but is absent from the pinned old snapshot (snapshot-v0). A verifier pinned to snapshot-v0 MUST return id-unknown-to-snapshot, NOT unknown-id. The two verdicts are distinct by design: 'not registered' and 'not in my stale snapshot' must not share a failure mode — a fail-closed verifier with an old snapshot would otherwise reject legitimately-registered new entries with the wrong reason.",
+  "spec_ref": "cpb-registry-json-machine-readable §Verdict taxonomy",
+  "snapshot": "snapshot-v0.json",
+  "algorithm_id": "as-transmitted",
+  "pinned": true,
+  "expected_verdict": "id-unknown-to-snapshot",
+  "mutant": {
+    "description": "Use the current snapshot (snapshot-v1) which contains as-transmitted; verdict MUST flip to verified.",
+    "snapshot": "snapshot-v1.json",
+    "expected_verdict": "verified"
+  }
+}

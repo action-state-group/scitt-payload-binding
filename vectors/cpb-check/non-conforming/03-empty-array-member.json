@@ -1,0 +1,13 @@
+{
+  "id": "cpb-check-nonconforming-03",
+  "description": "P violation: empty array member. A dict member with value [] is not in normal form.",
+  "expected_verdict": "non-conforming",
+  "expected_violations": [
+    {"path": "$[\"tags\"]", "rule": "P"}
+  ],
+  "record": {
+    "type": "action",
+    "payload": {"action": "approve"},
+    "tags": []
+  }
+}

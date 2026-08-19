@@ -1,0 +1,10 @@
+{
+  "id": "cpb-check-nonconforming-08",
+  "description": "R violation: exponent notation. 1e2 parses to 100 in any JSON parser but its token form is not integer-token form. A value-based check (isinstance(v, float)) would MISS this because json.loads converts 1e2 to the integer 100.",
+  "expected_verdict": "non-conforming",
+  "expected_violations": [
+    {"path": "$[\"count\"]", "rule": "R"}
+  ],
+  "record_raw": "{\"type\":\"example\",\"count\":1e2}",
+  "note": "Mutant using json.loads: json.loads('{\"count\":1e2}') == {'count': 100} — the float token is lost, a value-based check sees an int and accepts. Only a token-preserving scanner catches this."
+}

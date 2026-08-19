@@ -37,10 +37,33 @@ The **Agent Action Capsule** profile is the first payload profile registered
 under CPB. See **[action-state-group/agent-action-capsule](https://github.com/action-state-group/agent-action-capsule)**
 for that profile, its interop record, and reference material.
 
+## `cpb-check` — conformance checker
+
+Check any CPB record against the P/R grammar rules from the command line.
+
+```sh
+pip install ./lib                      # install from repo root
+cpb-check record.json                  # human-readable verdict + path
+cpb-check record.json --json           # machine-readable JSON
+echo $?                                # 0 verified · 1 non-conforming · 2 error
+cpb-check --self-test                  # run the built-in vector suite
+```
+
+**Phase 1** (this release): P normal-form walk and R wire-layer checks
+(number-token form, duplicate-key rejection).  Digest recomputation and
+`canonicalization_id` resolution (verdicts `digest-mismatch` / `unknown-id`)
+are Phase 2, held for G1 (the emitter shipping the id field).
+
+The duplicate-preserving raw-bytes lexer is the most security-relevant
+component: `json.loads` silently collapses duplicate keys before any rule
+sees them; `cpb-check` reports them at their exact JSON path.
+
 ## Reference implementation and conformance vectors
 
-_Forthcoming._ A reference implementation and conformance vectors will be
-published here.
+The reference library is in `lib/cpb/`.  Conformance vectors live in
+`vectors/` — `jcs-n/kats/` for the canonicalization algorithm and
+`cpb-check/` for the grammar checker.  Run `cpb-check --self-test` to
+execute the grammar-checker suite.
 
 ## Registries
 

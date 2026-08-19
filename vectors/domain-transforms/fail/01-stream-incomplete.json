@@ -1,0 +1,22 @@
+{
+  "id": "domain-transform-fail-01",
+  "description": "MUST-FAIL: stream truncated before the terminal 'done' chunk. The transport-delivered domain does not produce a complete pre-image: the final delta has no 'done' marker. A conforming implementation MUST signal an error (stream_incomplete) rather than digest a partial object. Without this rejection, two verifiers with different truncation points would compute different digests for the same source stream — and neither mismatch would be attributable to a declared transform. The failure mode is not the inability to parse JSON (the partial bytes may be valid JSON by accident); it is that the declared 'stream-reassemble' transform requires a terminal chunk to bound the pre-image, and none is present.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1",
+  "must_fail": true,
+  "failure_reason": "stream_incomplete",
+  "domain_transforms": [
+    {
+      "id": "stream-reassemble",
+      "version": "1",
+      "source_domain": "transport-delivered",
+      "target_domain": "model-produced",
+      "description": "Reassemble SSE delta chunks into a single JSON object. Requires a terminal chunk with 'done: true'."
+    }
+  ],
+  "source": [
+    {"chunk": "{\"finish_reason\":\"tool_calls\",\"tool_calls\":[{\"function\":{\"arguments\":\""},
+    {"chunk": "{\\\"location\\\": \\\"Paris\\\"}\",\"name\":\"get_weather\"},\"id\":\"call_abc123\",\"index\":0,\"type\":\"function\"}]}"}
+  ],
+  "note": "The source array ends without a terminal chunk (no 'done: true'). The stream-reassemble transform MUST raise stream_incomplete. A partial JSON string like '{\"finish_reason\":...' may happen to be valid JSON — the guard is the missing terminal marker, not a JSON parse error."
+}
