@@ -38,7 +38,33 @@
           "representation": "64-char lowercase hex"
         }
       ]
+    },
+    "machine-mandate": {
+      "reference": "tyche-institute/machine-mandate @ 524e6a3129b7f1ab850dd9471967458d3cb6f4cd",
+      "status": "owner-confirmed",
+      "digest_contexts": [
+        {
+          "purpose": "identifier",
+          "profile_version": "N/A",
+          "algorithm": "as-transmitted",
+          "field_set": "byte-boundary selector \u2014 the issuer-signed JWS component of the SD-JWT (RFC 7515 \u00a77.1 compact serialization; the first ~-separated component exactly as transmitted); everything after the first ~ is outside the pre-image",
+          "exclusion_set": "N/A (as-transmitted has no field set)",
+          "domain_separation": "none",
+          "pre_image_encoding": "N/A (no separate encoding step)",
+          "representation": "bare 64-char lowercase hex"
+        },
+        {
+          "purpose": "equivalence",
+          "profile_version": "N/A",
+          "algorithm": "jcs",
+          "field_set": "{action_id, outcome}, closed \u2014 every member is a string; a floating-point value is rejected rather than digested, and an integer whose magnitude exceeds 2^53\u22121 (the ECMAScript safe-integer bound) is rejected as a typed error rather than serialized",
+          "exclusion_set": "none",
+          "domain_separation": "none",
+          "pre_image_encoding": "JCS UTF-8 octets (per jcs)",
+          "representation": "sha256: + 64-char lowercase hex, as carried in the in-document action_hash claim"
+        }
+      ]
     }
   },
-  "snapshot_sha256": "db53ccd557d5e94be944bc982c77cc4f644f5ee1c89265334a427ef519266e98"
+  "snapshot_sha256": "0dfb7a4af1956fa2851ec60cabe4b20e4e3c3a3662236bdc57b03387c195fc7c"
 }
