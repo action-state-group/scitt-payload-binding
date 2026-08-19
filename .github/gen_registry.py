@@ -139,7 +139,7 @@ def _subsections(section_lines: list[str]) -> list[tuple[str, list[str]]]:
 # ---------------------------------------------------------------------------
 
 _LEGACY_ROWS_RE = re.compile(
-    r"Exactly\s+four rows predate this vocabulary:(.+?)(?:\.\s|\n\n)", re.S
+    r"Exactly\s+\w+ rows predate this vocabulary[^:]*:(.+?)(?:\.\s|\n\n)", re.S
 )
 
 
