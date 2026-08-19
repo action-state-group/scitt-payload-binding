@@ -1,0 +1,19 @@
+{
+  "id": "jcs-n-control-key-escaped-sort-contrast",
+  "description": "Contrast (both-directions): RFC 8785 §3.2.3 sorts member names by their UTF-16 code units — the unescaped character values, not the bytes of the escaped serialization. For keys U+001F (0x001F) and U+0020 SPACE (0x0020), the correct order is U+001F first (code unit 0x001F < 0x0020). A wrong implementation that sorts by the escaped byte sequence sees the space key (0x20) sort before the backslash that opens \\u001f (0x5C), producing the wrong order (space first) and a different digest. This vector pins both the conforming digest (jcs_n_correct_digest, same as jcs-n-kat-26) and the non-conforming digest (escaped_sort_contrast_digest).",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 §3.1 step 2 (RFC 8785 §3.2.3 key ordering; §3.2.2.2 key escaping)",
+  "must_fail": true,
+  "failure_reason": "key_sort_by_escaped_bytes_not_code_units",
+  "input": {
+    "\u001f": "unit_sep_val",
+    " ": "space_val"
+  },
+  "exclusion_set": [],
+  "jcs_n_correct_pre_image": "{\"\\u001f\":\"unit_sep_val\",\" \":\"space_val\"}",
+  "jcs_n_correct_pre_image_bytes_hex": "7b225c7530303166223a22756e69745f7365705f76616c222c2220223a2273706163655f76616c227d",
+  "jcs_n_correct_digest": "64e35d3d1ba080baed3eafbe59b668d6642d486a9b9750fef60997690d7e570b",
+  "escaped_sort_contrast_pre_image": "{\" \":\"space_val\",\"\\u001f\":\"unit_sep_val\"}",
+  "escaped_sort_contrast_pre_image_bytes_hex": "7b2220223a2273706163655f76616c222c225c7530303166223a22756e69745f7365705f76616c227d",
+  "escaped_sort_contrast_digest": "f7f08e32278d76b60a6037d573f921b25d4468a27ceb346f42e93e0d3aba1d18"
+}

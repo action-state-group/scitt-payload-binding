@@ -1,0 +1,14 @@
+{
+  "id": "jcs-n-kat-26",
+  "description": "Control character in a KEY: sort order is by UTF-16 code units of the UNESCAPED key string, not by the bytes of the escaped serialization. The two keys are U+001F INFORMATION SEPARATOR ONE (code unit 0x001F) and U+0020 SPACE (code unit 0x0020). Code-unit order: 0x001F < 0x0020, so the U+001F key sorts first and the canonical form begins {\"\\u001f\":...}. A wrong implementation that sorts by the escaped bytes sees 0x20 (space) before 0x5C (backslash that opens \\u001f), puts space first, and produces a different pre-image and digest. See jcs-n-control-key-escaped-sort-contrast (vector 29) for the both-directions check.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 §3.1 step 2 (RFC 8785 §3.2.3 key ordering by UTF-16 code units; §3.2.2.2 key escaping)",
+  "input": {
+    "\u001f": "unit_sep_val",
+    " ": "space_val"
+  },
+  "exclusion_set": [],
+  "pre_image": "{\"\\u001f\":\"unit_sep_val\",\" \":\"space_val\"}",
+  "pre_image_bytes_hex": "7b225c7530303166223a22756e69745f7365705f76616c222c2220223a2273706163655f76616c227d",
+  "digest": "64e35d3d1ba080baed3eafbe59b668d6642d486a9b9750fef60997690d7e570b"
+}

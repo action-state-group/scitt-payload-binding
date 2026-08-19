@@ -1,0 +1,15 @@
+{
+  "id": "cpb-check-conforming-01",
+  "description": "Conforming record: integer values only, no null/empty members, unique keys.",
+  "expected_verdict": "verified",
+  "record": {
+    "type": "action",
+    "id": "urn:example:action:1234",
+    "version": 1,
+    "payload": {
+      "action": "approve",
+      "actor": "agent-007",
+      "amount": 42
+    }
+  }
+}

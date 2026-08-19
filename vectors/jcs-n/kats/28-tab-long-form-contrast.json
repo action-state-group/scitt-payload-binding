@@ -1,0 +1,18 @@
+{
+  "id": "jcs-n-tab-long-form-contrast",
+  "description": "Contrast (both-directions): RFC 8785 §3.2.2.2 assigns U+0009 TAB the named two-character escape \\t. An implementation that instead outputs the six-byte \\u0009 is non-conforming: it produces a different pre-image and a different digest. This vector pins both the conforming digest (jcs_n_correct_digest, same as jcs-n-kat-24) and the non-conforming digest (long_form_contrast_digest) so that a test harness can assert the library uses the short form.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 §3.1 step 2 (JCS per RFC 8785 §3.2.2.2)",
+  "must_fail": true,
+  "failure_reason": "string_escape_long_form_for_named_char",
+  "input": {
+    "msg": "\t"
+  },
+  "exclusion_set": [],
+  "jcs_n_correct_pre_image": "{\"msg\":\"\\t\"}",
+  "jcs_n_correct_pre_image_bytes_hex": "7b226d7367223a225c74227d",
+  "jcs_n_correct_digest": "7ac9c6bd87cdda62f1e81f0139d6ab751c66321164e230d35f3133a000280695",
+  "long_form_contrast_pre_image": "{\"msg\":\"\\u0009\"}",
+  "long_form_contrast_pre_image_bytes_hex": "7b226d7367223a225c7530303039227d",
+  "long_form_contrast_digest": "cc6af7fb0ae46feb4d0738c4d9285bfa0c2fd252de1d5e53643b745dd03ed729"
+}

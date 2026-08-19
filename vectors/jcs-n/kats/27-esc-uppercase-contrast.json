@@ -1,0 +1,18 @@
+{
+  "id": "jcs-n-esc-uppercase-contrast",
+  "description": "Contrast (both-directions): RFC 8785 §3.2.2.2 mandates lowercase hexadecimal in \\uXXXX escape sequences. An implementation that outputs \\u001B (uppercase B) instead of \\u001b (lowercase b) for U+001B produces a different pre-image and therefore a different digest. This vector pins both the conforming digest (jcs_n_correct_digest, same as jcs-n-kat-23) and the non-conforming digest (uppercase_contrast_digest) so that a test harness can assert the library produces the correct one and not the wrong one.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 §3.1 step 2 (JCS per RFC 8785 §3.2.2.2)",
+  "must_fail": true,
+  "failure_reason": "string_escape_uppercase_hex",
+  "input": {
+    "msg": "\u001b"
+  },
+  "exclusion_set": [],
+  "jcs_n_correct_pre_image": "{\"msg\":\"\\u001b\"}",
+  "jcs_n_correct_pre_image_bytes_hex": "7b226d7367223a225c7530303162227d",
+  "jcs_n_correct_digest": "f5d570fa6125f49bcb56da3ce3e37d4d214d02723feb1c7d24ddedc5b2677153",
+  "uppercase_contrast_pre_image": "{\"msg\":\"\\u001B\"}",
+  "uppercase_contrast_pre_image_bytes_hex": "7b226d7367223a225c7530303142227d",
+  "uppercase_contrast_digest": "f79f01eae22d3e86ee4e0516f23721a5df3b3cc4187820ab471d92c62719a31a"
+}

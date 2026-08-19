@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CPB Registry Snapshot",
+  "description": "Machine-readable snapshot of the CPB Payload Canonicalization Algorithm and Artifact Type registries. Generated from REGISTRY.md by .github/gen_registry.py. The snapshot_sha256 field is the SHA-256 of the document body (all fields except snapshot_sha256 itself) serialized as compact JSON with keys sorted — a verifier can recompute and detect tampering.",
+  "type": "object",
+  "required": ["schema_version", "snapshot_sha256", "canonicalization_algorithms", "artifact_types"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["1"],
+      "description": "Schema version for forward-compatibility. Bump when the shape changes in a non-backward-compatible way."
+    },
+    "snapshot_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 of the document body (all fields except this one) as compact JSON with sorted keys."
+    },
+    "canonicalization_algorithms": {
+      "type": "object",
+      "description": "Payload Canonicalization Algorithm Registry (§13.1). Keys are algorithm identifiers.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["description", "reference", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reference": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Legal values are NOT enumerated here. The vocabulary lives in REGISTRY.md's Entry Status Vocabulary table plus its legacy mapping, and gen_registry.py validates against it by parsing that table. A second list here could only drift from the first; JSON Schema cannot read REGISTRY.md, so it checks shape and leaves vocabulary to the generator."
+          }
+        }
+      }
+    },
+    "artifact_types": {
+      "type": "object",
+      "description": "Artifact Type Registry (§13.2). Keys are artifact type names.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["reference", "status", "digest_contexts"],
+        "additionalProperties": false,
+        "properties": {
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "digest_contexts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["purpose", "algorithm"],
+              "additionalProperties": false,
+              "properties": {
+                "purpose": {"type": "string"},
+                "profile_version": {"type": "string"},
+                "algorithm": {"type": "string"},
+                "field_set": {"type": "string"},
+                "exclusion_set": {"type": "string"},
+                "domain_separation": {"type": "string"},
+                "pre_image_encoding": {"type": "string"},
+                "representation": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
