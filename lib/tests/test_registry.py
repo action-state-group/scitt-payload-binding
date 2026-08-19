@@ -19,6 +19,7 @@ import pytest
 
 from cpb.registry import (
     VERDICT_VERIFIED,
+    VERDICT_RESERVED,
     VERDICT_UNKNOWN_ID,
     VERDICT_ID_UNKNOWN_TO_SNAPSHOT,
     RegistrySnapshot,
@@ -50,6 +51,12 @@ _AS_TRANSMITTED_ENTRY = {
     "status": "Registered",
 }
 
+_CDE_N_RESERVED_ENTRY = {
+    "description": "Deterministic CBOR canonicalization profile; SHA-256",
+    "reference": "draft-mih-sokolov-scitt-payload-binding",
+    "status": "Reserved",
+}
+
 
 def _build_snapshot(algorithms: dict, artifact_types: dict | None = None) -> dict:
     """Build a valid snapshot dict with correct snapshot_sha256."""
@@ -75,6 +82,15 @@ def snapshot_current():
     """Current snapshot: jcs-n + as-transmitted."""
     return RegistrySnapshot.from_dict(
         _build_snapshot({"jcs-n": _JCS_N_ENTRY, "as-transmitted": _AS_TRANSMITTED_ENTRY}),
+        verify=True,
+    )
+
+
+@pytest.fixture
+def snapshot_with_reserved():
+    """Snapshot holding one Registered entry and one Reserved entry."""
+    return RegistrySnapshot.from_dict(
+        _build_snapshot({"jcs-n": _JCS_N_ENTRY, "cde-n": _CDE_N_RESERVED_ENTRY}),
         verify=True,
     )
 
@@ -106,6 +122,48 @@ class TestVerdictVerified:
         # when as-transmitted is absent from the old snapshot
         verdict, _ = snapshot_old.lookup_algorithm("as-transmitted", pinned=True)
         assert verdict != VERDICT_VERIFIED
+
+
+# ---------------------------------------------------------------------------
+# VERDICT_RESERVED — presence alone MUST NOT verify (issue #37)
+#
+# lookup_algorithm previously returned VERDICT_VERIFIED for ANY entry present
+# in the snapshot, regardless of its `status`. A Reserved entry (a
+# pre-registration hold with no defined semantics — e.g. `cde-n`) was
+# indistinguishable from a live Registered entry to a fail-closed verifier
+# keying on the verdict string. Two-sided: Registered -> verified,
+# Reserved -> not-verified, on the SAME snapshot so status is the only
+# variable.
+# ---------------------------------------------------------------------------
+
+class TestVerdictReserved:
+    def test_registered_entry_is_verified(self, snapshot_with_reserved):
+        verdict, entry = snapshot_with_reserved.lookup_algorithm("jcs-n")
+        assert verdict == VERDICT_VERIFIED
+        assert entry["status"] == "Registered"
+
+    def test_reserved_entry_is_not_verified(self, snapshot_with_reserved):
+        verdict, entry = snapshot_with_reserved.lookup_algorithm("cde-n")
+        assert verdict != VERDICT_VERIFIED
+        assert verdict == VERDICT_RESERVED
+        assert entry["status"] == "Reserved"
+
+    def test_reserved_verdict_distinct_from_all_others(self):
+        assert VERDICT_RESERVED != VERDICT_VERIFIED
+        assert VERDICT_RESERVED != VERDICT_UNKNOWN_ID
+        assert VERDICT_RESERVED != VERDICT_ID_UNKNOWN_TO_SNAPSHOT
+
+    def test_artifact_type_reserved_entry_is_not_verified(self):
+        # Same gate applies to lookup_artifact_type.
+        data = _build_snapshot(
+            {},
+            {"reserved-type": {"description": "d", "reference": "r", "status": "Reserved"}},
+        )
+        snap = RegistrySnapshot.from_dict(data, verify=True)
+        verdict, entry = snap.lookup_artifact_type("reserved-type")
+        assert verdict != VERDICT_VERIFIED
+        assert verdict == VERDICT_RESERVED
+        assert entry["status"] == "Reserved"
 
 
 # ---------------------------------------------------------------------------

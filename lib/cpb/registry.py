@@ -6,7 +6,17 @@ verifies its content-address (snapshot_sha256), and reports the snapshot
 version in verdicts so external parties know which snapshot was used.
 
 Verdict taxonomy — distinct by design; MUST NOT be conflated:
-  VERDICT_VERIFIED              — id found in snapshot; entry returned.
+  VERDICT_VERIFIED              — id found in snapshot AND status ==
+                                   "Registered"; entry returned.
+  VERDICT_RESERVED               — id found in snapshot but its status is a
+                                   pre-registration hold (e.g. "Reserved"), not
+                                   "Registered". The id has no defined semantics
+                                   yet; a fail-closed verifier MUST NOT treat this
+                                   the same as VERDICT_VERIFIED. Entry is
+                                   returned (the caller may want the
+                                   status/reference), but is never mistaken for
+                                   a verified id because the verdict string
+                                   itself differs.
   VERDICT_UNKNOWN_ID            — authoritative check (pinned=False); id is
                                   genuinely absent from the registry.
   VERDICT_ID_UNKNOWN_TO_SNAPSHOT — pinned-snapshot check (pinned=True); id is
@@ -31,6 +41,7 @@ import pathlib
 
 __all__ = [
     "VERDICT_VERIFIED",
+    "VERDICT_RESERVED",
     "VERDICT_UNKNOWN_ID",
     "VERDICT_ID_UNKNOWN_TO_SNAPSHOT",
     "SnapshotIntegrityError",
@@ -39,8 +50,14 @@ __all__ = [
 ]
 
 VERDICT_VERIFIED = "verified"
+VERDICT_RESERVED = "reserved"
 VERDICT_UNKNOWN_ID = "unknown-id"
 VERDICT_ID_UNKNOWN_TO_SNAPSHOT = "id-unknown-to-snapshot"
+
+#: status values (registry.json "status" field) that constitute a live,
+#: verifiable registration. Anything else present in the snapshot (e.g.
+#: "Reserved") is a pre-registration hold with no defined semantics.
+_LIVE_STATUS = "Registered"
 
 
 class SnapshotIntegrityError(ValueError):
@@ -122,12 +139,17 @@ class RegistrySnapshot:
 
         Returns:
             ``(verdict, entry)`` where entry is a dict on VERDICT_VERIFIED or
-            None on any failure verdict.
+            VERDICT_RESERVED, or None on any other verdict. An entry present
+            in the snapshot but not in ``Registered`` status (e.g. a
+            pre-registration ``Reserved`` hold) is VERDICT_RESERVED, never
+            VERDICT_VERIFIED — presence alone does not verify an id.
         """
         algorithms: dict = self._data.get("canonicalization_algorithms", {})
         entry = algorithms.get(algorithm_id)
         if entry is not None:
-            return (VERDICT_VERIFIED, dict(entry))
+            if entry.get("status") == _LIVE_STATUS:
+                return (VERDICT_VERIFIED, dict(entry))
+            return (VERDICT_RESERVED, dict(entry))
         if pinned:
             return (VERDICT_ID_UNKNOWN_TO_SNAPSHOT, None)
         return (VERDICT_UNKNOWN_ID, None)
@@ -137,12 +159,15 @@ class RegistrySnapshot:
     ) -> tuple[str, dict | None]:
         """Look up an artifact type by name.
 
-        Same pinned/authoritative semantics as ``lookup_algorithm``.
+        Same pinned/authoritative/VERDICT_RESERVED semantics as
+        ``lookup_algorithm``.
         """
         types: dict = self._data.get("artifact_types", {})
         entry = types.get(type_name)
         if entry is not None:
-            return (VERDICT_VERIFIED, dict(entry))
+            if entry.get("status") == _LIVE_STATUS:
+                return (VERDICT_VERIFIED, dict(entry))
+            return (VERDICT_RESERVED, dict(entry))
         if pinned:
             return (VERDICT_ID_UNKNOWN_TO_SNAPSHOT, None)
         return (VERDICT_UNKNOWN_ID, None)
