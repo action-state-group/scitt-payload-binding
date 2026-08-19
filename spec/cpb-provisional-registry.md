@@ -98,3 +98,12 @@ specify a CPB-compatible canonicalization algorithm for
 - §8 (Discovery Mirror) of CPB -00 notes alignment with §7.4 of
   this draft; the artifact type entry closes the technical loop by
   giving the `verifiable-agent-record` a stable CPB-addressable type.
+
+---
+
+**`machine-mandate` has graduated.** Formerly tracked here as
+`third-party-documented, pending owner review`, it is now owner-confirmed
+(Anton Sokolov, Tyche Institute; PR #4 thread, 2026-08-09 and 2026-08-13)
+and registered in the normative Artifact Type Registry — see
+[`draft-mih-sokolov-scitt-payload-binding-01.md`](draft-mih-sokolov-scitt-payload-binding-01.md)
+§13.2 and [`REGISTRY.md`](../REGISTRY.md).

@@ -784,12 +784,30 @@ Initial contents:
 | jcs-n | RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex | This document |
 | cde-n | Deterministic CBOR canonicalization profile; SHA-256 | This document (reserved; subsequent revision) |
 | as-transmitted | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex | This document |
+| json-sk-cp | RFC 8785 subset. Object members serialized in ascending key order by Unicode code point; no insignificant whitespace; UTF-8 encoding; no member removal (null, empty array and empty object members are retained and serialized); numbers restricted to integers, since ES6 number formatting per RFC 8785 §3.2.2 is not implemented. Digest: SHA-256. Representation: lowercase hex. | This document (registration text: Anton Sokolov, Tyche Institute) |
 
 An artifact type entry MUST NOT register `as-transmitted` without a
 byte-boundary selector that cites a named production in the container
 specification ({{algo-as-transmitted}}). Without that selector, an
 `as-transmitted` entry states nothing: there is no field set, no exclusion
 set, and no canonicalization to fall back on for the pre-image construction.
+
+**json-sk-cp — owner attribution and integer ceiling.** The registration
+text above is Anton Sokolov's (Tyche Institute), reproduced as he stated it
+rather than as a normative reference to an external repository, per his
+proposal on the PR #4 thread (2026-08-04). The "subset" wording is
+retained from that text as written; implementers should note json-sk-cp is
+not always substitutable for full RFC 8785 output, since its key ordering
+is by Unicode code point rather than {{RFC8785}} §3.2.3's UTF-16
+code-unit ordering -- the two diverge only for non-BMP keys. An integer
+whose magnitude exceeds 2^53-1 (the ECMAScript safe-integer bound) MUST
+NOT appear in a json-sk-cp pre-image; a conforming implementation rejects
+it as a typed error rather than serializing it, since such a value does
+not round-trip through an ECMAScript-Number-based reader and two
+conforming implementations could otherwise derive different digests from
+the same nominal value. This ceiling was agreed between the CPB editors
+and the registering owner on the same thread (2026-08-04), extending the
+registration text's own integer restriction above.
 
 ## Artifact Type Registry {#iana-art}
 
@@ -904,6 +922,49 @@ Digest context (`identifier`):
 * Domain separation: none
 * Pre-image encoding: JCS UTF-8 octets, per `jcs-n` ({{algo-jcs-n}})
 * Representation: 64-char lowercase hex
+
+### `machine-mandate` {#art-machine-mandate}
+
+Owner: Anton Sokolov, Tyche Institute. Reference: `tyche-institute/machine-mandate`
+@ `524e6a3129b7f1ab850dd9471967458d3cb6f4cd`. Owner-confirmed (PR #4 thread,
+2026-08-09 and 2026-08-13).
+
+Digest context (`identifier`):
+
+* Profile version: N/A
+* Canonicalization algorithm: `as-transmitted`
+* Field set: byte-boundary selector, in place of a field set (per
+  {{algo-as-transmitted}}) -- the issuer-signed JWS component of the SD-JWT
+  (RFC 7515 §7.1 compact serialization; the first `~`-separated component
+  exactly as transmitted); everything after the first `~` (salted
+  disclosures and the KB-JWT) is outside the pre-image.
+* Exclusion set: N/A -- `as-transmitted` has no field set and therefore no
+  exclusion set.
+* Domain separation: none
+* Pre-image encoding: N/A -- the pre-image is the exact transmitted octets;
+  there is no separate encoding step.
+* Representation: bare 64-char lowercase hex
+
+Digest context (`equivalence`):
+
+* Profile version: N/A
+* Canonicalization algorithm: `json-sk-cp`
+* Field set: `{action_id, outcome}`, closed
+* Exclusion set: none
+* Domain separation: none
+* Pre-image encoding: json-sk-cp UTF-8 octets, per `json-sk-cp` ({{iana-alg}})
+* Representation: `sha256:` + 64-char lowercase hex, as carried in the
+  in-document `action_hash` claim
+
+Conformance vectors: `tyche-institute/machine-mandate`, branch
+`feat/cpb-registry-vectors-v0.1`, commit `5605783a` (supersedes
+`640f2a668cfc4a357f9b34ecb0add5faf8bbdda1`),
+`vectors/cpb-registry/machine-mandate-vectors-v0.1.json`, file SHA-256
+`06572fccb7afa3eda4c68604221a83476faac8f8509b7165724553d58384d816`.
+Independently reproduced byte-for-byte against a from-scratch
+implementation, including condition-removed mutants confirming each of the
+five negatives discriminates rather than pattern-matches (PR #4 thread,
+2026-08-11).
 
 # Related Work {#related}
 
