@@ -20,7 +20,7 @@ empty-object members. They diverge in two distinct directions:
   and jcs-n (normalizes it away), yielding different SHA-256 digests.
 - **Direction B** — acceptance vs rejection: an action with a floating-point member is
   accepted by plain RFC 8785 JCS (jcs) and produces a deterministic digest; jcs-n
-  §3.1 prohibits floats and MUST-FAIL on the same input.
+  §11.3 prohibits floats in any digest-bearing field and MUST-FAIL on the same input.
 
 ## Vector format
 
@@ -45,7 +45,7 @@ Mutation probe: replace null/empty members with `"n/a"` → step 5 must flip to 
 **Direction B** (`jcs_n_must_fail: true` — acceptance vs rejection):
 1. Compute plain RFC 8785 JCS via `_jcs_rfc8785(action)` (floats allowed).
 2. Assert computed pre_image and hex match the pinned `jcs` fields.
-3. Assert `jcs_n_pre_image(action)` raises (float prohibition §3.1).
+3. Assert `jcs_n_pre_image(action)` raises (blanket float prohibition, §11.3).
 Mutation probe: replace float members with string equivalents → jcs-n no longer raises,
 jcs.digest == jcs_n.digest → exerciser must flip to failure.
 

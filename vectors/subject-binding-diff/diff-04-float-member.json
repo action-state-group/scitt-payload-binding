@@ -3,7 +3,7 @@
   "diverge": true,
   "jcs_n_must_fail": true,
   "description": "Action with a floating-point member. This vector demonstrates divergence in the opposite direction from diff-01/02/03: plain RFC 8785 JCS accepts the float and produces a deterministic digest; jcs-n MUST-FAIL because §11.3's blanket float prohibition forbids floating-point values in any digest-bearing field (§3.1's monetary/quantity decimal-string constraint does not itself reach this non-monetary confidence field). A composition implementation following §6.3.2 literally (plain JCS) produces a usable digest; a CPB verifier applying jcs-n fails closed. The two constructions do not merely produce different digests — one refuses to produce any digest at all.",
-  "stakes_ref": "draft-mih-sokolov-scitt-payload-binding §11.3 (float prohibition), §13 (Canonicalization Algorithm Registry); draft-mih-sato-agent-accountability-composition §6.3.2",
+  "stakes_ref": "draft-mih-sokolov-scitt-payload-binding §11.3 (float prohibition), §13.1 (Canonicalization Algorithm Registry); draft-mih-sato-agent-accountability-composition §6.3.2",
   "action": {
     "task": "classify",
     "confidence": 0.95,
