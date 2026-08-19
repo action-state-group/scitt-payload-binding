@@ -198,6 +198,40 @@ def _handle_nfc_normalisation_deviation(v: dict) -> None:
     assert digest != v["nfc_contrast_digest"]
 
 
+def _handle_string_escape_uppercase_hex(v: dict) -> None:
+    """jcs-n-esc-uppercase-contrast: RFC 8785 §3.2.2.2 requires lowercase hex
+    in \\uXXXX escape sequences. The library MUST produce the lowercase-hex
+    pre-image (jcs_n_correct_digest) and MUST NOT produce the uppercase-hex
+    pre-image (uppercase_contrast_digest)."""
+    excl = set(v.get("exclusion_set", []))
+    digest = canonical_digest(v["input"], excl or None)
+    assert digest == v["jcs_n_correct_digest"]
+    assert digest != v["uppercase_contrast_digest"]
+
+
+def _handle_string_escape_long_form_for_named_char(v: dict) -> None:
+    """jcs-n-tab-long-form-contrast: RFC 8785 §3.2.2.2 assigns TAB the named
+    escape \\t; the library MUST NOT output the six-byte \\u0009 form instead.
+    Asserts correct digest (jcs_n_correct_digest) and not the long-form digest
+    (long_form_contrast_digest)."""
+    excl = set(v.get("exclusion_set", []))
+    digest = canonical_digest(v["input"], excl or None)
+    assert digest == v["jcs_n_correct_digest"]
+    assert digest != v["long_form_contrast_digest"]
+
+
+def _handle_key_sort_by_escaped_bytes_not_code_units(v: dict) -> None:
+    """jcs-n-control-key-escaped-sort-contrast: RFC 8785 §3.2.3 sorts member
+    names by UTF-16 code units of the unescaped key, not by the bytes of the
+    escaped serialization. The library MUST produce the code-unit-ordered
+    pre-image (jcs_n_correct_digest) and MUST NOT produce the escaped-sort
+    pre-image (escaped_sort_contrast_digest)."""
+    excl = set(v.get("exclusion_set", []))
+    digest = canonical_digest(v["input"], excl or None)
+    assert digest == v["jcs_n_correct_digest"]
+    assert digest != v["escaped_sort_contrast_digest"]
+
+
 def _handle_profile_independence_violation(v: dict) -> None:
     """profile-independence-fail-01: informative/behavioral. The executable
     contract is the documented CONFORMING alternative -- see
@@ -228,6 +262,9 @@ _HANDLERS = {
     "digest_algorithm_inconsistent_with_context": _handle_digest_algorithm_inconsistent_with_context,
     "digest_alg_inconsistent_with_registered_context": _handle_digest_alg_inconsistent_with_registered_context,
     "nfc_normalisation_deviation": _handle_nfc_normalisation_deviation,
+    "string_escape_uppercase_hex": _handle_string_escape_uppercase_hex,
+    "string_escape_long_form_for_named_char": _handle_string_escape_long_form_for_named_char,
+    "key_sort_by_escaped_bytes_not_code_units": _handle_key_sort_by_escaped_bytes_not_code_units,
     "profile_independence_violation": _handle_profile_independence_violation,
 }
 

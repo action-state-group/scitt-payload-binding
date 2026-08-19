@@ -1,0 +1,17 @@
+{
+  "id": "jcs-n-kat-25",
+  "description": "Full control-character taxonomy in one string value. Covers all three escape categories from RFC 8785 §3.2.2.2: (1) unnamed control characters serialized as lowercase \\uXXXX: NUL (U+0000 -> \\u0000), SOH (U+0001 -> \\u0001), BEL (U+0007 -> \\u0007), ESC (U+001B -> \\u001b), US (U+001F -> \\u001f); (2) named two-character escapes: BS (U+0008 -> \\b), TAB (U+0009 -> \\t), LF (U+000A -> \\n), FF (U+000C -> \\f), CR (U+000D -> \\r). All \\uXXXX sequences use LOWERCASE hex. No code point above U+001F is escaped.",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 §3.1 step 2 (JCS per RFC 8785 §3.2.2.2)",
+  "input": {
+    "ctrl": "\u0000\u0001\u0007\b\t\n\f\r\u001b\u001f"
+  },
+  "exclusion_set": [],
+  "normalized": {
+    "ctrl": "\u0000\u0001\u0007\b\t\n\f\r\u001b\u001f"
+  },
+  "pre_image": "{\"ctrl\":\"\\u0000\\u0001\\u0007\\b\\t\\n\\f\\r\\u001b\\u001f\"}",
+  "pre_image_bytes_hex": "7b226374726c223a225c75303030305c75303030315c75303030375c625c745c6e5c665c725c75303031625c7530303166227d",
+  "digest": "ed3c500011bc905c5ae0cd0ae005e636c2c01c54eb1f8f2d4bc0935479502fac",
+  "note": "This vector pins the full set at once so a partial-implementation defect (e.g., correct for \\t but wrong for \\u001b) cannot hide behind coverage of only the named-escape subset."
+}

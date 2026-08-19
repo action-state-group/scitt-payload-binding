@@ -64,6 +64,13 @@ Each vector is a self-contained JSON object. Common fields:
 | jcs-n-kat-20 | MUST-FAIL: typed-ref digest with a trailing newline (representation mismatch) | — |
 | jcs-n-kat-21 | MUST-FAIL: typed-ref digest with surrounding whitespace (representation mismatch) | — |
 | jcs-n-kat-22 | `{"id":"x","sub":{"id":"y"}}` excl `{id}` — exclusion-set matching is top-level only | `1fa18622...` |
+| jcs-n-kat-23 | ESC character (U+001B) in a value — canonical form uses `\u001b` (lowercase) | `f5d570fa...` |
+| jcs-n-kat-24 | TAB character (U+0009) in a value — canonical form uses `\t` (short form, not `\u0009`) | `7ac9c6bd...` |
+| jcs-n-kat-25 | Full control-character taxonomy: NUL, SOH, BEL, BS, TAB, LF, FF, CR, ESC, US in one value | `ed3c5000...` |
+| jcs-n-kat-26 | Control character in a KEY: sort is by code unit (U+001F < U+0020), not by escaped bytes | `64e35d3d...` |
+| jcs-n-esc-uppercase-contrast | MUST-FAIL: `\u001B` (uppercase B) is non-conforming; pins correct and wrong digests for harness check | — |
+| jcs-n-tab-long-form-contrast | MUST-FAIL: `\u0009` instead of `\t` is non-conforming; pins correct and wrong digests | — |
+| jcs-n-control-key-escaped-sort-contrast | MUST-FAIL: sorting keys by escaped bytes is wrong; pins correct (code-unit) and wrong (escaped) digests | — |
 
 **E3 boundary group** (KATs 02–07): null, empty array, empty object, absent
 field, nested-null, and nested-empty-array (bottom-up) all produce the same
@@ -87,6 +94,37 @@ of the same name nested inside a member's value is not removed. KAT 22 pins
 this behavior for `{"id":"x","sub":{"id":"y"}}` excluding `{id}` — the
 top-level `id` is stripped but `sub.id` survives. A recursive-stripping
 implementation forks on this vector.
+
+**String-escape group** (KATs 23–26 + contrast vectors 27–29): JCS (RFC 8785
+§3.2.2.2) defines two categories of string-character escaping:
+
+1. **Named two-character escapes** for specific control characters: `\b`
+   (U+0008), `\t` (U+0009), `\n` (U+000A), `\f` (U+000C), `\r` (U+000D),
+   `\"` (U+0022), and `\\` (U+005C). These MUST be used where applicable;
+   using the longer `\uXXXX` form for any of these characters is
+   non-conforming and produces a different pre-image.
+
+2. **Lowercase `\uXXXX` escapes** for all other control characters in
+   U+0000–U+001F. The four hexadecimal digits MUST be lowercase (e.g.,
+   `\u001b` for ESC, not `\u001B`). An uppercase hex digit changes the
+   byte sequence and therefore the digest.
+
+Characters above U+001F (other than `"` and `\`) are output as UTF-8 without
+escaping, even if the source JSON used `\uXXXX` for them.
+
+Key escaping follows the same rules: member names (keys) containing control
+characters are escaped per RFC 8785 §3.2.2.2, and their sort order is
+determined by the UTF-16 code units of the **unescaped** key string (RFC 8785
+§3.2.3) — not by the byte sequence of the escaped serialization. KATs 23–26
+pin the correct canonical bytes for each case. The three contrast vectors
+(27–29) pin both the conforming digest and the non-conforming digest that a
+miscapitalized, long-form, or escaped-sort implementation would produce, so
+that a test harness can assert the library produces one and not the other.
+
+🔴 **Cross-linked from `REGISTRY.md` §jcs-n implementation note** — this
+group was added explicitly because prior vector sets had zero escaping coverage,
+leaving a third-party Rust implementer with no KAT to build against for this
+rule.
 
 ## Derived identifier summary
 
