@@ -42,9 +42,20 @@ def _strip_md(s: str) -> str:
     return s.strip()
 
 
+_LEGACY_STATUSES = frozenset({"Registered", "Reserved"})
+
+
 def _normalize_status(raw: str) -> str:
-    """Extract the first status keyword from a cell value like 'Reserved (note)'."""
-    m = re.match(r"\s*(Registered|Reserved)", raw, re.IGNORECASE)
+    """Normalize a legacy status cell; leave every other status untouched.
+
+    Legacy rows spell their status with a trailing qualifier ('Reserved (defined
+    in a subsequent revision)'), so those two names are matched at the start of
+    the cell and returned bare.  Vocabulary statuses are NOT prefix-matched: the
+    policy requires them verbatim, and prefix-matching would silently accept
+    'provisional — pending X' as 'provisional', which is the drift the
+    validation exists to catch.
+    """
+    m = re.match(r"\s*(Registered|Reserved)\b", raw, re.IGNORECASE)
     if m:
         return m.group(1).capitalize()
     return raw.strip()
@@ -126,6 +137,25 @@ def _subsections(section_lines: list[str]) -> list[tuple[str, list[str]]]:
 # ---------------------------------------------------------------------------
 # Registry parsers
 # ---------------------------------------------------------------------------
+
+def _parse_status_vocabulary(md_lines: list[str]) -> set[str]:
+    """Read the legal status strings out of REGISTRY.md itself.
+
+    The vocabulary table under 'Entry Status Vocabulary' is the single source of
+    truth: policy and validator cannot drift because there is only one list.
+    The legacy spellings are added because the same section defines them as the
+    reading for pre-existing rows.
+    """
+    section = _section_lines(md_lines, "Entry Status Vocabulary")
+    statuses = {row["status"].strip() for row in _parse_md_table(section)
+                if row.get("status", "").strip()}
+    if not statuses:
+        raise ValueError(
+            "no status vocabulary parsed from REGISTRY.md — refusing to validate "
+            "against an empty set (fail closed rather than accept anything)"
+        )
+    return statuses | _LEGACY_STATUSES
+
 
 def _parse_algorithm_registry(md_lines: list[str]) -> dict[str, dict]:
     """Parse the Payload Canonicalization Algorithm Registry table.
@@ -212,8 +242,9 @@ def _compute_body_sha256(data: dict) -> str:
 # Structural validation (stdlib-only; full JSON Schema via CI jsonschema)
 # ---------------------------------------------------------------------------
 
-def _validate_structure(data: dict) -> list[str]:
+def _validate_structure(data: dict, legal_statuses: set[str]) -> list[str]:
     errors: list[str] = []
+    expected = ", ".join(sorted(legal_statuses))
     for field in ("schema_version", "snapshot_sha256", "canonicalization_algorithms", "artifact_types"):
         if field not in data:
             errors.append(f"missing required field: {field!r}")
@@ -225,10 +256,18 @@ def _validate_structure(data: dict) -> list[str]:
             for sub in ("description", "reference", "status"):
                 if sub not in entry:
                     errors.append(f"algorithm {name!r}: missing {sub!r}")
-            if entry.get("status") not in ("Registered", "Reserved"):
+            if entry.get("status") not in legal_statuses:
                 errors.append(
-                    f"algorithm {name!r}: status must be Registered or Reserved, "
-                    f"got {entry.get('status')!r}"
+                    f"algorithm {name!r}: status must be one of [{expected}] "
+                    f"used verbatim, got {entry.get('status')!r}"
+                )
+    arts = data.get("artifact_types", {})
+    if isinstance(arts, dict):
+        for name, entry in arts.items():
+            if entry.get("status") not in legal_statuses:
+                errors.append(
+                    f"artifact type {name!r}: status must be one of [{expected}] "
+                    f"used verbatim, got {entry.get('status')!r}"
                 )
     sha = data.get("snapshot_sha256", "")
     if not re.match(r"^[0-9a-f]{64}$", sha):
@@ -277,7 +316,8 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     data = generate(registry_md)
-    errs = _validate_structure(data)
+    md_lines = registry_md.read_text(encoding="utf-8").splitlines(keepends=True)
+    errs = _validate_structure(data, _parse_status_vocabulary(md_lines))
     if errs:
         for e in errs:
             print(f"validation error: {e}", file=sys.stderr)

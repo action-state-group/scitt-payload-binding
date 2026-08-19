@@ -34,7 +34,8 @@
           },
           "status": {
             "type": "string",
-            "enum": ["Registered", "Reserved"]
+            "minLength": 1,
+            "description": "Legal values are NOT enumerated here. The vocabulary lives in REGISTRY.md's Entry Status Vocabulary table plus its legacy mapping, and gen_registry.py validates against it by parsing that table. A second list here could only drift from the first; JSON Schema cannot read REGISTRY.md, so it checks shape and leaves vocabulary to the generator."
           }
         }
       }
