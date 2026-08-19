@@ -12,9 +12,9 @@
       "status": "standards-referenced"
     },
     "cde-n": {
-      "description": "Deterministic CBOR canonicalization profile; SHA-256",
+      "description": "Withdrawn \u2014 the token was reserved for a deterministic CBOR canonicalization profile and never assigned a definition",
       "reference": "draft-mih-sokolov-scitt-payload-binding",
-      "status": "Reserved"
+      "status": "withdrawn"
     },
     "as-transmitted": {
       "description": "No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex",
@@ -66,5 +66,5 @@
       ]
     }
   },
-  "snapshot_sha256": "e153902a93f361752c469a5d19c74c5d9bb4e73b109f1d9ce7889fa81622838b"
+  "snapshot_sha256": "0dfb7a4af1956fa2851ec60cabe4b20e4e3c3a3662236bdc57b03387c195fc7c"
 }

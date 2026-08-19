@@ -352,3 +352,34 @@ def test_typed_ref_raw_representation_boundary():
     # Explicit conversions round-trip.
     assert hex_to_raw(raw_to_hex(digest_raw)) == digest_raw
     assert raw_to_hex(hex_to_raw(digest_hex)) == digest_hex
+
+
+def test_digest_alg_comparison_is_byte_exact():
+    """Two-sided, and it is the pair that was missing.
+
+    The comparison used to case-fold both sides, so a reference carrying
+    `sha-256` was accepted against a registered `SHA-256`. The suite passed
+    only because no vector differed by case -- the tolerance was invisible
+    rather than tested. The IANA registries an implementer might reach for
+    disagree on the spelling for the same function, so accepting either one
+    silently admits a reference naming a different registry's token.
+    """
+    vectors = load_vectors("typed-refs/pass")
+    assert vectors, "no PASS vectors to build the pair from"
+    v = vectors[0]
+    cited = v["cited_artifact"]
+    entry = _entry_from_vector(v)
+    fields = _typed_ref_fields(v["typed_reference"])
+
+    exact = TypedRef(**fields)
+    verify_typed_ref(exact, cited["payload"], entry)  # the registered spelling verifies
+
+    case_shifted = dict(fields)
+    registered = case_shifted["digest_alg"]
+    case_shifted["digest_alg"] = (
+        registered.lower() if registered != registered.lower() else registered.upper()
+    )
+    assert case_shifted["digest_alg"] != registered, "vector's digest_alg has no case to shift"
+
+    with pytest.raises(DigestAlgorithmMismatchError):
+        verify_typed_ref(TypedRef(**case_shifted), cited["payload"], entry)
