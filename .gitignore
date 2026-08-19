@@ -1,0 +1,6 @@
+# Python bytecode — never tracked; see the .pyc pair that reached main in 097570a
+__pycache__/
+*.py[cod]
+
+# pytest
+.pytest_cache/
