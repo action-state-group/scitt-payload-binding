@@ -138,6 +138,30 @@ def _subsections(section_lines: list[str]) -> list[tuple[str, list[str]]]:
 # Registry parsers
 # ---------------------------------------------------------------------------
 
+_LEGACY_ROWS_RE = re.compile(
+    r"Exactly\s+four rows predate this vocabulary:(.+?)(?:\.\s|\n\n)", re.S
+)
+
+
+def _parse_legacy_rows(md_lines: list[str]) -> set[str]:
+    """Names of the entries allowed to keep a legacy status spelling.
+
+    Read from REGISTRY.md's own legacy-mapping paragraph rather than hardcoded,
+    for the same reason the vocabulary is: one list, no drift.  The generator
+    has no history, so without this closed list it cannot tell a pre-existing
+    row from a new entry writing 'Registered - owner-confirmed (thread)', and
+    the verbatim rule would be unenforceable exactly where it matters.
+    """
+    text = "".join(md_lines)
+    m = _LEGACY_ROWS_RE.search(text)
+    if not m:
+        raise ValueError(
+            "no legacy-row list parsed from REGISTRY.md - refusing to guess which "
+            "entries may keep a legacy status (fail closed)"
+        )
+    return set(re.findall(r"`([^`]+)`", m.group(1)))
+
+
 def _parse_status_vocabulary(md_lines: list[str]) -> set[str]:
     """Read the legal status strings out of REGISTRY.md itself.
 
@@ -242,9 +266,25 @@ def _compute_body_sha256(data: dict) -> str:
 # Structural validation (stdlib-only; full JSON Schema via CI jsonschema)
 # ---------------------------------------------------------------------------
 
-def _validate_structure(data: dict, legal_statuses: set[str]) -> list[str]:
+def _validate_structure(data: dict, legal_statuses: set[str],
+                       legacy_rows: set[str] | None = None) -> list[str]:
     errors: list[str] = []
+    legacy_rows = set() if legacy_rows is None else legacy_rows
+    vocabulary = legal_statuses - _LEGACY_STATUSES
     expected = ", ".join(sorted(legal_statuses))
+
+    def _status_error(kind: str, name: str, status) -> str | None:
+        """A legacy spelling is legal only for a row that predates the vocabulary."""
+        if status in vocabulary:
+            return None
+        if status in _LEGACY_STATUSES:
+            if name in legacy_rows:
+                return None
+            return (f"{kind} {name!r}: {status!r} is a legacy spelling, legal only for the "
+                    f"rows that predate the vocabulary ({', '.join(sorted(legacy_rows))}). "
+                    f"A new entry uses one of [{', '.join(sorted(vocabulary))}] verbatim.")
+        return (f"{kind} {name!r}: status must be one of [{expected}] "
+                f"used verbatim, got {status!r}")
     for field in ("schema_version", "snapshot_sha256", "canonicalization_algorithms", "artifact_types"):
         if field not in data:
             errors.append(f"missing required field: {field!r}")
@@ -256,19 +296,15 @@ def _validate_structure(data: dict, legal_statuses: set[str]) -> list[str]:
             for sub in ("description", "reference", "status"):
                 if sub not in entry:
                     errors.append(f"algorithm {name!r}: missing {sub!r}")
-            if entry.get("status") not in legal_statuses:
-                errors.append(
-                    f"algorithm {name!r}: status must be one of [{expected}] "
-                    f"used verbatim, got {entry.get('status')!r}"
-                )
+            err = _status_error("algorithm", name, entry.get("status"))
+            if err:
+                errors.append(err)
     arts = data.get("artifact_types", {})
     if isinstance(arts, dict):
         for name, entry in arts.items():
-            if entry.get("status") not in legal_statuses:
-                errors.append(
-                    f"artifact type {name!r}: status must be one of [{expected}] "
-                    f"used verbatim, got {entry.get('status')!r}"
-                )
+            err = _status_error("artifact type", name, entry.get("status"))
+            if err:
+                errors.append(err)
     sha = data.get("snapshot_sha256", "")
     if not re.match(r"^[0-9a-f]{64}$", sha):
         errors.append(f"snapshot_sha256 must be 64 lowercase hex chars, got {sha!r}")
@@ -317,7 +353,8 @@ def main(argv: list[str] | None = None) -> int:
 
     data = generate(registry_md)
     md_lines = registry_md.read_text(encoding="utf-8").splitlines(keepends=True)
-    errs = _validate_structure(data, _parse_status_vocabulary(md_lines))
+    errs = _validate_structure(data, _parse_status_vocabulary(md_lines),
+                               _parse_legacy_rows(md_lines))
     if errs:
         for e in errs:
             print(f"validation error: {e}", file=sys.stderr)

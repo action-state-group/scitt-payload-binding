@@ -1,0 +1,76 @@
+{
+  "id": "jcs-n-assembled-01",
+  "description": "MUST-FAIL: an assembled pre-image whose declared digest context states a field set but no member mapping. Two implementations both satisfy the declaration and produce different pre-images, so the declaration does not fix the bytes. Isolates member NAMING alone: both sides carry exactly the three selected source values, each once and nothing else, so the fork cannot be attributed to an extra member, a normalization difference, or a different exclusion set. The declared context states all eight \u00a713.2 template elements explicitly, so the fork cannot be attributed to an omitted element either: the only thing absent is `member_mapping`, which \u00a713.2 does not define.",
+  "payload_class": "example-action-record",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 \u00a74 (derived identifier) and \u00a713.2 (Artifact Type Registry digest context)",
+  "must_fail": true,
+  "failure_reason": "assembled_preimage_member_mapping_undeclared",
+  "declared_digest_context": {
+    "purpose": "identifier",
+    "profile_version": "v1",
+    "canonicalization_algorithm": "jcs-n",
+    "field_set": "exactly the `label` and `parameters` members of the source object plus the named block `_meta.binding`, and nothing else",
+    "exclusion_set": [],
+    "domain_separation": "none",
+    "pre_image_encoding": "JCS UTF-8 octets, per jcs-n",
+    "representation": "64-char lowercase hex"
+    ,"_comment_member_mapping": "deliberately ABSENT -- that absence is the condition under test. Written as a missing key rather than an explicit null: null is a declaration of nothing, which the checker now rejects."
+  },
+  "source_object": {
+    "label": "example-action",
+    "parameters": {
+      "alpha": "1",
+      "beta": "2"
+    },
+    "_meta": {
+      "binding": {
+        "scheme": "jcs-n",
+        "version": 1
+      }
+    },
+    "trace": "not-selected-by-the-declared-field-set"
+  },
+  "implementation_a": {
+    "note": "A second implementer working from the specification text alone. Carries the selected block under its own leaf name.",
+    "assembled": {
+      "label": "example-action",
+      "parameters": {
+        "alpha": "1",
+        "beta": "2"
+      },
+      "binding": {
+        "scheme": "jcs-n",
+        "version": 1
+      }
+    },
+    "pre_image": "{\"binding\":{\"scheme\":\"jcs-n\",\"version\":1},\"label\":\"example-action\",\"parameters\":{\"alpha\":\"1\",\"beta\":\"2\"}}",
+    "pre_image_bytes_hex": "7b2262696e64696e67223a7b22736368656d65223a226a63732d6e222c2276657273696f6e223a317d2c226c6162656c223a226578616d706c652d616374696f6e222c22706172616d6574657273223a7b22616c706861223a2231222c2262657461223a2232227d7d",
+    "digest": "9707290f10a5b06d7f957ba350c106dc589c735af0135d33c174eb9d10bbf66c"
+  },
+  "implementation_b": {
+    "note": "The producer. Re-keys the selected block on the way into the pre-image.",
+    "assembled": {
+      "label": "example-action",
+      "parameters": {
+        "alpha": "1",
+        "beta": "2"
+      },
+      "bindingBlock": {
+        "scheme": "jcs-n",
+        "version": 1
+      }
+    },
+    "pre_image": "{\"bindingBlock\":{\"scheme\":\"jcs-n\",\"version\":1},\"label\":\"example-action\",\"parameters\":{\"alpha\":\"1\",\"beta\":\"2\"}}",
+    "pre_image_bytes_hex": "7b2262696e64696e67426c6f636b223a7b22736368656d65223a226a63732d6e222c2276657273696f6e223a317d2c226c6162656c223a226578616d706c652d616374696f6e222c22706172616d6574657273223a7b22616c706861223a2231222c2262657461223a2232227d7d",
+    "digest": "7dd1096d75d4b4552143da1e4cb8c998eb581b7067bd6cd829a7e52b7e368f68"
+  },
+  "note": "Both assembled objects carry the same three selected source values, each exactly once, and no member that is not one of them. Under the declared field set neither is preferable to the other, yet they differ in one member name: the two pre-images share a 9-character prefix, diverge inside the block's member name (`binding` is a proper prefix of `bindingBlock`), and differ in length (105 vs 110 bytes) and in digest. A verifier holding the specification and a carried digest cannot tell a wrong pre-image from a tampered artifact, because both present as a digest mismatch. \u00a711.1 makes the adjacent point at the serialization level, that a pre-image is octets rather than a rendering and that diagnosing divergence means comparing exact octets; the divergence here is one level up, in which members were assembled rather than in how they were serialized. Fix and contrast: jcs-n-assembled-02 pins the same construction with a member mapping declared, and only one pre-image is then derivable. A second and adjacent ambiguity, a member present in the pre-image that is not a source field at all (a rule-version constant), is deliberately NOT exercised here so this vector fails for exactly one reason; jcs-n-assembled-02 shows the same declaration element closing that case too.",
+  "scope_note": "The narrower statement this vector supports: \u00a74 defines the pre-image as `payload minus exclusion_set`, and \u00a713.2's digest-context template states a purpose, a profile version, a canonicalization algorithm, a field set, an exclusion set, a domain separation, a pre-image encoding and a representation. None of those eight elements fixes which member names the pre-image carries, so neither \u00a74 nor \u00a713.2 admits an assembly step in which a selected block is re-keyed or a non-source constant is injected. So an assembled pre-image is not under-declared by the registry so much as unconstrained by the specification, and the registry is simply where the constraint would have to be recorded.",
+  "prior_art": "Three specifications pin some part of the path from source content to digested bytes rather than leaving it inferred, by three different routes, and none is a direct precedent for pinning an assembled member name. DSSE frames the signed bytes with a Pre-Authentication Encoding, PAE(type, body) = \"DSSEv1\" + SP + LEN(type) + SP + type + SP + LEN(body) + SP + body (secure-systems-lab/dsse, protocol.md), whose stated purpose is 'an unambiguous way of serializing two fields, payloadType and payload' (background.md, not protocol.md, which carries no rationale). Because LEN is the exact byte length over a fixed arity of two, the framing is unambiguous for arbitrary type and body bytes. PAE pins the boundary between two opaque parts and never reaches inside the body, so it is precedent for declaring the framing, not the member names. SD-JWT (RFC 9901) carries the claim name as the second element of the Disclosure array for object properties (\u00a74.2.1), and the digest is computed over the base64url-encoded Disclosure (\u00a74.2.3), so the name is inside the hashed bytes; disclosures for array elements carry only a salt and the value (\u00a74.2.2), where position rather than a name does the locating. SD-JWT does not face this vector's ambiguity, because its pre-image is the encoded claim itself and there is no separate assembly step in which a member could be re-keyed. W3C Verifiable Credential Data Integrity offers both routes: cryptosuites that canonicalize the RDF dataset (`eddsa-rdfc-2022`) and cryptosuites that canonicalize the JSON with JCS (`eddsa-jcs-2022`). On the RDFC route member naming is resolved through `@context` term definitions rather than the serialized name, but the mapping does not stop being load-bearing: context terms MUST be `@protected` against unsafe redefinition, and an undefined term MUST raise a data-loss error. On the JCS route the serialized member names are load-bearing exactly as under jcs-n. CPB inherits a naming property in one place only: \u00a74 requires the derived identifier to be computed over the SD-encoded form when selective disclosure is in use. That inheritance is conditional on selective disclosure and does not reach the assembled case here.",
+  "selected_source_pointers": [
+    "/label",
+    "/parameters",
+    "/_meta/binding"
+  ]
+}

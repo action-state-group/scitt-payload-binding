@@ -2,5 +2,6 @@
 __pycache__/
 *.py[cod]
 
-# pytest
+# pytest / ruff
 .pytest_cache/
+.ruff_cache/

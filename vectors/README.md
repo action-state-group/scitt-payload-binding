@@ -19,6 +19,7 @@ vectors/
   harness.py                        Cross-language conformance harness (both directions)
   jcs-n/kats/                       Known-Answer Tests for Algorithm jcs-n (§3.1)
   jcs-n/derived-id/                 Derived identifier construction (§4)
+  jcs-n/assembled-preimage/         Assembled pre-images: member mapping (§4, §13.2)
   typed-refs/pass/                  Typed digest reference verification — PASS cases (§6)
   typed-refs/fail/                  Typed digest reference verification — MUST-FAIL cases (§6)
   profile-independence/pass/        Profile independence — conforming cases (§8)
@@ -46,6 +47,49 @@ python3 vectors/harness.py reference-impl
 # Run the standalone checker (no library dependencies):
 python3 .github/check_vectors.py vectors/
 ```
+
+## Assembled pre-images — family summary
+
+Some payload classes bind neither the payload nor the payload minus an
+exclusion set, but an object **assembled** from selected source fields. For
+those, the algorithm plus the selected field set does not determine the
+pre-image: the assembled object's member names and nesting are chosen by the
+producer and are part of the bytes.
+
+| ID | What it pins | Digest |
+|---|---|---|
+| jcs-n-assembled-01 | MUST-FAIL: two conforming readings of one declared field set produce different pre-images, differing only in one member name | `9707290f…` vs `7dd1096d…` |
+| jcs-n-assembled-02 | The sufficient declaration: a `member_mapping` from source pointers to pre-image pointers, plus declared constants, from which exactly one pre-image is derivable | `9a43989d…` |
+
+`jcs-n-assembled-02` is executed, not asserted: Category K in
+`.github/check_vectors.py` applies the declared mapping to the source object and
+requires the result to equal the vector's `input` exactly.
+
+### `member_mapping` addressing and collision rules
+
+Both `source_pointer` and `preimage_pointer` are **JSON Pointers (RFC 6901)**, not
+dotted paths. A dotted path cannot address a literal member containing a dot: given
+`{"a.b": 1, "a": {"b": 2}}`, `a.b` names both and resolves to the nested one, so the
+top-level member is unreachable. As pointers these are `/a.b` and `/a/b`. The `~1`
+and `~0` escapes are honoured in that order, so a member named `a/b` is `/a~1b`.
+
+A mapping is **absent** or it is **declared**. `member_mapping: {}` is declared and
+is rejected: a declared mapping MUST name at least one field or constant. Absence is
+tested with `is None`, never with falsiness, because an empty declared mapping that
+read as absent would skip Category K entirely.
+
+All destinations share one namespace, whichever side produced them, and three
+collisions are rejected:
+
+| collision | example | why |
+|---|---|---|
+| duplicate destination | `/x` twice | two values claim one member; the pre-image is not determined |
+| ancestor/descendant | `/a` and `/a/b` | one destination is inside the other; the result depends on write order |
+| constant against field | field `/x`, constant `/x` | constants and fields are not separate namespaces |
+
+**Arrays are out of scope** for this template element. A pointer that traverses an
+array is rejected rather than guessed at, so array handling stays an explicit future
+decision instead of an accident of implementation.
 
 ## Vector format
 
