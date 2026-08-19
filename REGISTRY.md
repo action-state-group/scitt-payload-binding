@@ -6,9 +6,14 @@ corresponding IANA registries. The registries and their normative definitions ar
 in the Internet-Draft (`draft-mih-sokolov-scitt-payload-binding`, this
 repository's `spec/`), **§13 (IANA Considerations)**. Registration policy:
 **Specification Required** per [RFC 8126 §4.6]; a Designated Expert is required
-for each registration. **Entries are immutable** — if a behavior change is
-needed, a new entry MUST be registered; existing entries MUST NOT be modified
-retroactively.
+for each registration. **Entries are immutable in behavior** — if a behavior
+change is needed (a different canonicalization algorithm, field set, or
+exclusion set), a new entry MUST be registered; an entry's registered behavior
+MUST NOT be modified retroactively. This does not bar the two narrower edits
+described below, neither of which changes what the entry specifies: a factual
+correction to bibliographic detail (see [Removal and Correction](#removal-and-correction))
+or a status transition along the [Entry Lifecycle](#entry-lifecycle) (e.g.
+`third-party-documented` → `owner-confirmed`).
 
 Change controller: **Action State Group, Inc.** (interim) → **IETF** on
 publication. On working-group adoption, the provisional registry **moves with the
@@ -240,7 +245,7 @@ registrars MUST use them verbatim.
 
 | Status | Meaning |
 |---|---|
-| `owner-confirmed` | The profile's author or owner approved the entry text (via PR approval, email ack, or equivalent on-record confirmation). Highest-provenance status. |
+| `owner-confirmed` | The profile's author or owner approved the entry text. Highest-provenance status; see [Designated Expert Admission Checklist](#designated-expert-admission-checklist), Gate C for the acknowledgment forms accepted and when a consuming-profile ACK is also required. |
 | `third-party-documented` | Registered by someone other than the owner, from publicly pinned artifacts (spec revision + repo commit). Registrant is named in the entry. Owner has been notified and invited to review. Not yet confirmed by owner. |
 | `provisional` | A reference resolves but the vector set is incomplete or the specification is insufficiently pinned. Entry is held in [`spec/cpb-provisional-registry.md`](spec/cpb-provisional-registry.md) until vectors and pinning are complete. |
 | `standards-referenced` | The entry's construction is fully specified by a published standard (RFC, ISO, or equivalent) rather than by a party who can acknowledge anything. There is no owner to ack, so `owner-confirmed` is unreachable by construction and its absence is not a provenance gap. Gates A and B still apply, and the Reference row MUST cite the standard to section precision. |
@@ -296,7 +301,12 @@ A third party (not the owner) registers from publicly available artifacts.
 The third party MUST satisfy all [Third-Party Registration Rules](#third-party-registration-rules).
 Entry enters the live tables with status `third-party-documented`.
 Owner is notified by the registrar (via issue or direct contact) and invited to review.
-Status upgrades to `owner-confirmed` upon any owner acknowledgment (PR approval or email on record).
+Status upgrades to `owner-confirmed` once the acknowledgments
+[Gate C](#designated-expert-admission-checklist) requires are complete — the owner ACK,
+plus the consuming-profile ACK that Rung 1 admission requires and Rung 2 admission does
+not, unless the owner and the consuming-profile maintainer are the same party. A Rung 2
+entry does not reach `owner-confirmed` on owner ACK alone if that consuming-profile ACK
+was never obtained; see Gate C for the full requirement and why.
 
 **Rung 3 — Provisional.**
 A reference exists but the vector set is incomplete, or the specification is insufficiently
@@ -334,8 +344,11 @@ A third-party entry MUST:
    Owner objection removes or amends the entry, no questions asked.
    See [Removal and Correction](#removal-and-correction).
 
-6. **Accept upgrade to `owner-confirmed` on any owner acknowledgment.**
-   PR approval, email on record, or any other unambiguous owner ack upgrades the entry.
+6. **Accept upgrade to `owner-confirmed` on the acknowledgments
+   [Gate C](#designated-expert-admission-checklist) requires for this rung.** For a
+   Rung 2 entry this is the owner ACK plus, if not already given, the consuming-profile
+   ACK — see Gate C's upgrade checkbox for the accepted forms and the reason a Rung 2
+   entry cannot skip the consuming-profile ACK that Rung 1 requires at admission.
 
 CPB editors MUST NOT fill in owner-supplied fields (Digest Context, vector references) on the
 owner's behalf. If a required field cannot be sourced from public artifacts, the entry is
@@ -394,9 +407,14 @@ satisfy Gate A — it demonstrates compatibility, not distinguishability.
   of a Rung 2 entry; Gates A and B still bind it.
 - [ ] **Upgrade to `owner-confirmed` (either rung):** any unambiguous acknowledgment from the
   entry's owner (or a named authorized delegate) — via PR approval, on-record email, or a
-  GitHub comment on the PR from a confirmed owner identity — upgrades the entry. Consuming-
-  profile ACK is not a precondition for this upgrade (see [Entry Lifecycle](#entry-lifecycle));
-  owner ACK alone is sufficient.
+  GitHub comment on the PR from a confirmed owner identity — upgrades the entry, provided the
+  consuming-profile ACK that Rung 1 admission requires (above) has also been obtained by this
+  point, unless the owner and the consuming-profile maintainer are the same party. This closes
+  a bypass: without this proviso, an owner could avoid the Rung 1 consuming-profile ACK simply
+  by having a third party file the entry at Rung 2 (no ACK required at admission) and then
+  acking it themselves — reaching `owner-confirmed` without ever clearing the bar a Rung 1
+  entry clears at admission. The registrar solicits any outstanding consuming-profile ACK at
+  the same time as the owner ACK.
 
 ---
 
@@ -522,7 +540,12 @@ as prose lines immediately following the table row (matching the pattern used by
 ⌙ Consuming-profile: <spec-rev or RFC number>
 ```
 
-**Required fields for all entries:**
+**Required fields for new entries.** These fields apply to entries registered under
+this template going forward. The live rows that predate it — `jcs-n`, `cde-n`,
+`as-transmitted`, and `agent-action-capsule` — are read through the same legacy
+treatment [Entry Status Vocabulary](#entry-status-vocabulary) gives their Status: they
+are not retroactively required to backfill Discriminating-vector, Consuming-profile, or
+a Vectors field.
 
 | Field | Required | Notes |
 |---|---|---|
@@ -531,10 +554,10 @@ as prose lines immediately following the table row (matching the pattern used by
 | Reference | Yes | Publicly available specification (Internet-Draft, RFC, or a pinned repository revision). When citing a repository, a commit hash is mandatory — a branch or tag alone is not a pin, since both can move after the fact. |
 | Status | Yes | For new entries: one of `owner-confirmed`, `third-party-documented`, `provisional`, `standards-referenced`, used verbatim (expressed as a Status column or, in the named-subsection form, a prose `Status:` line). No qualifier text — see [Entry Status Vocabulary](#entry-status-vocabulary) on why "pending review" is not a status. Legacy `Registered`/`Reserved` rows are read via the mapping there. |
 | Registrant | Third-party only | Self-attestation: "Registered by X from Y at commit Z." Retained on upgrade to `owner-confirmed` when a `Disclosure` is also present — dropping it would destroy the provenance the disclosure exists to preserve. |
-| Vectors | Yes — all entries | Link to the vector set (owner's published set, or the entry's own if the owner produced it). Third-party entries MUST cite the owner's published vector set and MUST NOT fabricate one. Owner-authored entries that have not yet published a two-sided vector set are `provisional`. |
-| Discriminating-vector | Yes — all entries | A conformance test case (positive or MUST-FAIL) that distinguishes this entry's construction from every currently registered neighbour in the same registry table, both directions. Committed to `vectors/<name>/` in the same PR, or cited at a commit-pinned external URL — Rung 2 (third-party) entries MUST use the external-URL branch (the "same PR" branch is closed to them by Third-Party Registration Rule 4, which forbids fabricating vectors for someone else's construction). A vector identical to or shared with an existing entry does not satisfy this field. See [Designated Expert Admission Checklist](#designated-expert-admission-checklist), Gate A. |
-| Consuming-profile | Yes — all entries | At least one spec-revision-pinned reference (Internet-Draft version, RFC number, or commit hash) to a specification or deployment that uses this registered name in a normatively stated way. The entry's own specification does not count. See [Designated Expert Admission Checklist](#designated-expert-admission-checklist), Gate B. |
-| Disclosure | When owner or confirmer holds a CPB editor or draft co-author role | Required prose statement in the entry. Take the disclosing party's own wording verbatim — it is their name and their role. Model text from the first instance: "Disclosure: the owner is a co-author of the CPB draft and a co-editor of this registry; this entry is owner-authored and is not independent or third-party validation." A `Disclosure` field makes independence computable from the record rather than remembered by the reader. |
+| Vectors | Yes — new entries | Link to the vector set (owner's published set, or the entry's own if the owner produced it). Third-party entries MUST cite the owner's published vector set and MUST NOT fabricate one. Owner-authored entries that have not yet published a two-sided vector set are `provisional`. |
+| Discriminating-vector | Yes — new entries | A conformance test case (positive or MUST-FAIL) that distinguishes this entry's construction from every currently registered neighbour in the same registry table, both directions. Committed to `vectors/<name>/` in the same PR, or cited at a commit-pinned external URL — Rung 2 (third-party) entries MUST use the external-URL branch (the "same PR" branch is closed to them by Third-Party Registration Rule 4, which forbids fabricating vectors for someone else's construction). A vector identical to or shared with an existing entry does not satisfy this field. See [Designated Expert Admission Checklist](#designated-expert-admission-checklist), Gate A. |
+| Consuming-profile | Yes — new entries | At least one spec-revision-pinned reference (Internet-Draft version, RFC number, or commit hash) to a specification or deployment that uses this registered name in a normatively stated way. The entry's own specification does not count. See [Designated Expert Admission Checklist](#designated-expert-admission-checklist), Gate B. |
+| Disclosure | When owner or confirmer holds a CPB editor or draft co-author role | Required prose statement in the entry. Take the disclosing party's own wording verbatim — it is their name and their role. Illustrative text, not a citation of a prior entry (none has filed this field yet): "Disclosure: the owner is a co-author of the CPB draft and a co-editor of this registry; this entry is owner-authored and is not independent or third-party validation." A `Disclosure` field makes independence computable from the record rather than remembered by the reader. |
 
 ---
 
@@ -558,14 +581,18 @@ provisional  →  third-party-documented  →  owner-confirmed
   so there is no registrant to name and no third-party claim to validate. The entry
   carries no `Registrant` line and enters as `owner-confirmed`. If a `Disclosure` is
   required (see [Required fields](#entry-template)), it is included in the same PR.
-- **`third-party-documented` → `owner-confirmed`:** owner acknowledges the entry (PR
-  approval or email on record); registrar updates the status field. The `Registrant`
-  self-attestation note is retained when a `Disclosure` is also present (dropping it
-  would destroy the provenance the disclosure exists to preserve); otherwise it may be
-  removed or retained, per owner preference.
-- **`owner-confirmed`:** terminal state for a live entry. Entries are immutable once
-  owner-confirmed (see "Entries are immutable" in the policy header above). If behavior
-  changes, a new entry MUST be registered rather than modifying the existing one.
+- **`third-party-documented` → `owner-confirmed`:** the acknowledgments
+  [Gate C](#designated-expert-admission-checklist) requires are complete — owner ACK,
+  plus the consuming-profile ACK unless owner and consuming-profile maintainer are the
+  same party; registrar updates the status field. The `Registrant` self-attestation
+  note is retained when a `Disclosure` is also present (dropping it would destroy the
+  provenance the disclosure exists to preserve); otherwise it may be removed or
+  retained, per owner preference.
+- **`owner-confirmed`:** terminal state for a live entry — no further status transition.
+  The entry's behavior is immutable once owner-confirmed (see "Entries are immutable in
+  behavior" in the policy header above). If behavior changes, a new entry MUST be
+  registered rather than modifying the existing one; factual corrections remain possible
+  under [Removal and Correction](#removal-and-correction).
 
 No backward transitions. A `third-party-documented` entry does not revert to `provisional`
 if new concerns arise — the registrant opens a correction PR instead (see below).
@@ -602,5 +629,7 @@ may open a correction PR. The same factual-vs-behavioral distinction applies.
 
 Any unambiguous owner acknowledgment — a PR approval, an email to the CPB editors list,
 or a public statement by the owner that the entry is correct — upgrades the entry from
-`third-party-documented` to `owner-confirmed`. The registrar updates the status field and
-notes the acknowledgment (date and form).
+`third-party-documented` to `owner-confirmed`, provided the consuming-profile ACK
+[Gate C](#designated-expert-admission-checklist) requires has also been given, unless
+the owner and the consuming-profile maintainer are the same party. The registrar
+updates the status field and notes both acknowledgments (date and form).
