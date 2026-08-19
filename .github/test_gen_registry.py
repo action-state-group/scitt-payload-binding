@@ -163,14 +163,22 @@ class TestAlgorithmRegistryCellFidelity:
             entry = generated["canonicalization_algorithms"].get(name)
             assert entry is not None, f"algorithm {name!r} missing from generated output"
 
-            for field in ("description", "reference"):
-                cell = row.get(field, "").strip()
+            # Iterate the raw parsed headers rather than a hardcoded field
+            # list, so a renamed/added column is caught automatically. Status
+            # is excluded: gen_registry normalizes it (e.g. strips trailing
+            # qualifiers), so it does not round-trip verbatim by design.
+            for header in norm_headers:
+                if header in ("name", "status"):
+                    continue
+                cell = row.get(header, "").strip()
                 if not cell:
                     continue
                 checked += 1
-                assert entry.get(field) == cell, (
-                    f"algorithm {name!r}: column {field!r} has value {cell!r} "
-                    f"but registry.json has {entry.get(field)!r}"
+                assert entry.get(header) == cell, (
+                    f"algorithm {name!r}: column {header!r} (raw header from "
+                    f"REGISTRY.md) has value {cell!r} but registry.json has "
+                    f"{entry.get(header)!r} -- the cell was silently dropped "
+                    f"or misnormalized"
                 )
 
         assert checked > 0, "no algorithm cells found to check -- test is vacuous"
@@ -290,3 +298,28 @@ def test_schema_does_not_hardcode_a_status_vocabulary():
         f"{offenders} — vocabulary belongs in REGISTRY.md, enforced by "
         "gen_registry._parse_status_vocabulary"
     )
+
+
+class TestMalformedRowsFailClosed:
+    """A row whose cell count doesn't match the header count must fail
+    generation, not silently mis-assign every subsequent column."""
+
+    def test_shifted_cell_count_raises(self):
+        lines = [
+            "| Name | Description | Reference | Status |\n",
+            "|---|---|---|---|\n",
+            # An unescaped '|' inside a backticked span splits into an extra
+            # cell (GFM does the same), shifting Reference/Status by one.
+            "| `alg-x` | a pipe | inside `a | code span` | ref | Registered |\n",
+        ]
+        with pytest.raises(ValueError, match="malformed table row"):
+            gen_registry._parse_md_table(lines)
+
+    def test_well_formed_rows_still_parse(self):
+        lines = [
+            "| Name | Description |\n",
+            "|---|---|\n",
+            "| `alg-x` | fine |\n",
+        ]
+        rows = gen_registry._parse_md_table(lines)
+        assert rows == [{"name": "alg-x", "description": "fine"}]

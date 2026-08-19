@@ -66,6 +66,11 @@ def _parse_md_table(lines: list[str]) -> list[dict[str, str]]:
 
     Returns a list of dicts keyed by the lowercased, underscore-separated
     header names.  Stops at the first line that doesn't start with '|'.
+
+    A row whose cell count doesn't match the header count (e.g. an unescaped
+    '|' inside a backticked span, which GFM also splits on) is a malformed
+    source row: zip()-ing it against headers would silently mis-assign every
+    subsequent column, so this raises instead of shifting.
     """
     rows: list[dict[str, str]] = []
     headers: list[str] | None = None
@@ -81,6 +86,12 @@ def _parse_md_table(lines: list[str]) -> list[dict[str, str]]:
         elif all(re.match(r"^[-: ]+$", c) for c in cells):
             continue  # separator row
         else:
+            if len(cells) != len(headers):
+                raise ValueError(
+                    f"malformed table row: expected {len(headers)} cells for "
+                    f"headers {headers!r}, got {len(cells)}: {stripped!r} -- "
+                    f"check for an unescaped '|' inside a backticked span"
+                )
             rows.append(dict(zip(headers, cells)))
     return rows
 
@@ -147,6 +158,13 @@ def _parse_status_vocabulary(md_lines: list[str]) -> set[str]:
 
 
 def _parse_algorithm_registry(md_lines: list[str]) -> dict[str, dict]:
+    """Parse the Payload Canonicalization Algorithm Registry table.
+
+    Every non-name column found in the table is carried through verbatim
+    (status excepted, which is normalized) -- a renamed or newly added column
+    is picked up automatically instead of silently dropped by a hardcoded
+    field list.
+    """
     section = _section_lines(md_lines, "Payload Canonicalization Algorithm Registry")
     rows = _parse_md_table(section)
     algorithms: dict[str, dict] = {}
@@ -154,11 +172,13 @@ def _parse_algorithm_registry(md_lines: list[str]) -> dict[str, dict]:
         name = row.get("name", "").strip()
         if not name:
             continue
-        algorithms[name] = {
-            "description": row.get("description", "").strip(),
-            "reference": row.get("reference", "").strip(),
-            "status": _normalize_status(row.get("status", "")),
-        }
+        entry: dict[str, str] = {}
+        for header, value in row.items():
+            if header == "name":
+                continue
+            value = value.strip()
+            entry[header] = _normalize_status(value) if header == "status" else value
+        algorithms[name] = entry
     return algorithms
 
 
