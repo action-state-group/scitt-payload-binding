@@ -195,7 +195,7 @@ def _vocabulary_from_markdown():
     """Read the vocabulary the way a human reads it: the first column of the
     table under 'Entry Status Vocabulary', by hand, not via gen_registry."""
     lines = _REGISTRY_MD.read_text(encoding="utf-8").splitlines()
-    start = next(i for i, l in enumerate(lines) if l.startswith("## Entry Status Vocabulary"))
+    start = next(i for i, line in enumerate(lines) if line.startswith("## Entry Status Vocabulary"))
     terms, seen_table = [], False
     for line in lines[start + 1:]:
         if line.startswith("## "):
