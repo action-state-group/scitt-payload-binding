@@ -216,7 +216,7 @@ mapping so policy and record do not contradict:
   `agent-action-capsule` Artifact Type entry) maps to **`owner-confirmed`** — it
   denotes an owner-confirmed, live entry.
 - **`Reserved`** is NOT a lifecycle status. It marks a pre-registration hold on a
-  name (e.g. `cde-n`, defined in a subsequent revision) and sits outside this
+  name whose definition is deferred to a subsequent revision, and sits outside this
   vocabulary entirely; it is neither `owner-confirmed`, `third-party-documented`,
   nor `provisional`, and does not transition along the lifecycle until it is
   registered as a live entry.
@@ -298,15 +298,24 @@ owner's behalf. If a required field cannot be sourced from public artifacts, the
 
 ## Designated Expert Admission Checklist
 
-**What the DE checks before admitting any entry to the live tables.** An entry that fails any
-gate is returned for correction and does not enter the live tables until all three gates pass.
-These are the DE's verification steps; the [Required fields](#entry-template) table is the
+**What the DE checks before admitting any entry to the live tables.** An entry that fails a
+gate required for its rung is returned for correction and does not enter the live tables until
+every gate required for that rung passes. Gates A and B apply to every entry regardless of
+rung. Gate C's admission requirement differs by rung — see the rung-specific checkboxes within
+Gate C below: a Rung 1 entry needs the owner ACK (satisfied by the PR itself) at admission; a
+Rung 2 entry needs neither ACK at admission and is admitted as `third-party-documented` on
+satisfying the [Third-Party Registration Rules](#third-party-registration-rules) alone. These
+are the DE's verification steps; the [Required fields](#entry-template) table is the
 corresponding author-side declaration.
 
 **Gate A — Discriminating Vector**
 
 - [ ] The entry's `Discriminating-vector` field names a committed conformance test case (positive
   or MUST-FAIL) in `vectors/<name>/` in the same PR, or cites a commit-pinned external URL.
+  **The "in the same PR" branch is closed to Rung 2 entries** by Third-Party Registration
+  [Rule 4](#third-party-registration-rules): a Rung 2 registrant cannot commit a fresh vector
+  for someone else's construction without fabricating it, so a Rung 2 entry MUST use the
+  commit-pinned external URL branch, citing the owner's already-published vector set.
 - [ ] The vector passes for this entry and does NOT pass (or is not applicable) for at least one
   currently registered neighbour in the same registry table — tested in both directions.
 - [ ] No currently registered neighbour's own discriminating vector passes for this entry.
@@ -324,16 +333,20 @@ satisfy Gate A — it demonstrates compatibility, not distinguishability.
 
 **Gate C — Owner and Consuming-Profile ACK**
 
-- [ ] The entry's owner (or a named authorized delegate in the entry) has acknowledged the entry
-  text via PR approval, on-record email, or a GitHub comment on the PR from a confirmed owner
-  identity.
-- [ ] At least one maintainer of each named consuming profile has acknowledged, in the same
-  forms, that their profile is correctly named as a consumer.
-- [ ] **Owner-authored Rung 1 entries:** the PR itself constitutes the owner ACK; consuming-profile
-  ACK is still required unless the owner and consuming-profile maintainer are the same party.
-- [ ] **Third-party Rung 2 entries:** the entry enters the live tables as `third-party-documented`
-  without consuming-profile ACK, and upgrades to `owner-confirmed` only when both ACKs are on
-  record.
+- [ ] **Rung 1 (owner-authored) admission:** the PR itself constitutes the owner ACK. At least
+  one maintainer of each named consuming profile must also acknowledge, via PR approval,
+  on-record email, or a GitHub comment on the PR from a confirmed identity, that their profile
+  is correctly named as a consumer — unless the owner and consuming-profile maintainer are the
+  same party.
+- [ ] **Rung 2 (third-party-documented) admission:** neither the owner ACK nor the
+  consuming-profile ACK is required. The entry enters the live tables as
+  `third-party-documented` on satisfying the
+  [Third-Party Registration Rules](#third-party-registration-rules) alone.
+- [ ] **Upgrade to `owner-confirmed` (either rung):** any unambiguous acknowledgment from the
+  entry's owner (or a named authorized delegate) — via PR approval, on-record email, or a
+  GitHub comment on the PR from a confirmed owner identity — upgrades the entry. Consuming-
+  profile ACK is not a precondition for this upgrade (see [Entry Lifecycle](#entry-lifecycle));
+  owner ACK alone is sufficient.
 
 ---
 
@@ -350,15 +363,19 @@ satisfy Gate A — it demonstrates compatibility, not distinguishability.
    - Provisional entries: file in `spec/cpb-provisional-registry.md`, not in the live tables.
 3. **Open a pull request** against `main` on the upstream repository.
    PR title convention: `registry: add <name> to <Registry Name>`.
-4. **CI must pass.** The repository CI gate checks structural validity of the registry tables.
-   A PR with failing CI will not be merged.
-   **Note:** a structural registry-table checker (template conformance, column counts,
-   required-field presence) is not yet implemented. Until it exists, the CPB editor and
-   Designated Expert are the only gates — a conforming-looking PR that omits a required
-   field (e.g. `Discriminating-vector`, `Consuming-profile`, `Disclosure`, `Vectors`) will
-   merge without automated complaint. A checker is planned; track progress on the open
-   issue. Until the checker lands, reviewers MUST verify required fields manually against
-   this template, and the DE MUST verify all three gates in the
+4. **CI must pass.** The repository CI gate runs five workflows (`dco`, `neutrality`,
+   `python`, `spec`, `vectors`); of these, `dco` and `neutrality` have no path filter and run
+   on every PR, while `python`, `spec`, and `vectors` are scoped to `lib/**`, `spec/**`, and
+   `vectors/**` respectively and do not run on a `REGISTRY.md`-only change. **None of these
+   checks structural validity of the registry tables** — no CI job verifies template
+   conformance, column counts, or required-field presence in `REGISTRY.md`. A PR with failing
+   CI will not be merged, but a green CI run is not evidence the registry-table edit itself is
+   well-formed. A structural registry-table checker is planned; track progress on the open
+   issue. Until it lands, the CPB editor and Designated Expert are the only gates — a
+   conforming-looking PR that omits a required field (e.g. `Discriminating-vector`,
+   `Consuming-profile`, `Disclosure`, `Vectors`) will merge without automated complaint.
+   Reviewers MUST verify required fields manually against this template, and the DE MUST
+   verify all three gates in the
    [Designated Expert Admission Checklist](#designated-expert-admission-checklist).
 5. **Maintainer review.** A CPB editor reviews for completeness, accuracy, and policy
    compliance. For third-party entries, the editor notifies the owner.
@@ -459,7 +476,7 @@ as prose lines immediately following the table row (matching the pattern used by
 | Status | Yes | For new entries: one of `owner-confirmed`, `third-party-documented`, `provisional` (expressed as a Status column or, in the named-subsection form, a prose `Status:` line). Legacy `Registered`/`Reserved` rows are read via the mapping in [Entry Status Vocabulary](#entry-status-vocabulary). |
 | Registrant | Third-party only | Self-attestation: "Registered by X from Y at commit Z." Retained on upgrade to `owner-confirmed` when a `Disclosure` is also present — dropping it would destroy the provenance the disclosure exists to preserve. |
 | Vectors | Yes — all entries | Link to the vector set (owner's published set, or the entry's own if the owner produced it). Third-party entries MUST cite the owner's published vector set and MUST NOT fabricate one. Owner-authored entries that have not yet published a two-sided vector set are `provisional`. |
-| Discriminating-vector | Yes — all entries | A conformance test case (positive or MUST-FAIL) that distinguishes this entry's construction from every currently registered neighbour in the same registry table, both directions. Committed to `vectors/<name>/` in the same PR, or cited at a commit-pinned external URL. A vector identical to or shared with an existing entry does not satisfy this field. See [Designated Expert Admission Checklist](#designated-expert-admission-checklist), Gate A. |
+| Discriminating-vector | Yes — all entries | A conformance test case (positive or MUST-FAIL) that distinguishes this entry's construction from every currently registered neighbour in the same registry table, both directions. Committed to `vectors/<name>/` in the same PR, or cited at a commit-pinned external URL — Rung 2 (third-party) entries MUST use the external-URL branch (the "same PR" branch is closed to them by Third-Party Registration Rule 4, which forbids fabricating vectors for someone else's construction). A vector identical to or shared with an existing entry does not satisfy this field. See [Designated Expert Admission Checklist](#designated-expert-admission-checklist), Gate A. |
 | Consuming-profile | Yes — all entries | At least one spec-revision-pinned reference (Internet-Draft version, RFC number, or commit hash) to a specification or deployment that uses this registered name in a normatively stated way. The entry's own specification does not count. See [Designated Expert Admission Checklist](#designated-expert-admission-checklist), Gate B. |
 | Disclosure | When owner or confirmer holds a CPB editor or draft co-author role | Required prose statement in the entry. Take the disclosing party's own wording verbatim — it is their name and their role. Model text from the first instance: "Disclosure: the owner is a co-author of the CPB draft and a co-editor of this registry; this entry is owner-authored and is not independent or third-party validation." A `Disclosure` field makes independence computable from the record rather than remembered by the reader. |
 
