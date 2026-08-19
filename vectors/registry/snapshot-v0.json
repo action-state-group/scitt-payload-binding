@@ -1,0 +1,12 @@
+{
+  "schema_version": "1",
+  "canonicalization_algorithms": {
+    "jcs-n": {
+      "description": "RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex",
+      "reference": "draft-mih-sokolov-scitt-payload-binding",
+      "status": "Registered"
+    }
+  },
+  "artifact_types": {},
+  "snapshot_sha256": "c64ee2e6a84a27dfc9ff08613be6d6fa39b95cccf5426232a6c822ebbd46f371"
+}

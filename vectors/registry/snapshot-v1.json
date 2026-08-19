@@ -1,0 +1,17 @@
+{
+  "schema_version": "1",
+  "canonicalization_algorithms": {
+    "jcs-n": {
+      "description": "RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex",
+      "reference": "draft-mih-sokolov-scitt-payload-binding",
+      "status": "Registered"
+    },
+    "as-transmitted": {
+      "description": "No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex",
+      "reference": "draft-mih-sokolov-scitt-payload-binding",
+      "status": "Registered"
+    }
+  },
+  "artifact_types": {},
+  "snapshot_sha256": "de7b634a4a152916d0e0fb712e62beb8d729e9b58246ffdd32c7f3138a7300b2"
+}
