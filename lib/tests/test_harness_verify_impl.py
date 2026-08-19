@@ -98,9 +98,11 @@ def test_generated_stub_passes_the_suite_it_is_generated_from() -> None:
     number-token rule nor the duplicate-key rule, so it silently digested -0
     and collapsed duplicates -- it failed this very suite, and nothing ran it.
     """
+    # generate-stub takes an explicit output path; without one it writes
+    # relative to the CWD, and CI runs pytest from lib/.
     stub = VECTORS_DIR / "stub_impl.py"
     pre_existing = stub.exists()
-    subprocess.run([sys.executable, str(HARNESS_PATH), "generate-stub"],
+    subprocess.run([sys.executable, str(HARNESS_PATH), "generate-stub", str(stub)],
                    capture_output=True, text=True, check=True)
     try:
         run = subprocess.run(
