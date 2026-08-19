@@ -15,12 +15,16 @@ on:
       - "REGISTRY.md"
       - ".github/gen_registry.py"
       - ".github/registry_schema.json"
+      - ".github/test_gen_registry.py"
+      - ".github/workflows/registry.yml"
       - "registry.json"
   pull_request:
     paths:
       - "REGISTRY.md"
       - ".github/gen_registry.py"
       - ".github/registry_schema.json"
+      - ".github/test_gen_registry.py"
+      - ".github/workflows/registry.yml"
       - "registry.json"
 
 permissions:
