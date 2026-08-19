@@ -251,7 +251,7 @@ Algorithm Registry ({{iana-alg}}) are:
 | Name | Summary | Reference |
 |---|---|---|
 | jcs-n | JCS + absent-field normalization; SHA-256; lowercase hex output | {{algo-jcs-n}} |
-| cde-n | Deterministic CBOR canonicalization profile; SHA-256 | {{algo-cde-n}} (pending) |
+| cde-n | Withdrawn -- token reserved, never assigned a definition | {{algo-cde-n}} (withdrawn) |
 | as-transmitted | No canonicalization; digest over a byte sequence fixed by a cited named production in the container format; SHA-256; 64-character lowercase hex | {{algo-as-transmitted}} |
 
 Entries in the Canonicalization Algorithm Registry are immutable: new
@@ -306,21 +306,21 @@ are valid under `jcs-n` without modification. Independently written
 implementations produced byte-identical `subject_digest` values for the same
 input, with no coordination beyond the specification; see Appendix C.
 
-## Algorithm cde-n (Reserved) {#algo-cde-n}
+## Algorithm cde-n (Withdrawn) {#algo-cde-n}
 
-Algorithm `cde-n` is reserved for a deterministic CBOR canonicalization
-profile. Its definition -- including the choice of deterministic encoding
-profile, the float width, and the treatment of exceptional floating-point
-values -- will be specified in a subsequent revision of this document. That
-revision will state how the profile relates to the CDE and dCBOR profiles and
-to the deterministic serialization work in the CBOR Working Group; `cde-n`
-is not defined as any of them.
+Algorithm `cde-n` is withdrawn. It is a recorded terminal state, not a
+deletion: the token was reserved for a deterministic CBOR canonicalization
+profile, but it was never assigned a definition, and it will not be. The
+entry remains in the Canonicalization Algorithm Registry ({{iana-alg}}) as
+withdrawn -- the reserved entry bound the token, so the token stays bound,
+never assigned, never reassigned. A future deterministic CBOR
+canonicalization profile, if one is specified, is registered under a new
+token rather than by assigning a definition to `cde-n`.
 
 A payload class or typed digest reference that names `cde-n` cannot be
-verified today: the algorithm's definition is incomplete, so a verifier
-encountering this token MUST fail closed — MUST NOT report the payload
-class or typed digest reference as verified — until the defining revision
-lands.
+verified: the token names no defined algorithm and never will, so a
+verifier encountering it MUST fail closed — MUST NOT report the payload
+class or typed digest reference as verified.
 
 ## Algorithm as-transmitted {#algo-as-transmitted}
 
@@ -753,13 +753,15 @@ Initial contents:
 | Name | Description | Reference |
 |---|---|---|
 | jcs-n | RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex | This document |
-| cde-n | Deterministic CBOR canonicalization profile; SHA-256 | This document (reserved; subsequent revision) |
+| cde-n | Withdrawn (2026-08-18) -- never carried to IANA. The token was reserved and stays bound; it was never assigned a definition and never will be | This document (withdrawn) |
 | as-transmitted | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex | This document |
 
 A payload class or typed digest reference naming `cde-n` MUST NOT be
-treated as verifiable until the defining revision lands. `cde-n` is
-reserved: its algorithm is incomplete, and a verifier encountering it MUST
-fail closed (MUST NOT report verified). See {{algo-cde-n}}.
+treated as verifiable. `cde-n` is withdrawn: the reserved entry bound its
+token, so the token stays bound, never assigned, never reassigned, and the
+withdrawal is a recorded terminal state, not a deletion. A verifier
+encountering it MUST fail closed (MUST NOT report verified). See
+{{algo-cde-n}}.
 
 An artifact type entry MUST NOT register `as-transmitted` without a
 byte-boundary selector that cites a named production in the container
