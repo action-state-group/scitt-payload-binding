@@ -2,8 +2,8 @@
   "id": "subject-binding-diff-04",
   "diverge": true,
   "jcs_n_must_fail": true,
-  "description": "Action with a floating-point member. This vector demonstrates divergence in the opposite direction from diff-01/02/03: plain RFC 8785 JCS accepts the float and produces a deterministic digest; jcs-n MUST-FAIL because §3.1 forbids floating-point values in digest-bearing fields. A composition implementation following §6.3.2 literally (plain JCS) produces a usable digest; a CPB verifier applying jcs-n fails closed. The two constructions do not merely produce different digests — one refuses to produce any digest at all.",
-  "stakes_ref": "draft-mih-sokolov-scitt-payload-binding §3.1 (float prohibition), §13 (Canonicalization Algorithm Registry); draft-mih-sato-agent-accountability-composition §6.3.2",
+  "description": "Action with a floating-point member. This vector demonstrates divergence in the opposite direction from diff-01/02/03: plain RFC 8785 JCS accepts the float and produces a deterministic digest; jcs-n MUST-FAIL because §11.3's blanket float prohibition forbids floating-point values in any digest-bearing field (§3.1's monetary/quantity decimal-string constraint does not itself reach this non-monetary confidence field). A composition implementation following §6.3.2 literally (plain JCS) produces a usable digest; a CPB verifier applying jcs-n fails closed. The two constructions do not merely produce different digests — one refuses to produce any digest at all.",
+  "stakes_ref": "draft-mih-sokolov-scitt-payload-binding §11.3 (float prohibition), §13 (Canonicalization Algorithm Registry); draft-mih-sato-agent-accountability-composition §6.3.2",
   "action": {
     "task": "classify",
     "confidence": 0.95,
@@ -18,9 +18,9 @@
   },
   "jcs_n": {
     "algorithm": "jcs-n (RFC 8785 + null/empty-member normalization)",
-    "spec_ref": "draft-mih-sokolov-scitt-payload-binding §3.1 / §13",
+    "spec_ref": "draft-mih-sokolov-scitt-payload-binding §11.3 / §13",
     "must_fail": true,
     "failure_reason": "float_in_digest_bearing_field",
-    "note": "jcs-n §3.1: monetary and quantity values MUST be exact decimal strings, not JSON floating-point numbers. The value 0.95 is a JSON float. A conforming jcs-n implementation MUST NOT compute a digest for this input."
+    "note": "draft §11.3: JSON floating-point numbers MUST NOT appear in any field from which a digest is computed. The value 0.95 is a JSON float in a digest-bearing field; it is not itself a monetary or quantity value, so §3.1's narrower decimal-string constraint does not apply, but §11.3's blanket prohibition does. A conforming jcs-n implementation MUST NOT compute a digest for this input."
   }
 }

@@ -71,8 +71,11 @@ implementation following §6.3.2 literally produces a usable digest for
 
 ## Decision context
 
-Source: external review by Anton Sokolov (2026-08-18). Resolution recorded in the
-`jcs` registry entry in REGISTRY.md.
+Source: external review by Imran Siddique (2026-08-17, #34) — the divergence between
+composition §6.3.2's plain-JCS subject binding and CPB's registered `jcs-n`
+construction. Anton Sokolov (2026-08-18) extended the vector suite with the
+Direction B (float) pair and reviewed the registry resolution. Resolution recorded
+in the `jcs` registry entry in REGISTRY.md.
 
 The resolution adopted for CPB is:
 

@@ -163,8 +163,19 @@ def _jcs_rfc8785(obj: object) -> str:
     """Plain RFC 8785 JCS — identical to _jcs() except floats are allowed.
 
     Used only for Category J Direction-B (float) vectors where the subject
-    binding (composition §6.3.2) accepts floating-point values that jcs-n §3.1
-    explicitly prohibits.  Do NOT use for jcs-n computation.
+    binding (composition §6.3.2) accepts floating-point values that jcs-n
+    MUST-FAIL on (draft §11.3's blanket float prohibition).  Do NOT use for
+    jcs-n computation.
+
+    Float serialization is verified correct only for float forms like the
+    pinned vector value 0.95, NOT for RFC 8785 §3.2.2.3 in general: Python's
+    json.dumps diverges from RFC 8785's shortest-decimal grammar for
+    whole-number floats (1.0 -> "1.0", RFC 8785 wants "1"), small-magnitude
+    exponential forms (1e-7 -> "1e-07", RFC 8785 wants "1e-7"), negative zero
+    (-0.0 -> "-0.0", RFC 8785 wants "0"), and large-magnitude exponential
+    forms (1e16 -> "1e+16", RFC 8785 wants "10000000000000000"). The guard
+    below raises rather than silently emit a non-conformant digest for any
+    float outside the verified form.
     """
     if isinstance(obj, dict):
         sorted_k = sorted(obj.keys(), key=_jcs_sort_key)
@@ -184,7 +195,17 @@ def _jcs_rfc8785(obj: object) -> str:
                 f"unsafe integer (|n| >= 2^53): cannot be exactly represented "
                 f"in IEEE 754 double: {obj!r}"
             )
-    # floats are allowed (plain RFC 8785); json.dumps gives the correct shortest form
+    if isinstance(obj, float):
+        s = json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
+        if "e" in s or "E" in s or s.endswith(".0"):
+            raise ValueError(
+                f"_jcs_rfc8785 float form not verified RFC 8785-conformant: "
+                f"json.dumps({obj!r}) = {s!r}. This helper's float handling is "
+                f"verified correct only for forms like the pinned vector value "
+                f"0.95; whole-number and exponential float forms are known to "
+                f"diverge from RFC 8785 §3.2.2.3 (see docstring)."
+            )
+        return s
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
 
 
@@ -851,7 +872,7 @@ def _exercise_diverge(
         )
 
     if direction_b:
-        # Direction B: jcs-n MUST-FAIL (float prohibition §3.1).
+        # Direction B: jcs-n MUST-FAIL (blanket float prohibition, draft §11.3).
         # Assert jcs_n_pre_image raises; if it succeeds, that is a hard failure.
         try:
             jcsn_computed = jcs_n_pre_image(action)

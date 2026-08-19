@@ -73,7 +73,7 @@ CANONICAL-DIGEST values. Registration template: **Name**, **Description**,
 | Name | Description | Reference | Status |
 |---|---|---|---|
 | `jcs-n` | RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex | draft-mih-sokolov-scitt-payload-binding | Registered |
-| `jcs` | RFC 8785 JCS over a JSON object (no normalization pass; null, empty-array, and empty-object members are retained as-is); SHA-256; lowercase hex | RFC 8785; draft-mih-sokolov-scitt-payload-binding | Registered — **DE review required** (registered pre-CI under manual Designated Expert review, 2026-08-18; Anton Sokolov as co-registrant) |
+| `jcs` | RFC 8785 JCS over a JSON object (no normalization pass; null, empty-array, and empty-object members are retained as-is); SHA-256; lowercase hex | RFC 8785 | **Provisional** — pending Designated Expert review; not Registered until this entry merges |
 | `cde-n` | Deterministic CBOR canonicalization profile; SHA-256 | draft-mih-sokolov-scitt-payload-binding | **Reserved** (defined in a subsequent revision) |
 | `as-transmitted` | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex | draft-mih-sokolov-scitt-payload-binding | Registered |
 
@@ -131,21 +131,25 @@ including MUST-FAIL cases.
 
 **jcs — plain RFC 8785 with no normalization pass.** `jcs` applies RFC 8785 JCS
 directly to the input object without removing null, empty-array, or empty-object
-members first. An implementor choosing between `jcs` and `jcs-n` MUST note the
-following properties, each exercised by the discriminating vectors in
+members first. This construction is byte-distinct from `jcs-n`'s normalized form;
+the distinction is exercised, and retained as a differential record, by the
+discriminating vectors in
 [`vectors/subject-binding-diff/`](vectors/subject-binding-diff/):
 
 - **Null and empty-member retention (Direction A).** An object member whose value
-  is JSON null, `[]`, or `{}` survives into the canonical form under `jcs` and is
-  absent from the canonical form under `jcs-n`. The same action object therefore
-  yields different pre-images and different SHA-256 digests under the two algorithms.
+  is JSON null, `[]`, or `{}` survives into the canonical form under `jcs`. The
+  `jcs-n` construction removes the same member, so the same action object yields
+  different pre-images and different SHA-256 digests under the two constructions.
   A verifier that treats a `jcs` digest as interchangeable with a `jcs-n` digest
   MUST fail — the digests are not the same bytes.
-- **Float acceptance vs rejection (Direction B).** `jcs` accepts floating-point JSON
-  numbers and serializes them per RFC 8785 §3.2.2.3 (shortest-decimal IEEE 754). `jcs-n`
-  §3.1 prohibits floats in digest-bearing fields and MUST-FAIL on the same input. An
-  action record carrying a float member produces a valid `jcs` digest and no `jcs-n`
-  digest — the two algorithms diverge categorically, not just numerically.
+- **Float acceptance (Direction B).** `jcs` accepts floating-point JSON numbers and
+  serializes them per RFC 8785 §3.2.2.3 (shortest-decimal IEEE 754). The `jcs-n`
+  construction MUST-FAIL on the same input under the blanket float prohibition
+  (draft §11.3: JSON floating-point numbers MUST NOT appear in any field from which
+  a digest is computed — not the narrower §3.1 monetary/quantity decimal-string
+  constraint). An action record carrying a float member therefore produces a valid
+  `jcs` digest and no `jcs-n` digest — the two constructions diverge categorically,
+  not just numerically.
 
 **jcs — named consuming profile.** The registered consuming profile for `jcs` is
 **composition subject binding** (`draft-mih-sato-agent-accountability-composition
