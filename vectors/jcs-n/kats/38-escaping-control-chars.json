@@ -1,0 +1,13 @@
+{
+  "id": "jcs-n-kat-38",
+  "algorithm": "jcs-n",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 §7",
+  "description": "PASS: control characters (ESC U+001B and HT U+0009) must be escaped as \\u001b and \\t in the pre-image",
+  "input": {
+    "esc": "\u001b",
+    "tab": "\t"
+  },
+  "pre_image": "{\"esc\":\"\\u001b\",\"tab\":\"\\t\"}",
+  "pre_image_bytes_hex": "7b22657363223a225c7530303162222c22746162223a225c74227d",
+  "digest": "d149a22ad2e1574b73726432350680f8380724a1e5654a76d33926487f7f9821"
+}

@@ -232,6 +232,35 @@ def _handle_key_sort_by_escaped_bytes_not_code_units(v: dict) -> None:
     assert digest != v["escaped_sort_contrast_digest"]
 
 
+def _handle_stream_incomplete(v: dict) -> None:
+    """domain-transform-fail-01: truncated stream must raise ValueError.
+
+    Verifies that applying the stream-reassemble transform to a source with no
+    terminal chunk raises ValueError.  The cpb library does not implement
+    stream reassembly (that belongs in the producer/consumer, not the digest
+    layer); this handler uses the same inline reassembler as check_vectors.py
+    so the two remain in sync.
+    """
+    import json as _json
+
+    def _reassemble(source: list) -> dict:
+        has_terminal = any(item.get("done") is True for item in source)
+        if not has_terminal:
+            raise ValueError("stream_incomplete: no terminal chunk")
+        concatenated = "".join(item.get("chunk", "") for item in source)
+        return _json.loads(concatenated)
+
+    transforms = v.get("domain_transforms", [])
+    source = v.get("source", [])
+    with pytest.raises(ValueError, match="stream_incomplete"):
+        result = source
+        for t in transforms:
+            if t.get("id") == "stream-reassemble":
+                result = _reassemble(result)
+            else:
+                raise ValueError(f"unknown transform: {t.get('id')!r}")
+
+
 def _handle_profile_independence_violation(v: dict) -> None:
     """profile-independence-fail-01: informative/behavioral. The executable
     contract is the documented CONFORMING alternative -- see
@@ -248,6 +277,79 @@ def _handle_profile_independence_violation(v: dict) -> None:
     assert recomputed == auth_doc["derived_id"]
 
 
+def _handle_invalid_wire_number_token(v: dict) -> None:
+    """jcs-n-kat-35 (was kat-28 pre-renumber): the token -0 must be rejected
+    by the wire rule before the parser normalizes it.  The cpb library
+    operates on already-parsed Python objects (where -0 == 0), so this check
+    is a wire-level gate that must be applied to the raw text.  We verify
+    that the raw vector text fails the strict wire-rule parse."""
+    import re as _re
+
+    _WIRE_NUMBER_RE = _re.compile(r'^(0|-?[1-9][0-9]*)$')
+    _SAFE_INT_MAX = (1 << 53) - 1
+
+    def _parse_int_wire(s):
+        if not _WIRE_NUMBER_RE.match(s):
+            raise ValueError(f"invalid wire number token: {s!r}")
+        val = int(s)
+        if abs(val) > _SAFE_INT_MAX:
+            raise ValueError(f"integer exceeds ±(2^53-1): {s!r}")
+        return val
+
+    def _reject_float_wire(s):
+        raise ValueError(f"non-integer number token: {s!r}")
+
+    # Find the vector file path to get the raw text
+    raw = None
+    for f in sorted(VECTORS_DIR.rglob("*.json")):
+        try:
+            candidate = json.loads(f.read_text(encoding="utf-8"))
+            if candidate.get("id") == v.get("id"):
+                raw = f.read_text(encoding="utf-8")
+                break
+        except Exception:
+            continue
+
+    assert raw is not None, f"could not find vector file for id={v.get('id')!r}"
+    with pytest.raises(ValueError, match="invalid wire number token"):
+        json.loads(raw, parse_int=_parse_int_wire, parse_float=_reject_float_wire)
+
+
+def _handle_duplicate_key(v: dict) -> None:
+    """jcs-n-kat-37 (was kat-30 pre-renumber): duplicate keys must be
+    rejected after NFC normalization.  The cpb library operates on
+    already-parsed Python objects (where duplicate keys are lost to
+    last-wins); rejection must occur at the wire level using
+    object_pairs_hook.  We verify that the raw vector text fails the strict
+    duplicate-key check."""
+    import unicodedata as _ud
+
+    def _no_dup_keys(pairs):
+        seen = {}
+        result = {}
+        for k, val in pairs:
+            nfc = _ud.normalize('NFC', k)
+            if nfc in seen:
+                raise ValueError(f"duplicate key after NFC normalization: {k!r}")
+            seen[nfc] = True
+            result[k] = val
+        return result
+
+    raw = None
+    for f in sorted(VECTORS_DIR.rglob("*.json")):
+        try:
+            candidate = json.loads(f.read_text(encoding="utf-8"))
+            if candidate.get("id") == v.get("id"):
+                raw = f.read_text(encoding="utf-8")
+                break
+        except Exception:
+            continue
+
+    assert raw is not None, f"could not find vector file for id={v.get('id')!r}"
+    with pytest.raises(ValueError, match="duplicate key"):
+        json.loads(raw, object_pairs_hook=_no_dup_keys)
+
+
 _HANDLERS = {
     "float_in_digest_bearing_field": _handle_float_in_digest_bearing_field,
     "unsafe_integer_in_digest_bearing_field": _handle_unsafe_integer_in_digest_bearing_field,
@@ -258,6 +360,7 @@ _HANDLERS = {
     "representation_mismatch": _handle_representation_mismatch,
     "representation_mismatch_trailing_newline": _handle_representation_mismatch_identifier_whitespace,
     "representation_mismatch_surrounding_whitespace": _handle_representation_mismatch_identifier_whitespace,
+    "stream_incomplete": _handle_stream_incomplete,
     "identifier_inconsistent_with_context": _handle_identifier_inconsistent_with_context,
     "digest_algorithm_inconsistent_with_context": _handle_digest_algorithm_inconsistent_with_context,
     "digest_alg_inconsistent_with_registered_context": _handle_digest_alg_inconsistent_with_registered_context,
@@ -266,6 +369,8 @@ _HANDLERS = {
     "string_escape_long_form_for_named_char": _handle_string_escape_long_form_for_named_char,
     "key_sort_by_escaped_bytes_not_code_units": _handle_key_sort_by_escaped_bytes_not_code_units,
     "profile_independence_violation": _handle_profile_independence_violation,
+    "invalid_wire_number_token": _handle_invalid_wire_number_token,
+    "duplicate_key": _handle_duplicate_key,
 }
 
 
@@ -310,3 +415,48 @@ def test_handler_registry_covers_every_failure_reason_on_disk() -> None:
     reasons_on_disk = {v.get("failure_reason") for v, _ in _MUST_FAIL_BY_ID.values()}
     missing = reasons_on_disk - set(_HANDLERS)
     assert not missing, f"failure_reason values with no handler: {missing}"
+
+
+def test_wire_layer_check_is_scoped_to_the_input_member() -> None:
+    """Category A proves a vector's rejection happens at the wire layer by
+    re-parsing raw text with the wire hooks. Parsing the WHOLE file certifies
+    a vector whose `input` is perfectly acceptable whenever any unrelated
+    metadata field carries an offending token -- self-certification in the one
+    check family that exists to prove rejection.
+    """
+    import importlib.util
+    import json as _json
+    import pathlib as _pathlib
+
+    checker_path = _pathlib.Path(__file__).resolve().parents[2] / ".github" / "check_vectors.py"
+    spec = importlib.util.spec_from_file_location("_cv_scope", checker_path)
+    cv = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cv)
+
+    decoy = """{
+  "id": "scope-probe",
+  "algorithm": "jcs-n",
+  "must_fail": true,
+  "failure_reason": "invalid_wire_number_token",
+  "input": {"ok": 1},
+  "unrelated_metadata": {"stray": -0}
+}"""
+    ok, errors = cv._exercise_must_fail(
+        _json.loads(decoy), "scope-probe", [], raw_text=decoy, _probe_mutants=False
+    )
+    assert not ok, (
+        "a must_fail vector whose input is acceptable was certified because an "
+        "unrelated metadata member carried -0"
+    )
+
+    genuine = """{
+  "id": "scope-probe-2",
+  "algorithm": "jcs-n",
+  "must_fail": true,
+  "failure_reason": "invalid_wire_number_token",
+  "input": {"count": -0}
+}"""
+    ok2, errors2 = cv._exercise_must_fail(
+        _json.loads(genuine), "scope-probe-2", [], raw_text=genuine, _probe_mutants=False
+    )
+    assert ok2, f"a genuine wire-layer rejection stopped being certified: {errors2}"
