@@ -273,6 +273,15 @@ mapping so policy and record do not contradict:
   nor `provisional`, and does not transition along the lifecycle until it is
   registered as a live entry.
 
+**The legacy spellings are closed to new entries, and the list is finite.** Exactly
+four rows predate this vocabulary: the algorithm entries `jcs-n`, `cde-n` and
+`as-transmitted`, and the artifact type `agent-action-capsule`. No other entry may
+carry `Registered` or `Reserved`. Naming them here rather than describing them is
+deliberate: the generator has no history to consult, so without a closed list it
+cannot tell a pre-existing row from a new one writing a legacy spelling — and a new
+entry spelled `Registered — owner-confirmed (…)` would pass validation while
+violating the verbatim rule two paragraphs above.
+
 Existing rows keep their current wording; the mapping above is the reconciliation,
 not a relabeling.
 

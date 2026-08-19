@@ -515,3 +515,33 @@ def test_wire_layer_check_is_scoped_to_the_input_member() -> None:
         _json.loads(genuine), "scope-probe-2", [], raw_text=genuine, _probe_mutants=False
     )
     assert ok2, f"a genuine wire-layer rejection stopped being certified: {errors2}"
+
+
+def test_non_finite_numbers_never_become_a_canonical_pre_image() -> None:
+    """json.dumps emits Infinity / -Infinity / NaN by default, and none of those
+    contain an 'e' or end in '.0', so the float-form guard passed them straight
+    through as a canonical pre-image. RFC 8785 section 3.2.2.3 admits finite
+    values only, and those three tokens are not JSON at all.
+    """
+    import importlib.util
+    import math as _math
+    import pathlib as _pathlib
+
+    import pytest as _pytest
+
+    checker_path = _pathlib.Path(__file__).resolve().parents[2] / ".github" / "check_vectors.py"
+    spec = importlib.util.spec_from_file_location("_cv_finite", checker_path)
+    cv = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cv)
+
+    for bad in (_math.inf, -_math.inf, _math.nan):
+        with _pytest.raises(ValueError, match="non-finite"):
+            cv._jcs_rfc8785(bad)
+
+    # The one pinned float in the corpus still serializes.
+    assert cv._jcs_rfc8785(0.95) == "0.95"
+
+    # And a vector file carrying the literal is refused at load, not digested.
+    with _pytest.raises(ValueError, match="not valid JSON"):
+        import json as _json
+        _json.loads('{"x": Infinity}', parse_constant=cv._reject_json_constant)
