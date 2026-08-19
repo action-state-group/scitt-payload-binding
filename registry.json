@@ -1,0 +1,39 @@
+{
+  "schema_version": "1",
+  "canonicalization_algorithms": {
+    "jcs-n": {
+      "description": "RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex",
+      "reference": "draft-mih-sokolov-scitt-payload-binding",
+      "status": "Registered"
+    },
+    "cde-n": {
+      "description": "Deterministic CBOR canonicalization profile; SHA-256",
+      "reference": "draft-mih-sokolov-scitt-payload-binding",
+      "status": "Reserved"
+    },
+    "as-transmitted": {
+      "description": "No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex",
+      "reference": "draft-mih-sokolov-scitt-payload-binding",
+      "status": "Registered"
+    }
+  },
+  "artifact_types": {
+    "agent-action-capsule": {
+      "reference": "draft-mih-scitt-agent-action-capsule",
+      "status": "Registered",
+      "digest_contexts": [
+        {
+          "purpose": "identifier",
+          "profile_version": "N/A (no versioned profile registered yet)",
+          "algorithm": "jcs-n",
+          "field_set": "all capsule fields",
+          "exclusion_set": "{capsule_id, chain}",
+          "domain_separation": "none",
+          "pre_image_encoding": "JCS UTF-8 octets (per jcs-n)",
+          "representation": "64-char lowercase hex"
+        }
+      ]
+    }
+  },
+  "snapshot_sha256": "2fa98e73c9958dbc7a827ca81d5f0d148cd9e85b02463ed1d41b9bfa980a3bb4"
+}

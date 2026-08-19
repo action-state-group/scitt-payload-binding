@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: Apache-2.0
+# Validate that the committed registry.json is current with REGISTRY.md.
+#
+# Triggers on any change to REGISTRY.md, the generator, or the schema.
+# Also triggers on changes to registry.json itself (catches manual edits that
+# diverge from the generated output).
+#
+# Developer workflow: run `python3 .github/gen_registry.py` to regenerate
+# registry.json, then commit both files together.
+name: registry
+
+on:
+  push:
+    paths:
+      - "REGISTRY.md"
+      - ".github/gen_registry.py"
+      - ".github/registry_schema.json"
+      - "registry.json"
+  pull_request:
+    paths:
+      - "REGISTRY.md"
+      - ".github/gen_registry.py"
+      - ".github/registry_schema.json"
+      - "registry.json"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: install jsonschema
+        run: pip install "jsonschema>=4" "pytest>=7"
+
+      - name: check committed registry.json matches generated output
+        run: python3 .github/gen_registry.py --check
+
+      - name: cell-fidelity test (every cell round-trips from REGISTRY.md)
+        run: python3 -m pytest .github/test_gen_registry.py -v
+
+      - name: validate registry.json against JSON Schema
+        run: |
+          python3 - <<'EOF'
+          import json, jsonschema, pathlib, sys
+          schema = json.loads(pathlib.Path(".github/registry_schema.json").read_text())
+          data   = json.loads(pathlib.Path("registry.json").read_text())
+          try:
+              jsonschema.validate(data, schema)
+              print("schema: valid")
+          except jsonschema.ValidationError as exc:
+              print(f"schema: INVALID — {exc.message}", file=sys.stderr)
+              sys.exit(1)
+          EOF
+
+      - name: verify snapshot_sha256 integrity
+        run: |
+          python3 - <<'EOF'
+          import hashlib, json, sys
+          data = json.loads(open("registry.json").read())
+          body = {k: v for k, v in data.items() if k != "snapshot_sha256"}
+          canon = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+          expected = hashlib.sha256(canon.encode("ascii")).hexdigest()
+          carried = data["snapshot_sha256"]
+          if expected != carried:
+              print(f"FAIL: snapshot_sha256 mismatch\n  expected {expected}\n  got      {carried}", file=sys.stderr)
+              sys.exit(1)
+          print(f"snapshot_sha256 verified: {carried[:16]}...")
+          EOF
