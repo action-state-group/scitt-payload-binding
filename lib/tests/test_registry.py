@@ -19,6 +19,7 @@ import pytest
 
 from cpb.registry import (
     VERDICT_VERIFIED,
+    VERDICT_RESERVED,
     VERDICT_UNKNOWN_ID,
     VERDICT_ID_UNKNOWN_TO_SNAPSHOT,
     RegistrySnapshot,
@@ -50,6 +51,12 @@ _AS_TRANSMITTED_ENTRY = {
     "status": "Registered",
 }
 
+_CDE_N_RESERVED_ENTRY = {
+    "description": "Deterministic CBOR canonicalization profile; SHA-256",
+    "reference": "draft-mih-sokolov-scitt-payload-binding",
+    "status": "Reserved",
+}
+
 
 def _build_snapshot(algorithms: dict, artifact_types: dict | None = None) -> dict:
     """Build a valid snapshot dict with correct snapshot_sha256."""
@@ -75,6 +82,15 @@ def snapshot_current():
     """Current snapshot: jcs-n + as-transmitted."""
     return RegistrySnapshot.from_dict(
         _build_snapshot({"jcs-n": _JCS_N_ENTRY, "as-transmitted": _AS_TRANSMITTED_ENTRY}),
+        verify=True,
+    )
+
+
+@pytest.fixture
+def snapshot_with_reserved():
+    """Snapshot holding one Registered entry and one Reserved entry."""
+    return RegistrySnapshot.from_dict(
+        _build_snapshot({"jcs-n": _JCS_N_ENTRY, "cde-n": _CDE_N_RESERVED_ENTRY}),
         verify=True,
     )
 
@@ -106,6 +122,48 @@ class TestVerdictVerified:
         # when as-transmitted is absent from the old snapshot
         verdict, _ = snapshot_old.lookup_algorithm("as-transmitted", pinned=True)
         assert verdict != VERDICT_VERIFIED
+
+
+# ---------------------------------------------------------------------------
+# VERDICT_RESERVED — presence alone MUST NOT verify (issue #37)
+#
+# lookup_algorithm previously returned VERDICT_VERIFIED for ANY entry present
+# in the snapshot, regardless of its `status`. A Reserved entry (a
+# pre-registration hold with no defined semantics — e.g. `cde-n`) was
+# indistinguishable from a live Registered entry to a fail-closed verifier
+# keying on the verdict string. Two-sided: Registered -> verified,
+# Reserved -> not-verified, on the SAME snapshot so status is the only
+# variable.
+# ---------------------------------------------------------------------------
+
+class TestVerdictReserved:
+    def test_registered_entry_is_verified(self, snapshot_with_reserved):
+        verdict, entry = snapshot_with_reserved.lookup_algorithm("jcs-n")
+        assert verdict == VERDICT_VERIFIED
+        assert entry["status"] == "Registered"
+
+    def test_reserved_entry_is_not_verified(self, snapshot_with_reserved):
+        verdict, entry = snapshot_with_reserved.lookup_algorithm("cde-n")
+        assert verdict != VERDICT_VERIFIED
+        assert verdict == VERDICT_RESERVED
+        assert entry["status"] == "Reserved"
+
+    def test_reserved_verdict_distinct_from_all_others(self):
+        assert VERDICT_RESERVED != VERDICT_VERIFIED
+        assert VERDICT_RESERVED != VERDICT_UNKNOWN_ID
+        assert VERDICT_RESERVED != VERDICT_ID_UNKNOWN_TO_SNAPSHOT
+
+    def test_artifact_type_reserved_entry_is_not_verified(self):
+        # Same gate applies to lookup_artifact_type.
+        data = _build_snapshot(
+            {},
+            {"reserved-type": {"description": "d", "reference": "r", "status": "Reserved"}},
+        )
+        snap = RegistrySnapshot.from_dict(data, verify=True)
+        verdict, entry = snap.lookup_artifact_type("reserved-type")
+        assert verdict != VERDICT_VERIFIED
+        assert verdict == VERDICT_RESERVED
+        assert entry["status"] == "Reserved"
 
 
 # ---------------------------------------------------------------------------
@@ -293,3 +351,50 @@ class TestLoadFromDisk:
             if entry.get("status") == "Registered":
                 verdict, _ = snap.lookup_algorithm(alg_id)
                 assert verdict == VERDICT_VERIFIED, f"registered id {alg_id!r} not found"
+
+
+# ---------------------------------------------------------------------------
+# The live/held classification must cover every status the registry actually
+# uses. registry.json carries no vocabulary, so the set in registry.py mirrors
+# REGISTRY.md rather than reading it -- this is the guard on that mirror.
+# ---------------------------------------------------------------------------
+
+def test_every_status_in_the_snapshot_is_classified():
+    """A status that is neither live nor held would silently read as held.
+
+    That is the failure this catches: `jcs` merged with status
+    `standards-referenced`, which was not in the live set, and a fully
+    specified RFC 8785 entry reported as a pre-registration hold.
+    """
+    import json as _json
+    import pathlib as _pathlib
+    from cpb.registry import _HELD_STATUSES, _LIVE_STATUSES
+
+    snapshot = _json.loads(
+        (_pathlib.Path(__file__).resolve().parents[2] / "registry.json").read_text(encoding="utf-8")
+    )
+    present = {e.get("status") for e in snapshot["canonicalization_algorithms"].values()}
+    present |= {e.get("status") for e in snapshot["artifact_types"].values()}
+
+    unclassified = present - _LIVE_STATUSES - _HELD_STATUSES
+    assert not unclassified, (
+        f"registry.json carries status(es) {sorted(unclassified)} that registry.py "
+        f"classifies as neither live nor held; a lookup would report them held. "
+        f"Classify them against REGISTRY.md's Entry Status Vocabulary."
+    )
+    assert not (_LIVE_STATUSES & _HELD_STATUSES), "a status cannot be both live and held"
+
+
+def test_live_entries_verify_and_held_entries_do_not():
+    """Two-sided, against the committed snapshot rather than a fixture."""
+    import pathlib as _pathlib
+    from cpb.registry import VERDICT_RESERVED, VERDICT_VERIFIED, RegistrySnapshot
+
+    snap = RegistrySnapshot.load(_pathlib.Path(__file__).resolve().parents[2] / "registry.json")
+    assert snap.lookup_algorithm("jcs")[0] == VERDICT_VERIFIED, (
+        "a standards-referenced entry is a live registration"
+    )
+    assert snap.lookup_algorithm("jcs-n")[0] == VERDICT_VERIFIED
+    assert snap.lookup_algorithm("cde-n")[0] == VERDICT_RESERVED, (
+        "a Reserved name has no defined semantics to verify against"
+    )

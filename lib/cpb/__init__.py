@@ -33,6 +33,7 @@ from .typed_ref import (
 )
 from .registry import (
     VERDICT_VERIFIED,
+    VERDICT_RESERVED,
     VERDICT_UNKNOWN_ID,
     VERDICT_ID_UNKNOWN_TO_SNAPSHOT,
     SnapshotIntegrityError,
@@ -62,6 +63,7 @@ __all__ = [
     "hex_to_raw",
     "raw_to_hex",
     "VERDICT_VERIFIED",
+    "VERDICT_RESERVED",
     "VERDICT_UNKNOWN_ID",
     "VERDICT_ID_UNKNOWN_TO_SNAPSHOT",
     "SnapshotIntegrityError",
