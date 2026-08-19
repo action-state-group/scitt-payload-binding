@@ -20,11 +20,6 @@
       "description": "No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex",
       "reference": "draft-mih-sokolov-scitt-payload-binding",
       "status": "Registered"
-    },
-    "json-sk-cp": {
-      "description": "RFC 8785 subset. Object members serialized in ascending key order by Unicode code point; no insignificant whitespace; UTF-8 encoding; no member removal (null, empty array and empty object members are retained and serialized); numbers restricted to integers, since ES6 number formatting per RFC 8785 \u00a73.2.2 is not implemented. Digest: SHA-256. Representation: lowercase hex.",
-      "reference": "draft-mih-sokolov-scitt-payload-binding (registration text: Anton Sokolov, Tyche Institute)",
-      "status": "Registered"
     }
   },
   "artifact_types": {
@@ -61,15 +56,15 @@
         {
           "purpose": "equivalence",
           "profile_version": "N/A",
-          "algorithm": "json-sk-cp",
-          "field_set": "{action_id, outcome}, closed",
+          "algorithm": "jcs",
+          "field_set": "{action_id, outcome}, closed \u2014 every member is a string; a floating-point value is rejected rather than digested, and an integer whose magnitude exceeds 2^53\u22121 (the ECMAScript safe-integer bound) is rejected as a typed error rather than serialized",
           "exclusion_set": "none",
           "domain_separation": "none",
-          "pre_image_encoding": "json-sk-cp UTF-8 octets (per json-sk-cp)",
+          "pre_image_encoding": "JCS UTF-8 octets (per jcs)",
           "representation": "sha256: + 64-char lowercase hex, as carried in the in-document action_hash claim"
         }
       ]
     }
   },
-  "snapshot_sha256": "7b455318b5dc821a40b683a2ed6b3ba6e41973cb6b205625821fe7e78752cc3c"
+  "snapshot_sha256": "e153902a93f361752c469a5d19c74c5d9bb4e73b109f1d9ce7889fa81622838b"
 }

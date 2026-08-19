@@ -97,22 +97,17 @@ CANONICAL-DIGEST values. Registration template: **Name**, **Description**,
 | `jcs` | RFC 8785 JCS over a JSON object (no normalization pass; null, empty-array, and empty-object members are retained as-is); SHA-256; lowercase hex | RFC 8785 §3 | `standards-referenced` |
 | `cde-n` | Deterministic CBOR canonicalization profile; SHA-256 | draft-mih-sokolov-scitt-payload-binding | **Reserved** (defined in a subsequent revision) |
 | `as-transmitted` | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex | draft-mih-sokolov-scitt-payload-binding | Registered |
-| `json-sk-cp` | RFC 8785 subset. Object members serialized in ascending key order by Unicode code point; no insignificant whitespace; UTF-8 encoding; no member removal (null, empty array and empty object members are retained and serialized); numbers restricted to integers, since ES6 number formatting per RFC 8785 §3.2.2 is not implemented. Digest: SHA-256. Representation: lowercase hex. | draft-mih-sokolov-scitt-payload-binding (registration text: Anton Sokolov, Tyche Institute) | Registered |
 
-**json-sk-cp — owner attribution and integer ceiling.** The registration
-text above is Anton Sokolov's (Tyche Institute), reproduced as he stated it
-rather than as a normative reference to an external repository, per his
-proposal on the PR #4 thread (2026-08-04). The "subset" wording is
-retained from that text as written; implementers should note json-sk-cp is
-not always substitutable for full RFC 8785 output, since its key ordering
-is by Unicode code point rather than RFC 8785 §3.2.3's UTF-16 code-unit
-ordering — the two diverge only for non-BMP keys. An integer whose
-magnitude exceeds 2^53−1 (the ECMAScript safe-integer bound) MUST NOT
-appear in a json-sk-cp pre-image; a conforming implementation rejects it
-as a typed error rather than serializing it. This ceiling was agreed
-between the CPB editors and the registering owner on the same thread
-(2026-08-04), extending the registration text's own integer restriction
-above.
+**Why `machine-mandate` does not register an algorithm of its own.** An earlier
+revision of this entry registered `json-sk-cp` — RFC 8785 with no member removal,
+code-point key ordering, and integers only. Since `jcs` was registered, that name
+would differ from it on exactly two points: the number restriction, and code-point
+rather than UTF-16 key ordering, which diverge only for non-BMP keys. Recomputed
+against the owner's own pinned vector set, every input produces a **byte-identical
+pre-image and an identical digest** under `jcs`. A second registered name for the
+same bytes buys nothing and costs an entry that cannot be told apart from its
+neighbour, so the constraints now live where they belong: in the digest context of
+the artifact type that relies on them, below.
 
 **as-transmitted — byte-boundary selector is mandatory, not descriptive.**
 `as-transmitted` performs no canonicalization: the digest is computed over a
@@ -254,11 +249,37 @@ normative definition, not invented for this row.
 **Status:** owner-confirmed
 **Provenance:** confirmed by the owner in the PR #4 thread (2026-08-09 and 2026-08-13); the second Artifact Type Registry entry.
 **Disclosure:** the owner is a co-author of the CPB draft and a co-editor of this registry; this entry is owner-authored and is not independent or third-party validation.
+**Discriminating-vector:** `mm-fail-04-representation-confusion` — pins that this
+type's two representations are not interchangeable (the derived identifier is bare
+hex; the in-document `action_hash` carries the `sha256:` prefix). `agent-action-capsule`,
+the only other registered artifact type, declares a single context in bare hex, so a
+verifier that accepted either form for either context would pass its cases and fail
+these. Cited at the commit-pinned URL below, not committed here — this entry's vectors
+are the owner's own published set.
+**Consuming-profile:** `action-state-group/scitt-cose` @ `04cf97a8d143459b7dd4193ba4d8c065c3783071`
+— the hosted verification surface at `verify.agentactioncapsule.org`. It parses and
+renders this type under the name `machine-mandate` (`hosted_profiles/machine_mandate.py`,
+`PROFILE_PARSERS["machine-mandate"]`), against fixtures copied byte-verbatim from
+`tyche-institute/machine-mandate@524e6a3` — the same commit this entry's Reference pins.
+**What it does not do, stated plainly so the Designated Expert can weigh it:** it detects
+the profile by the owner-controlled VCT URI and by pinned fixture digests, not by resolving
+the type through this registry, and its own module text disclaims endorsement. Whether a
+deployment that consumes the vocabulary without resolving the artifact type satisfies Gate B
+is the DE's call, not the registrant's — and the registrant is the owner, which is why it is
+put this way rather than asserted.
+**Vectors:** the conformance-vector set pinned below.
 
 | Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
 |---|---|---|---|---|---|---|---|
 | `identifier` | N/A | `as-transmitted` | byte-boundary selector — the issuer-signed JWS component of the SD-JWT (RFC 7515 §7.1 compact serialization; the first `~`-separated component exactly as transmitted); everything after the first `~` is outside the pre-image | N/A (`as-transmitted` has no field set) | none | N/A (no separate encoding step) | bare 64-char lowercase hex |
-| `equivalence` | N/A | `json-sk-cp` | `{action_id, outcome}`, closed | none | none | json-sk-cp UTF-8 octets (per `json-sk-cp`) | `sha256:` + 64-char lowercase hex, as carried in the in-document `action_hash` claim |
+| `equivalence` | N/A | `jcs` | `{action_id, outcome}`, closed — every member is a string; a floating-point value is rejected rather than digested, and an integer whose magnitude exceeds 2^53−1 (the ECMAScript safe-integer bound) is rejected as a typed error rather than serialized | none | none | JCS UTF-8 octets (per `jcs`) | `sha256:` + 64-char lowercase hex, as carried in the in-document `action_hash` claim |
+
+**Key ordering, for the record.** `jcs` sorts member names by UTF-16 code unit
+(RFC 8785 §3.2.3); the retired `json-sk-cp` sorted by Unicode code point. The two
+orders differ only when a member name contains a non-BMP character. This entry's
+field set is closed to `{action_id, outcome}`, so the case cannot arise here — and
+the pinned vectors were recomputed under `jcs` before this entry moved to it: every
+pre-image and digest is byte-identical to the values pinned below.
 
 **Conformance vectors:** `tyche-institute/machine-mandate`, branch
 `feat/cpb-registry-vectors-v0.1`, commit `5605783a` (supersedes
