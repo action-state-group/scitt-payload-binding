@@ -261,3 +261,32 @@ def test_committed_registry_passes_its_own_validation():
     data = gen_registry.generate(_REGISTRY_MD)
     errors = gen_registry._validate_structure(data, gen_registry._parse_status_vocabulary(_MD_LINES))
     assert errors == [], errors
+
+
+def test_schema_does_not_hardcode_a_status_vocabulary():
+    """The status vocabulary has exactly one home: REGISTRY.md.
+
+    An enum in the JSON Schema is a second list that cannot read REGISTRY.md,
+    so it can only drift from the first — which is what happened: the generator
+    learned the vocabulary while the schema still enumerated the legacy pair,
+    and the first non-legacy status failed CI at the schema step alone.
+    """
+    import json as _json
+    schema = _json.loads((_HERE / "registry_schema.json").read_text(encoding="utf-8"))
+
+    def status_enums(node, path="$"):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key == "status" and isinstance(value, dict) and "enum" in value:
+                    yield f"{path}.status"
+                yield from status_enums(value, f"{path}.{key}")
+        elif isinstance(node, list):
+            for i, item in enumerate(node):
+                yield from status_enums(item, f"{path}[{i}]")
+
+    offenders = list(status_enums(schema))
+    assert not offenders, (
+        "registry_schema.json enumerates status values at "
+        f"{offenders} — vocabulary belongs in REGISTRY.md, enforced by "
+        "gen_registry._parse_status_vocabulary"
+    )
