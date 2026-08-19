@@ -23,6 +23,7 @@ Phase 2 (not implemented here)
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -89,7 +90,9 @@ def check_p(value: Any, path: str = '$') -> list[Violation]:
 def _p_walk(v: Any, path: str, out: list[Violation]) -> None:
     if isinstance(v, dict):
         for k, val in v.items():
-            member_path = f'{path}["{k}"]'
+            # Escaped, not interpolated raw: see _lex._object for why a key
+            # named 'a"]["b' must not be able to forge another location's path.
+            member_path = f'{path}[{json.dumps(k)}]'
             if val is None:
                 out.append(Violation(member_path, 'P', 'null member'))
             elif isinstance(val, list) and not val:

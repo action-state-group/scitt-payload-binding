@@ -14,6 +14,7 @@ This is the most security-relevant component of cpb-check.
 """
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -140,7 +141,12 @@ class _Scanner:
                 key = self._string()
                 self._ws()
                 self._expect(':')
-                member_path = f'{path}["{key}"]'
+                # json.dumps, not raw interpolation: a key literally named
+                # 'a"]["b' otherwise renders as $["a"]["b"], forging the path of a
+                # genuine two-level nesting, and a key containing a newline injects
+                # whole fake violation lines into an operator's log. ensure_ascii
+                # also keeps a lone surrogate from crashing the printer.
+                member_path = f'{path}[{json.dumps(key)}]'
                 # Duplicate detection compares NFC-normalized keys: two members whose
                 # keys are distinct Unicode encodings of the same identifier (e.g. one
                 # NFC, one NFD) are the same wire-layer key and must not both survive —
@@ -231,7 +237,12 @@ class _Scanner:
                         low = int(t[p + 7:p + 11], 16)
                         if 0xDC00 <= low <= 0xDFFF:
                             buf.append(chr(0x10000 + (code - 0xD800) * 0x400 + (low - 0xDC00)))
-                            p += 10
+                            # 11 characters consumed from p: 'u' + 4 hex + '\\' + 'u'
+                            # + 4 hex. At 10 the final hex digit of the low escape
+                            # was left behind and appended as a literal, so
+                            # "\\ud83d\\ude00" lexed as the emoji followed by '0' --
+                            # a different document than every other parser sees.
+                            p += 11
                             continue
                     buf.append(chr(code))
                     p += 4
@@ -239,6 +250,15 @@ class _Scanner:
                     raise ValueError(f'invalid escape \\{esc!r} at position {p}')
                 p += 1
             else:
+                if ord(c) < 0x20:
+                    # RFC 8259 section 7: characters below U+0020 MUST be escaped.
+                    # stdlib json rejects them; accepting them here would mean this
+                    # scanner and every other parser read different documents, which
+                    # is the differential this module exists to close.
+                    raise ValueError(
+                        f'raw control character U+{ord(c):04X} in string at position {p} '
+                        f'(RFC 8259 section 7 requires it escaped)'
+                    )
                 buf.append(c)
                 p += 1
         raise ValueError('unterminated string')

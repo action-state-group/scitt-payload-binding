@@ -130,9 +130,17 @@ def main() -> None:
     if '--self-test' in args:
         sys.exit(_self_test())
 
-    if not args or args[0] in ('-h', '--help'):
-        print(_USAGE)
-        sys.exit(_EXIT_VERIFIED if not args else _EXIT_ERROR)
+    if args[:1] in ([], ['-h'], ['--help']) or not args:
+        # Asking for help is not an error; being handed nothing to check is.
+        # These were inverted: a bare `cpb-check` exited 0, and 0 is this tool's
+        # word for "verified" -- so a CI gate whose path variable came out empty
+        # concluded the record conformed without a record ever being read.
+        if args:
+            print(_USAGE)
+            sys.exit(_EXIT_VERIFIED)
+        print(_USAGE, file=sys.stderr)
+        print('cpb-check: no record given -- nothing was checked', file=sys.stderr)
+        sys.exit(_EXIT_ERROR)
 
     path_arg = args[0]
     try:

@@ -23,6 +23,7 @@ from cpb.check import CheckResult, Violation, check, check_p
 from cpb._lex import RawViolation, lex
 
 VECTORS_DIR = pathlib.Path(__file__).parent.parent.parent / 'vectors' / 'cpb-check'
+_LIB_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 # =============================================================================
@@ -582,3 +583,91 @@ class TestLex:
         deeply_nested = ('[' * 20_000) + (']' * 20_000)
         with pytest.raises(RecursionError):
             lex_module.lex(deeply_nested)
+
+
+# ---------------------------------------------------------------------------
+# Parser-differential regressions. Each of these had the checker reading a
+# different document than every other parser -- the one thing this module
+# exists to prevent.
+# ---------------------------------------------------------------------------
+
+def test_escaped_surrogate_pair_matches_stdlib():
+    """`\\ud83d\\ude00` advanced the cursor 10 characters where the escape is 11,
+    so the final hex digit of the low half was appended as a literal: the
+    emoji came out followed by '0'. Every non-BMP escape was misread, and the
+    duplicate-key detection compared the wrong key strings."""
+    import json as _json
+    for raw in ('{"k":"\\ud83d\\ude00"}',
+                '{"k":"\\ud83d\\ude00X"}',
+                '{"k":"A\\ud83d\\ude00B\\ud83d\\ude01C"}',
+                '{"\\ud83d\\ude00":1}'):
+        parsed, _ = lex(raw)
+        assert parsed == _json.loads(raw), (
+            f"lexer and stdlib read different documents from {raw!r}: "
+            f"{parsed!r} vs {_json.loads(raw)!r}"
+        )
+
+
+def test_duplicate_key_written_as_a_surrogate_pair_is_caught():
+    """The differential above defeated the module's own purpose: two keys that
+    are the same character smuggled a duplicate past detection."""
+    result = check('{"\\ud83d\\ude00":1,"\\ud83d\\ude00":2}')
+    assert result.verdict == 'non-conforming'
+    assert any(v.rule == 'R' for v in result.violations), result.violations
+
+
+def test_raw_control_character_in_string_is_rejected():
+    """RFC 8259 section 7 requires characters below U+0020 to be escaped.
+    stdlib rejects them; accepting them meant `verified` for bytes no other
+    parser would read at all. The escaped form stays legal."""
+    with pytest.raises(ValueError, match='raw control character'):
+        lex('{"k":"a\x01b"}')
+    parsed, _ = lex('{"k":"a\\u0001b"}')
+    assert parsed == {'k': 'a\x01b'}
+
+
+def test_violation_path_cannot_forge_another_location():
+    """A key named 'a\"][\"b' rendered as $[\"a\"][\"b\"] -- indistinguishable
+    from genuine two-level nesting -- and a key containing a newline injected
+    whole fake violation lines into an operator's log."""
+    forged = check('{"a\\"][\\"b":{"x":null}}')
+    genuine = check('{"a":{"b":{"x":null}}}')
+    forged_paths = [v.path for v in forged.violations]
+    genuine_paths = [v.path for v in genuine.violations]
+    assert forged_paths != genuine_paths, (
+        f"a crafted key produced a genuine location's path: {forged_paths}"
+    )
+    newline = check('{"a\\nb":null}')
+    assert all('\n' not in v.path for v in newline.violations), (
+        f"a raw newline reached the rendered path: {[v.path for v in newline.violations]}"
+    )
+
+
+def test_cli_exit_codes_do_not_fail_open(tmp_path):
+    """`cpb-check` with nothing to check exited 0 -- and 0 is this tool's word
+    for 'verified'. A CI gate whose path variable came out empty concluded the
+    record conformed while no record was ever read. Asking for help, meanwhile,
+    was reported as an error."""
+    import subprocess
+    import sys as _sys
+
+    def run(*argv):
+        return subprocess.run(
+            [_sys.executable, '-c',
+             'import sys; from cpb._cli import main; main()', *argv],
+            capture_output=True, text=True, cwd=str(_LIB_ROOT), check=False,
+        )
+
+    assert run().returncode == 2, 'no arguments must be an error, never verified'
+    assert run('--help').returncode == 0, 'asking for help is not an error'
+
+    good = tmp_path / 'good.json'
+    good.write_text('{"a":1}', encoding='utf-8')
+    assert run(str(good)).returncode == 0
+
+    bad = tmp_path / 'bad.json'
+    bad.write_text('{"a":null}', encoding='utf-8')
+    assert run(str(bad)).returncode == 1
+
+    missing = tmp_path / 'nope.json'
+    assert run(str(missing)).returncode == 2
