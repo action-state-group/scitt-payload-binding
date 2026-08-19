@@ -18,10 +18,8 @@ Exit codes
 from __future__ import annotations
 
 import json
-import pathlib
 import sys
 from pathlib import Path
-from typing import NoReturn
 
 from .check import CheckResult, check
 

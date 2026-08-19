@@ -26,7 +26,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from ._lex import RawViolation, lex
+from ._lex import lex
 
 __all__ = [
     'Verdict',

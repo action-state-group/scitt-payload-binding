@@ -15,6 +15,7 @@ This is the most security-relevant component of cpb-check.
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
@@ -101,7 +102,7 @@ class _Scanner:
     def _object(self, path: str) -> dict[str, Any]:
         self._p += 1                            # consume '{'
         result: dict[str, Any] = {}
-        seen: dict[str, int] = {}               # key -> char-position of first colon
+        seen: dict[str, int] = {}               # NFC(key) -> char-position of first occurrence
         first = True
         while True:
             self._ws()
@@ -119,17 +120,24 @@ class _Scanner:
             self._ws()
             self._expect(':')
             member_path = f'{path}["{key}"]'
-            if key in seen:
+            # Duplicate detection compares NFC-normalized keys: two members whose
+            # keys are distinct Unicode encodings of the same identifier (e.g. one
+            # NFC, one NFD) are the same wire-layer key and must not both survive —
+            # jcs-n itself does not normalize (CANONICALIZATION_DECLARATION.md §3),
+            # so an un-normalized duplicate check would let an attacker smuggle two
+            # "different" keys that collapse to one identifier downstream.
+            norm_key = unicodedata.normalize('NFC', key)
+            if norm_key in seen:
                 self.violations.append(RawViolation(
                     path=member_path,
                     code='duplicate_key',
                     detail=(
                         f'key "{key}" appears more than once in the object at '
-                        f'{path} (first occurrence at character {seen[key]})'
+                        f'{path} (first occurrence at character {seen[norm_key]})'
                     ),
                 ))
             else:
-                seen[key] = self._p
+                seen[norm_key] = self._p
             val = self.parse(member_path)
             result[key] = val                   # last-wins, same as json.loads
 
@@ -261,4 +269,10 @@ def lex(raw: str | bytes) -> tuple[Any, list[RawViolation]]:
         text = str(raw)
     scanner = _Scanner(text)
     value = scanner.parse('$')
+    scanner._ws()
+    if scanner._p != len(text):
+        raise ValueError(
+            f'trailing bytes after top-level value at position {scanner._p} '
+            f'(got {text[scanner._p:scanner._p + 8]!r})'
+        )
     return value, scanner.violations

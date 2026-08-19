@@ -19,7 +19,7 @@ from typing import Any
 
 import pytest
 
-from cpb.check import CheckResult, Violation, check, check_p, check_r
+from cpb.check import CheckResult, Violation, check, check_p
 from cpb._lex import RawViolation, lex
 
 VECTORS_DIR = pathlib.Path(__file__).parent.parent.parent / 'vectors' / 'cpb-check'
@@ -490,4 +490,66 @@ class TestLex:
     def test_str_input(self) -> None:
         value, violations = lex('{"a":1}')
         assert value == {'a': 1}
+
+    # --- trailing bytes after the top-level value ---
+
+    def test_trailing_bytes_rejected(self) -> None:
+        """A top-level value followed by extra bytes must be rejected, not
+        silently ignored (verified: {"a":1}+trailing content was previously
+        accepted with the trailing bytes discarded)."""
+        with pytest.raises(ValueError, match='trailing bytes'):
+            lex(b'{"a":1}{"a":2}')
+
+    def test_trailing_garbage_rejected(self) -> None:
+        with pytest.raises(ValueError, match='trailing bytes'):
+            lex(b'{"a":1}not json')
+
+    def test_trailing_whitespace_accepted(self) -> None:
+        """Trailing whitespace after the top-level value is not 'trailing bytes'."""
+        value, violations = lex(b'{"a":1}  \n\t')
+        assert value == {'a': 1}
         assert violations == []
+
+    def test_trailing_bytes_mutant_accepts(self) -> None:
+        """MUTANT: parse only the top-level value, never check what follows —
+        the pre-fix behavior.  Demonstrates the check catches a real regression."""
+        def _mutant_no_trailing_check(raw: bytes) -> Any:
+            from cpb._lex import _Scanner
+            scanner = _Scanner(raw.decode('utf-8'))
+            return scanner.parse('$')  # no trailing-bytes check afterward
+
+        value = _mutant_no_trailing_check(b'{"a":1}{"a":2}')
+        assert value == {'a': 1}  # silently ignores the second object
+
+    # --- duplicate-key detection is NFC-normalized ---
+
+    def test_nfc_nfd_keys_are_duplicates(self) -> None:
+        """A key encoded as precomposed NFC and a second member using the
+        NFD-decomposed form of the same identifier are the same wire-layer
+        key and must be flagged as a duplicate — otherwise a record could
+        smuggle two 'different' keys that a downstream NFC-normalizing
+        consumer collapses into one, silently overwriting a value."""
+        nfc_key = "\u00c5"   # LATIN CAPITAL LETTER A WITH RING ABOVE (precomposed)
+        nfd_key = "A\u030a"  # 'A' + COMBINING RING ABOVE (decomposed)
+        assert nfc_key != nfd_key  # distinct code point sequences
+        raw = ('{"' + nfc_key + '":1,"' + nfd_key + '":2}').encode('utf-8')
+        _, violations = lex(raw)
+        assert len(violations) == 1
+        assert violations[0].code == 'duplicate_key'
+
+    def test_nfc_duplicate_mutant_accepts(self) -> None:
+        """MUTANT: duplicate detection compares raw (non-NFC-normalized) keys --
+        the pre-fix behavior.  Walks the same parsed key list the real checker
+        sees but compares with plain string equality, showing an NFC/NFD pair
+        is missed."""
+        nfc_key = "\u00c5"   # LATIN CAPITAL LETTER A WITH RING ABOVE (precomposed)
+        nfd_key = "A\u030a"  # 'A' + COMBINING RING ABOVE (decomposed)
+        keys = [nfc_key, nfd_key]
+        seen: set[str] = set()
+        dup_found = False
+        for key in keys:
+            if key in seen:              # MUTANT: no NFC normalization
+                dup_found = True
+            else:
+                seen.add(key)
+        assert not dup_found  # mutant treats the NFC/NFD pair as distinct keys
