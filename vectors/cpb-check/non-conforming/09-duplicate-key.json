@@ -1,0 +1,10 @@
+{
+  "id": "cpb-check-nonconforming-09",
+  "description": "R violation: duplicate key. THE security-critical case. A collapsing JSON parser (json.loads) silently accepts this, returning {'type': 'injected', 'id': '1234'}. Only the duplicate-preserving raw-bytes lexer catches the duplicate before it is lost.",
+  "expected_verdict": "non-conforming",
+  "expected_violations": [
+    {"path": "$[\"type\"]", "rule": "R"}
+  ],
+  "record_raw": "{\"type\":\"action\",\"id\":\"1234\",\"type\":\"injected\"}",
+  "mutant_note": "Mutant: json.loads(record_raw) == {'type': 'injected', 'id': '1234'} — the first 'type' key is silently dropped. The collapsing-parser mutant returns verdict 'verified' on this record. The duplicate-preserving lexer returns 'non-conforming' with violation at $[\"type\"]."
+}

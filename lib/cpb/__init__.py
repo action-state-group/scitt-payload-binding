@@ -6,6 +6,7 @@ Implements only the mechanisms defined in draft-mih-sokolov-scitt-payload-bindin
   §4    Derived identifier: CANONICAL-DIGEST(A, payload minus exclusion_set)
   §6    Typed digest reference: construction and verification
   §13   Registry snapshot lookup (machine-readable registry.json)
+  check Grammar conformance checker (P/R rules, Phase 1)
 
 No payload semantics from any specific profile are included here.
 """
@@ -41,6 +42,15 @@ from .registry import (
     compute_snapshot_sha256,
 )
 
+from .check import (
+    Verdict,
+    Violation,
+    CheckResult,
+    check,
+    check_p,
+    check_r,
+)
+
 __all__ = [
     "FloatInDigestError",
     "UnsafeIntegerError",
@@ -69,4 +79,11 @@ __all__ = [
     "SnapshotIntegrityError",
     "RegistrySnapshot",
     "compute_snapshot_sha256",
+    # Grammar checker (Phase 1)
+    "Verdict",
+    "Violation",
+    "CheckResult",
+    "check",
+    "check_p",
+    "check_r",
 ]
