@@ -6,9 +6,9 @@ name: vectors
 
 on:
   push:
-    paths: ["vectors/**", ".github/check_vectors.py", ".github/neutrality_scan.py"]
+    paths: ["vectors/**", ".github/check_vectors.py", ".github/test_check_vectors.py", ".github/neutrality_scan.py"]
   pull_request:
-    paths: ["vectors/**", ".github/check_vectors.py", ".github/neutrality_scan.py"]
+    paths: ["vectors/**", ".github/check_vectors.py", ".github/test_check_vectors.py", ".github/neutrality_scan.py"]
 
 permissions:
   contents: read
@@ -23,8 +23,14 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: install pytest
+        run: pip install "pytest>=7"
+
       - name: Check all vector digests (includes check_vectors.py self-tests)
         run: python .github/check_vectors.py vectors/
+
+      - name: per-entry coverage report test suite
+        run: python3 -m pytest .github/test_check_vectors.py -v
 
       - name: Neutrality scanner self-test (span-based allow-phrase exemption)
         run: python .github/neutrality_scan.py --self-test
