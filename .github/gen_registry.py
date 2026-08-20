@@ -42,7 +42,24 @@ def _strip_md(s: str) -> str:
     return s.strip()
 
 
+class DuplicateRegistryTokenError(ValueError):
+    """A registry table (Algorithm or Artifact Type) names the same token twice.
+
+    dict-keyed-by-name parsing means a second row silently overwrites the
+    first -- for a withdrawn/reserved token being reused this destroys the
+    withdrawal marker in registry.json with no error. Fail closed instead.
+    """
+
+
 _LEGACY_STATUSES = frozenset({"Registered", "Reserved"})
+
+_ALGO_ANNOTATION_RE = re.compile(
+    r"^\s*⌙\s*(Discriminating-vector|Consuming-profile):\s*(.+?)\s*$"
+)
+_ALGO_ANNOTATION_KEYS = {
+    "Discriminating-vector": "discriminating_vector",
+    "Consuming-profile": "consuming_profile",
+}
 
 
 def _normalize_status(raw: str) -> str:
@@ -187,7 +204,16 @@ def _parse_algorithm_registry(md_lines: list[str]) -> dict[str, dict]:
     Every non-name column found in the table is carried through verbatim
     (status excepted, which is normalized) -- a renamed or newly added column
     is picked up automatically instead of silently dropped by a hardcoded
-    field list.
+    field list. A duplicate Name across rows raises DuplicateRegistryTokenError
+    rather than letting the later row silently win (see that class's docstring).
+
+    A '⌙ Discriminating-vector:' / '⌙ Consuming-profile:' prose line immediately
+    following a row (the flat-row annotation form documented in the Entry
+    Template) is attributed to that row and carried through verbatim under
+    'discriminating_vector' / 'consuming_profile'. The key is present only when
+    the line is present, so a registrant who omits it leaves the field entirely
+    absent from registry.json (machine-visible absence) rather than an empty
+    string that could be mistaken for a parsed-but-blank value.
     """
     section = _section_lines(md_lines, "Payload Canonicalization Algorithm Registry")
     rows = _parse_md_table(section)
@@ -196,6 +222,14 @@ def _parse_algorithm_registry(md_lines: list[str]) -> dict[str, dict]:
         name = row.get("name", "").strip()
         if not name:
             continue
+        if name in algorithms:
+            raise DuplicateRegistryTokenError(
+                f"duplicate token {name!r} in the Payload Canonicalization Algorithm "
+                f"Registry table: a later row with the same Name would silently "
+                f"overwrite the earlier one (e.g. destroying a 'withdrawn' marker if "
+                f"the token is reused) -- fail closed instead of guessing which row "
+                f"is authoritative"
+            )
         entry: dict[str, str] = {}
         for header, value in row.items():
             if header == "name":
@@ -203,16 +237,77 @@ def _parse_algorithm_registry(md_lines: list[str]) -> dict[str, dict]:
             value = value.strip()
             entry[header] = _normalize_status(value) if header == "status" else value
         algorithms[name] = entry
+
+    # Second pass: attach any ⌙-prefixed annotation lines to the row they
+    # immediately follow. A pipe row's first cell is matched against the
+    # names already parsed above (header and separator rows never match),
+    # which tracks table position without re-implementing header/separator
+    # detection here.
+    current_name: str | None = None
+    for line in section:
+        stripped = line.strip()
+        if stripped.startswith("|"):
+            first_cell = _strip_md(stripped.strip("|").split("|", 1)[0]).strip()
+            current_name = first_cell if first_cell in algorithms else None
+            continue
+        m = _ALGO_ANNOTATION_RE.match(line)
+        if m and current_name:
+            algorithms[current_name][_ALGO_ANNOTATION_KEYS[m.group(1)]] = m.group(2).strip()
     return algorithms
 
 
+_BOLD_FIELD_MARKERS = (
+    "**Reference:**", "**Status:**", "**Owner:**", "**Provenance:**",
+    "**Disclosure:**", "**Registrant:**", "**Discriminating-vector:**",
+    "**Consuming-profile:**", "**Vectors:**", "**Conformance vectors:**",
+)
+
+
+def _collect_bold_field(sub_lines: list[str], marker: str) -> str:
+    """Collect a '**Field:** ...' prose value, joining soft-wrapped
+    continuation lines until a blank line, a table row, or the next bold
+    field marker. Returns '' if the marker is absent -- callers use that to
+    distinguish "field present but empty" from "field never written".
+    """
+    collecting = False
+    parts: list[str] = []
+    for line in sub_lines:
+        if not collecting:
+            idx = line.find(marker)
+            if idx == -1:
+                continue
+            collecting = True
+            parts.append(line[idx + len(marker):].strip())
+            continue
+        stripped = line.strip()
+        if not stripped or stripped.startswith("|") or any(
+            stripped.startswith(m) for m in _BOLD_FIELD_MARKERS
+        ):
+            break
+        parts.append(stripped)
+    return _strip_md(" ".join(p for p in parts if p))
+
+
 def _parse_artifact_type_registry(md_lines: list[str]) -> dict[str, dict]:
+    """Parse the Artifact Type Registry's named subsections.
+
+    A duplicate '### <name>' subsection raises DuplicateRegistryTokenError
+    rather than letting the later subsection silently win (see that class's
+    docstring) -- the same failure mode findings 4 and above document for the
+    flat-row Algorithm Registry table applies identically here.
+    """
     section = _section_lines(md_lines, "Artifact Type Registry")
     subs = _subsections(section)
     artifact_types: dict[str, dict] = {}
     for sub_name, sub_lines in subs:
         if not sub_name:
             continue
+        if sub_name in artifact_types:
+            raise DuplicateRegistryTokenError(
+                f"duplicate artifact type {sub_name!r} in the Artifact Type Registry: "
+                f"a later '### {sub_name}' subsection would silently overwrite the "
+                f"earlier one -- fail closed instead of guessing which is authoritative"
+            )
         # Extract **Reference:** and **Status:** from prose lines
         reference = ""
         status = ""
@@ -243,11 +338,18 @@ def _parse_artifact_type_registry(md_lines: list[str]) -> dict[str, dict]:
                     ctx[col] = val
             if ctx.get("purpose") or ctx.get("algorithm"):
                 digest_contexts.append(ctx)
-        artifact_types[sub_name] = {
+        artifact_type: dict = {
             "reference": reference,
             "status": status,
             "digest_contexts": digest_contexts,
         }
+        discriminating_vector = _collect_bold_field(sub_lines, "**Discriminating-vector:**")
+        if discriminating_vector:
+            artifact_type["discriminating_vector"] = discriminating_vector
+        consuming_profile = _collect_bold_field(sub_lines, "**Consuming-profile:**")
+        if consuming_profile:
+            artifact_type["consuming_profile"] = consuming_profile
+        artifact_types[sub_name] = artifact_type
     return artifact_types
 
 
@@ -301,10 +403,19 @@ def _validate_structure(data: dict, legal_statuses: set[str],
                 errors.append(err)
     arts = data.get("artifact_types", {})
     if isinstance(arts, dict):
+        known_algorithms = set(algs) if isinstance(algs, dict) else set()
         for name, entry in arts.items():
             err = _status_error("artifact type", name, entry.get("status"))
             if err:
                 errors.append(err)
+            for ctx in entry.get("digest_contexts", []) or []:
+                alg = ctx.get("algorithm")
+                if alg and alg not in known_algorithms:
+                    errors.append(
+                        f"artifact type {name!r}: digest context algorithm {alg!r} "
+                        f"is not a key in canonicalization_algorithms -- every "
+                        f"digest context MUST cite a registered algorithm"
+                    )
     sha = data.get("snapshot_sha256", "")
     if not re.match(r"^[0-9a-f]{64}$", sha):
         errors.append(f"snapshot_sha256 must be 64 lowercase hex chars, got {sha!r}")
@@ -332,6 +443,14 @@ def generate(registry_md: Path) -> dict:
 
 def _render(data: dict) -> str:
     return json.dumps(data, indent=2, ensure_ascii=True) + "\n"
+
+
+_ADMISSION_CAVEAT = (
+    "note: this checks structure only (parse fidelity, schema, duplicate tokens, "
+    "field presence). Discriminating-vector/Consuming-profile content, and Gates "
+    "A/B/C generally, are Designated Expert judgment -- a green run here is not "
+    "admission of any entry."
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -382,10 +501,12 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 1
         print(f"{out}: up-to-date (snapshot_sha256={data['snapshot_sha256'][:16]}...)")
+        print(_ADMISSION_CAVEAT)
         return 0
 
     out.write_text(rendered, encoding="utf-8")
     print(f"wrote {out} (snapshot_sha256={data['snapshot_sha256'][:16]}...)")
+    print(_ADMISSION_CAVEAT)
     return 0
 
 
