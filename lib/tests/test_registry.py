@@ -394,7 +394,10 @@ def test_live_entries_verify_and_held_entries_do_not():
     assert snap.lookup_algorithm("jcs")[0] == VERDICT_VERIFIED, (
         "a standards-referenced entry is a live registration"
     )
-    assert snap.lookup_algorithm("jcs-n")[0] == VERDICT_VERIFIED
+    assert snap.lookup_algorithm("jcs-n")[0] == VERDICT_RESERVED, (
+        "jcs-n is withdrawn (2026-08-18) — a held name has no live registration "
+        "to verify against, same as a Reserved name"
+    )
     assert snap.lookup_algorithm("cde-n")[0] == VERDICT_RESERVED, (
         "a Reserved name has no defined semantics to verify against"
     )

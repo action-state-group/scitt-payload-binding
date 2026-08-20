@@ -93,10 +93,25 @@ CANONICAL-DIGEST values. Registration template: **Name**, **Description**,
 
 | Name | Description | Reference | Status |
 |---|---|---|---|
-| `jcs-n` | RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex | draft-mih-sokolov-scitt-payload-binding | Registered |
+| `jcs-n` | Withdrawn — never carried to IANA (2026-08-18). RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex — the construction this entry named. See [`docs/audits/jcsn-withdrawal-audit-2026-08-18.md`](docs/audits/jcsn-withdrawal-audit-2026-08-18.md) for the withdrawal rationale. | draft-mih-sokolov-scitt-payload-binding | `withdrawn` |
 | `jcs` | RFC 8785 JCS over a JSON object (no normalization pass; null, empty-array, and empty-object members are retained as-is); SHA-256; lowercase hex | RFC 8785 §3 | `standards-referenced` |
 | `cde-n` | Withdrawn — the token was reserved for a deterministic CBOR canonicalization profile and never assigned a definition | draft-mih-sokolov-scitt-payload-binding | `withdrawn` |
 | `as-transmitted` | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex | draft-mih-sokolov-scitt-payload-binding | Registered |
+
+**jcs-n — withdrawal disposition (2026-08-18).** `jcs-n` is withdrawn entirely, the
+same disposition as `cde-n`: a recorded terminal state, not a deletion. The token
+stays bound and is never reassigned. This row, the two implementation notes below
+it, and the `vectors/jcs-n/` conformance suite are **retained exactly as
+registered** — nothing here is edited retroactively — because
+`draft-mih-sokolov-scitt-payload-binding-00` cites them as the permanent record of
+the construction IETF-126-era implementations actually built. Existing records
+committed under `jcs-n` (see the `agent-action-capsule` Artifact Type entry below)
+remain verifiable against it by vintage. No new record may declare `jcs-n`; a
+tolerant-ingest use case, if one ever materializes, registers a fresh entry with
+domain separation designed in rather than reviving this token. The full
+rationale — implementer census, byte-audit result, and the admission-bar test the
+entry failed — is in
+[`docs/audits/jcsn-withdrawal-audit-2026-08-18.md`](docs/audits/jcsn-withdrawal-audit-2026-08-18.md).
 
 **Why `machine-mandate` does not register an algorithm of its own.** An earlier
 revision of this entry registered `json-sk-cp` — RFC 8785 with no member removal,
@@ -308,7 +323,7 @@ registrars MUST use them verbatim.
 | `third-party-documented` | Registered by someone other than the owner, from publicly pinned artifacts (spec revision + repo commit). Registrant is named in the entry. Owner has been notified and invited to review. Not yet confirmed by owner. |
 | `provisional` | A reference resolves but the vector set is incomplete or the specification is insufficiently pinned. Entry is held in [`spec/cpb-provisional-registry.md`](spec/cpb-provisional-registry.md) until vectors and pinning are complete. |
 | `standards-referenced` | The entry's construction is fully specified by a published standard (RFC, ISO, or equivalent) rather than by a party who can acknowledge anything. There is no owner to ack, so `owner-confirmed` is unreachable by construction and its absence is not a provenance gap. Gates A and B still apply, and the Reference row MUST cite the standard to section precision. |
-| `withdrawn` | The token was reserved and stays bound, but was never assigned a definition and never will be. A terminal state, not a deletion: the name is not reassigned, and a later construction of the same kind registers under a different token. Nothing verifies against it — a verifier meeting it MUST fail closed. |
+| `withdrawn` | The token stays bound but will never (again) be carried forward to a live registration — whether it was a reserved token never assigned a definition, or a previously-registered entry whose definition is retired. A terminal state, not a deletion: the name is not reassigned, any definitional text already written is retained unedited as the historical record of the construction, and a later construction of the same kind registers under a different token. Nothing verifies against it — a verifier meeting it MUST fail closed. |
 
 Statuses are not permanent — see [Entry Lifecycle](#entry-lifecycle) below.
 
@@ -334,9 +349,10 @@ mapping so policy and record do not contradict:
   registered as a live entry.
 
 **The legacy spellings are closed to new entries, and the list is finite.** Exactly
-three rows predate this vocabulary and keep a legacy spelling: the algorithm entries `jcs-n` and
-`as-transmitted`, and the artifact type `agent-action-capsule`. (`cde-n` predates it
-too, but carries the vocabulary term `withdrawn` rather than a legacy spelling.) No other entry may
+two rows predate this vocabulary and keep a legacy spelling: the algorithm entry
+`as-transmitted` and the artifact type `agent-action-capsule`. (`jcs-n` and `cde-n`
+predate it too, but both now carry the vocabulary term `withdrawn` rather than a
+legacy spelling.) No other entry may
 carry `Registered` or `Reserved`. Naming them here rather than describing them is
 deliberate: the generator has no history to consult, so without a closed list it
 cannot tell a pre-existing row from a new one writing a legacy spelling — and a new
