@@ -63,8 +63,10 @@
           "pre_image_encoding": "JCS UTF-8 octets (per jcs)",
           "representation": "sha256: + 64-char lowercase hex, as carried in the in-document action_hash claim"
         }
-      ]
+      ],
+      "discriminating_vector": "mm-fail-04-representation-confusion \u2014 pins that this type's two representations are not interchangeable (the derived identifier is bare hex; the in-document action_hash carries the sha256: prefix). agent-action-capsule, the only other registered artifact type, declares a single context in bare hex, so a verifier that accepted either form for either context would pass its cases and fail these. Cited at the commit-pinned URL below, not committed here \u2014 this entry's vectors are the owner's own published set.",
+      "consuming_profile": "action-state-group/scitt-cose @ 04cf97a8d143459b7dd4193ba4d8c065c3783071 \u2014 the hosted verification surface at verify.agentactioncapsule.org. It parses and renders this type under the name machine-mandate (hosted_profiles/machine_mandate.py, PROFILE_PARSERS[\"machine-mandate\"]), against fixtures copied byte-verbatim from tyche-institute/machine-mandate@524e6a3 \u2014 the same commit this entry's Reference pins. What it does not do, stated plainly so the Designated Expert can weigh it: it detects the profile by the owner-controlled VCT URI and by pinned fixture digests, not by resolving the type through this registry, and its own module text disclaims endorsement. Whether a deployment that consumes the vocabulary without resolving the artifact type satisfies Gate B is the DE's call, not the registrant's \u2014 and the registrant is the owner, which is why it is put this way rather than asserted."
     }
   },
-  "snapshot_sha256": "0dfb7a4af1956fa2851ec60cabe4b20e4e3c3a3662236bdc57b03387c195fc7c"
+  "snapshot_sha256": "e932db8747ad4a91f85369e91664bb3630be0d1950a9a9fbae5fa636baf00b96"
 }

@@ -371,3 +371,236 @@ def test_a_new_entry_cannot_use_a_legacy_spelling():
     assert any("legacy spelling" in e for e in
                check("brand-new-type", "Registered", "artifact_types")), \
         "the same rule must bind artifact types"
+
+
+# ---------------------------------------------------------------------------
+# Duplicate/withdrawn token reuse must fail closed (AUDIT.md §C finding 4).
+#
+# Reproduces the audit's exact construction: the real, unmodified REGISTRY.md
+# with a second row appended immediately after the existing `cde-n`
+# (withdrawn) row, reusing the identical token with a new description and
+# status `owner-confirmed`. Before the fix this was silently ADMITTED --
+# gen_registry.py's dict-keyed parsing kept only the second row, dropping the
+# withdrawal marker from registry.json with exit 0.
+# ---------------------------------------------------------------------------
+
+_DUP_TOKEN_ROW = (
+    "| `cde-n` | A NEW bogus CBOR-deterministic construction reusing the "
+    "withdrawn token, SHA-256, hex | draft-mih-sokolov-scitt-payload-binding | "
+    "`owner-confirmed` |\n"
+)
+
+
+def _registry_md_with_duplicated_cde_n() -> list[str]:
+    lines = list(_MD_LINES)
+    for i, line in enumerate(lines):
+        if line.strip().startswith("| `cde-n` |"):
+            return lines[: i + 1] + [_DUP_TOKEN_ROW] + lines[i + 1:]
+    raise AssertionError("fixture bug: no `cde-n` row found in REGISTRY.md")
+
+
+def test_duplicate_algorithm_token_raises_reproducing_the_audit_input():
+    lines = _registry_md_with_duplicated_cde_n()
+    with pytest.raises(gen_registry.DuplicateRegistryTokenError, match="cde-n"):
+        gen_registry._parse_algorithm_registry(lines)
+
+
+def test_duplicate_algorithm_token_fails_generate_end_to_end(tmp_path):
+    """Same construction driven through generate(), the way `gen_registry.py
+    --registry-md ...` would be invoked -- the audit's exact repro command."""
+    lines = _registry_md_with_duplicated_cde_n()
+    dup_md = tmp_path / "REGISTRY-dup-token.md"
+    dup_md.write_text("".join(lines), encoding="utf-8")
+    with pytest.raises(gen_registry.DuplicateRegistryTokenError):
+        gen_registry.generate(dup_md)
+
+
+def test_duplicate_artifact_type_subsection_raises():
+    lines = [
+        "## Artifact Type Registry\n",
+        "\n",
+        "### `dup-type`\n",
+        "**Reference:** draft-example\n",
+        "**Status:** owner-confirmed\n",
+        "\n",
+        "| Purpose | Algorithm |\n",
+        "|---|---|\n",
+        "| `identifier` | `jcs-n` |\n",
+        "\n",
+        "### `dup-type`\n",
+        "**Reference:** draft-example-2\n",
+        "**Status:** owner-confirmed\n",
+        "\n",
+        "| Purpose | Algorithm |\n",
+        "|---|---|\n",
+        "| `identifier` | `jcs` |\n",
+    ]
+    with pytest.raises(gen_registry.DuplicateRegistryTokenError, match="dup-type"):
+        gen_registry._parse_artifact_type_registry(lines)
+
+
+def test_committed_registry_has_no_duplicate_tokens():
+    """The real document must never trip the check added above."""
+    gen_registry._parse_algorithm_registry(_MD_LINES)
+    gen_registry._parse_artifact_type_registry(_MD_LINES)
+
+
+# ---------------------------------------------------------------------------
+# Schema gaps: non-empty Artifact Type fields, algorithm cross-reference
+# (AUDIT.md §C finding 5).
+# ---------------------------------------------------------------------------
+
+def _load_schema():
+    import json as _json
+    return _json.loads((_HERE / "registry_schema.json").read_text(encoding="utf-8"))
+
+
+def test_schema_rejects_the_audits_empty_shell_snapshot():
+    """Reproduces the audit's exact input: a well-formed registry.json snapshot
+    with an artifact type whose reference/purpose/algorithm are all ''. Before
+    the fix this validated (schema: VALID); it must now be rejected."""
+    jsonschema = pytest.importorskip("jsonschema")
+    schema = _load_schema()
+    empty_shell = {
+        "schema_version": "1",
+        "snapshot_sha256": "0" * 64,
+        "canonicalization_algorithms": {},
+        "artifact_types": {
+            "empty-shell-type": {
+                "reference": "",
+                "status": "third-party-documented",
+                "digest_contexts": [{"purpose": "", "algorithm": ""}],
+            }
+        },
+    }
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(empty_shell, schema)
+
+
+def test_schema_still_accepts_a_well_formed_artifact_type():
+    jsonschema = pytest.importorskip("jsonschema")
+    schema = _load_schema()
+    ok = {
+        "schema_version": "1",
+        "snapshot_sha256": "0" * 64,
+        "canonicalization_algorithms": {
+            "jcs-n": {"description": "d", "reference": "r", "status": "Registered"}
+        },
+        "artifact_types": {
+            "some-type": {
+                "reference": "draft-example",
+                "status": "owner-confirmed",
+                "digest_contexts": [{"purpose": "identifier", "algorithm": "jcs-n"}],
+            }
+        },
+    }
+    jsonschema.validate(ok, schema)  # must not raise
+
+
+def test_artifact_type_algorithm_must_reference_a_registered_algorithm():
+    data = {
+        "schema_version": "1",
+        "snapshot_sha256": "0" * 64,
+        "canonicalization_algorithms": {
+            "jcs-n": {"description": "d", "reference": "r", "status": "Registered"}
+        },
+        "artifact_types": {
+            "some-type": {
+                "reference": "r",
+                "status": "owner-confirmed",
+                "digest_contexts": [{"purpose": "identifier", "algorithm": "not-a-real-alg"}],
+            }
+        },
+    }
+    legal = gen_registry._parse_status_vocabulary(_MD_LINES)
+    errors = gen_registry._validate_structure(data, legal)
+    assert any("not-a-real-alg" in e for e in errors), errors
+
+
+def test_committed_registry_passes_the_algorithm_cross_reference_check():
+    data = gen_registry.generate(_REGISTRY_MD)
+    errors = gen_registry._validate_structure(
+        data,
+        gen_registry._parse_status_vocabulary(_MD_LINES),
+        gen_registry._parse_legacy_rows(_MD_LINES),
+    )
+    assert errors == [], errors
+
+
+# ---------------------------------------------------------------------------
+# Discriminating-vector / Consuming-profile field presence into registry.json
+# (AUDIT.md §C findings 1/3).
+# ---------------------------------------------------------------------------
+
+def test_algorithm_annotation_lines_are_captured_when_present():
+    lines = [
+        "## Payload Canonicalization Algorithm Registry\n",
+        "\n",
+        "| Name | Description | Reference | Status |\n",
+        "|---|---|---|---|\n",
+        "| `alg-x` | some construction | draft-example | `owner-confirmed` |\n",
+        "\n",
+        "⌙ Discriminating-vector: vectors/alg-x/case-01.json — distinguishes alg-x\n",
+        "⌙ Consuming-profile: draft-example-consumer-01\n",
+        "\n",
+        "## Next Section\n",
+    ]
+    algorithms = gen_registry._parse_algorithm_registry(lines)
+    assert algorithms["alg-x"]["discriminating_vector"] == (
+        "vectors/alg-x/case-01.json — distinguishes alg-x"
+    )
+    assert algorithms["alg-x"]["consuming_profile"] == "draft-example-consumer-01"
+
+
+def test_algorithm_annotation_lines_absent_leaves_key_absent():
+    """The whole point of finding 1/3: absence must be machine-visible, not a
+    key with an empty string that looks like it was checked and found blank."""
+    lines = [
+        "## Payload Canonicalization Algorithm Registry\n",
+        "\n",
+        "| Name | Description | Reference | Status |\n",
+        "|---|---|---|---|\n",
+        "| `alg-y` | some construction | draft-example | `owner-confirmed` |\n",
+    ]
+    algorithms = gen_registry._parse_algorithm_registry(lines)
+    assert "discriminating_vector" not in algorithms["alg-y"]
+    assert "consuming_profile" not in algorithms["alg-y"]
+
+
+def test_annotation_does_not_leak_across_rows():
+    lines = [
+        "## Payload Canonicalization Algorithm Registry\n",
+        "\n",
+        "| Name | Description | Reference | Status |\n",
+        "|---|---|---|---|\n",
+        "| `alg-a` | first | draft-example | `owner-confirmed` |\n",
+        "| `alg-b` | second | draft-example | `owner-confirmed` |\n",
+        "\n",
+        "⌙ Discriminating-vector: vectors/alg-b/case-01.json — belongs to alg-b only\n",
+    ]
+    algorithms = gen_registry._parse_algorithm_registry(lines)
+    assert "discriminating_vector" not in algorithms["alg-a"]
+    assert algorithms["alg-b"]["discriminating_vector"] == (
+        "vectors/alg-b/case-01.json — belongs to alg-b only"
+    )
+
+
+def test_machine_mandate_discriminating_vector_and_consuming_profile_present():
+    """Real-document regression: machine-mandate already carries these prose
+    lines (wrapped across several lines), so this pins that both the marker
+    match and the soft-wrap join work against the committed document."""
+    data = gen_registry.generate(_REGISTRY_MD)
+    mm = data["artifact_types"]["machine-mandate"]
+    assert mm["discriminating_vector"].startswith("mm-fail-04-representation-confusion")
+    assert mm["consuming_profile"].startswith("action-state-group/scitt-cose")
+
+
+def test_legacy_algorithm_entries_have_no_annotation_keys():
+    """jcs/jcs-n/as-transmitted predate the Entry Template's ⌙ annotation form
+    and are not retroactively required to backfill it (REGISTRY.md :613-618) --
+    generation must not invent the keys for them."""
+    data = gen_registry.generate(_REGISTRY_MD)
+    for name in ("jcs", "jcs-n", "as-transmitted", "cde-n"):
+        entry = data["canonicalization_algorithms"][name]
+        assert "discriminating_vector" not in entry
+        assert "consuming_profile" not in entry
