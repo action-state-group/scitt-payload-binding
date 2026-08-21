@@ -2,9 +2,9 @@
   "schema_version": "1",
   "canonicalization_algorithms": {
     "jcs-n": {
-      "description": "RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex",
+      "description": "Withdrawn \u2014 never carried to IANA (2026-08-18). RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex \u2014 the construction this entry named. See docs/audits/jcsn-withdrawal-audit-2026-08-18.md for the withdrawal rationale.",
       "reference": "draft-mih-sokolov-scitt-payload-binding",
-      "status": "Registered"
+      "status": "withdrawn"
     },
     "jcs": {
       "description": "RFC 8785 JCS over a JSON object (no normalization pass; null, empty-array, and empty-object members are retained as-is); SHA-256; lowercase hex",
@@ -66,5 +66,5 @@
       ]
     }
   },
-  "snapshot_sha256": "0dfb7a4af1956fa2851ec60cabe4b20e4e3c3a3662236bdc57b03387c195fc7c"
+  "snapshot_sha256": "82cc5bfc4b2a91b8ead7bd858a785046b6251e5f1c0f791dc721c6e5a4ac4e7a"
 }
