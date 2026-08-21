@@ -1,1 +1,4 @@
-.refcache/
+# The bibliographic reference cache is deliberately NOT ignored -- it is
+# committed so that builds are hermetic and survive an IETF service outage.
+# Refresh it with `make refresh-refs`.
+_ci_build/
