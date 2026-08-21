@@ -2,6 +2,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """Standalone vector integrity checker — no dependencies beyond stdlib.
 
+Usage:
+  python .github/check_vectors.py [DIR]          # check DIR (default: vectors/)
+  python .github/check_vectors.py --candidate DIR # pre-submission self-check for a
+                                                   # registrant's own CPB-shaped vectors;
+                                                   # same checks, plus an explicit disclaimer
+                                                   # that this is mechanical checking only.
+
 For every jcs-n PASS vector: independently recomputes the canonical form
 using a minimal RFC 8785 / jcs-n implementation, then verifies:
   1. Recomputed pre_image == pinned pre_image
@@ -120,6 +127,7 @@ A pinned vector that was never run is not a vector.
 """
 from __future__ import annotations
 
+import argparse
 import copy
 import hashlib
 import json
@@ -133,6 +141,17 @@ from pathlib import Path
 # \A...\Z, not ^...$: Python's $ also matches immediately before a trailing
 # newline, so a ^...$ pattern accepts "<64 hex chars>\n" as bare hex.
 _BARE_HEX_64_RE = re.compile(r"\A[0-9a-f]{64}\Z")
+
+# Printed verbatim in --candidate mode. This checker only exercises the
+# mechanical rules (arithmetic + two-sidedness coverage) -- Gates B and C in
+# the Designated Expert Admission Checklist (named consuming profile,
+# independence of the implementer census) require human judgment on evidence
+# this tool never sees, and a green run here must never be mistaken for DE
+# sign-off.
+CANDIDATE_DISCLAIMER = (
+    "mechanical checks only; Gates B/C (consuming profile, independence) are "
+    "Designated Expert judgment and are NOT checked here."
+)
 
 _WIRE_NUMBER_RE = re.compile(r'^(0|-?[1-9][0-9]*)$')
 _SAFE_INT_MAX = (1 << 53) - 1
@@ -2168,9 +2187,28 @@ def check_vectors(root: Path) -> int:
     return 1 if errors else 0
 
 
-if __name__ == "__main__":
-    root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("vectors")
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Standalone vector integrity checker — no dependencies beyond stdlib.")
+    parser.add_argument("root", nargs="?", default="vectors",
+                         help="directory to check (default: vectors)")
+    parser.add_argument("--candidate", metavar="DIR",
+                         help="pre-submission self-check for a registrant's own "
+                              "CPB-shaped vector directory; runs the identical "
+                              "checks and coverage report as a bare DIR argument, "
+                              "then prints the mechanical-checks-only disclaimer")
+    args = parser.parse_args(argv)
+
+    root = Path(args.candidate) if args.candidate is not None else Path(args.root)
     if not root.is_dir():
         print(f"error: {root} is not a directory", file=sys.stderr)
-        sys.exit(2)
-    sys.exit(check_vectors(root))
+        return 2
+
+    rc = check_vectors(root)
+    if args.candidate is not None:
+        print(CANDIDATE_DISCLAIMER)
+    return rc
+
+
+if __name__ == "__main__":
+    sys.exit(main())

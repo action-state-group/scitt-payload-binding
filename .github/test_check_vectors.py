@@ -104,3 +104,32 @@ def test_committed_vector_suite_produces_no_coverage_warnings():
         pytest.skip("vectors/ not found")
     rc = check_vectors.check_vectors(root)
     assert rc == 0
+
+
+def test_candidate_mode_runs_the_same_checks_and_prints_the_disclaimer(tmp_path, capsys):
+    """--candidate DIR is the self-service pre-submission entry point: same
+    arithmetic + coverage report as a bare DIR argument, plus an explicit,
+    unmissable disclaimer that Gates B/C are Designated Expert judgment, not
+    something this tool can check."""
+    _write_pos_only_vector(tmp_path)
+    rc = check_vectors.main(["--candidate", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "coverage 'pos-only-alg': 1 positive, 0 MUST-FAIL" in out
+    assert "WARNING: registered name 'pos-only-alg'" in out
+    assert check_vectors.CANDIDATE_DISCLAIMER in out
+
+
+def test_non_candidate_mode_does_not_print_the_disclaimer(tmp_path, capsys):
+    _write_pos_only_vector(tmp_path)
+    rc = check_vectors.main([str(tmp_path)])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert check_vectors.CANDIDATE_DISCLAIMER not in out
+
+
+def test_candidate_mode_rejects_missing_directory(capsys):
+    rc = check_vectors.main(["--candidate", "/no/such/directory"])
+    err = capsys.readouterr().err
+    assert rc == 2
+    assert "is not a directory" in err
