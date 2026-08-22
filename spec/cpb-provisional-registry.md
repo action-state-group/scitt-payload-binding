@@ -216,3 +216,145 @@ registered name.
   entry can move directly to `owner-confirmed` (Rung 3 → owner-direct,
   skipping Rung 2 — `REGISTRY.md` Entry Lifecycle) with a committed
   two-sided vector set built from the truncation-guard case above.
+
+---
+
+## Proposed: `mmr-checkpoint`
+
+**Owner:** Action State Group (`action-state-group/capsule-ledger`)
+**Reference:** `action-state-group/capsule-ledger` @ `0fef1b2` (`capsule_ledger/mmr/checkpoint.py`, `capsule_ledger/mmr/core.py`)
+**Proposed by:** ASG (owner-authored — see Disclosure)
+**DE reviewer:** Anton Sokolov — this entry promotes to the live Artifact Type
+Registry only on your confirmation of the open item below; edit or hold
+freely.
+**Disclosure:** the proposer is a co-editor of this registry; this entry is
+owner-authored and is not independent or third-party validation.
+
+### Background: the shape this entry registers
+
+`CheckpointRecord` (`checkpoint.py`) is a signed, tamper-evident snapshot of an
+MMR's peak set at a given size. As of `0fef1b2` it carries exactly ONE
+peak-set commitment (an unmerged sibling branch briefly carried a second,
+functionally-inert `peaks_digest` field alongside it; that branch was fixed to
+drop it — see `capsule-ledger` PR #71 — before this entry was drafted, so only
+one construction is ever in scope here):
+
+```
+CheckpointRecord = {
+    v: int, kind: str,                       # "1", "mmr_checkpoint"
+    mmr_size: int, root: str,                # the peak-set commitment (hex)
+    prev_size: int, prev_root: str,          # "" for the first checkpoint
+    key_id: str, timestamp: str,             # ISO 8601 UTC
+    signature: str,                          # hex HMAC-SHA256, covers the above
+    witnesses: [WitnessRecord, ...]           # optional, populated post-registration
+}
+```
+
+**Note for the DE — a shape correction against the task's own working
+assumption.** The mesh integration doc that originally proposed this entry
+(`_work/mesh-llm-capsule-architecture-2026-08-21.md` §4) sketches a
+`{log_id, peer_id, mmr_root(32B), mmr_size, prev_size, timestamp}` "checkpoint
+capsule" for posting a checkpoint off-node. `log_id` and `peer_id` are that
+sketch's own transport-wrapper fields for a consuming profile (a peer may run
+several logs; the wrapper needs to say which one) — they are NOT fields of the
+shipped `CheckpointRecord` above, which has no log/peer identity field at all
+(only `key_id`, the signer's key). This entry registers the artifact type as
+`capsule-ledger` actually emits it; a future consuming-profile entry (e.g. a
+mesh "checkpoint capsule" wrapper) would cite this entry's `root` construction
+rather than duplicate it.
+
+### Why this is Rung 3 (provisional), not a live-table entry
+
+The reference exists and the field is validated in running code (property
+tests, not a literal pinned-value KAT — see Construction below), but the
+identifier's construction is not a registered algorithm yet, and picking the
+wrong one now is a second DE round later (REGISTRY.md: entries are immutable
+in behavior once owner-confirmed).
+
+### What is settled (validated in code, not invented for this entry)
+
+Digest Context (purpose: `identifier`) — the commitment that does the actual
+verification work: `verify_checkpoint_consistency` and the rollback-detection
+check in `emit_checkpoint` compare against `root`/`prev_root` exclusively
+(`checkpoint.py`), never against the record's outer JSON envelope. That outer
+envelope (`signing_body()`, `checkpoint.py:153-165`: `json.dumps(body,
+sort_keys=True, separators=(",", ":"))` over the eight signing fields) is a
+distinct, HMAC-covered integrity digest one layer up — out of scope for this
+entry, which registers `root` itself:
+
+| Field | Value |
+|---|---|
+| Algorithm | **\[OPEN — see identifier-construction question below\]** |
+| Field set | N/A — not a JSON field set. The pre-image is the ordered list of MMR peak node hashes at `mmr_size` (`core.peaks()`, tallest-to-smallest), not a document's fields |
+| Exclusion set | none — every live peak at `mmr_size` participates |
+| Domain separation | **none**, by explicit design (`core.py` module docstring: "root = bagged peaks... NO domain-separator byte") — contrast with this same module's leaf/interior hashes, which ARE domain-separated (`leaf_hash = sha256(0x00 \|\| body_digest)`; `interior_hash = sha256(be64(position+1) \|\| left \|\| right)`). The root-bagging step alone omits it |
+| Pre-image encoding | binary, not JSON/UTF-8: iterative `sha256(right \|\| left)`, popping the two rightmost peak hashes and pushing the result back, right-to-left, until one hash remains (`core.root_from_peaks()`, `core.py:141-168`) |
+| Representation | bare 64-char lowercase hex |
+
+### Identifier-construction question for the DE
+
+`root`'s construction (`core.root_from_peaks()`) is a Merkle Mountain Range
+peak-bagging accumulator — reference-source-verified against
+`datatrails/go-datatrails-merklelog`'s `hashPeaksRHS` (MIT licensed;
+`core.py:145-154`), but not independently KAT-pinned by a published literal
+root value the way the leaf/interior hashes are (searched; none found —
+treat its provenance as property/self-consistency-tested, not KAT-pinned).
+It does not fit either registered algorithm cleanly:
+
+- Not `jcs-n`/`jcs` — there is no JSON object here at all; the pre-image is
+  raw concatenated binary hashes, not a serialized document.
+- Not obviously `as-transmitted` either — `as-transmitted`'s definition
+  (REGISTRY.md) is an octet sequence *selected* from an existing wire
+  production (e.g., a JWS component "exactly as transmitted"); `root_from_peaks`
+  instead *computes new bytes* by iteratively re-hashing, so there is no single
+  cited byte range of an existing message to point at as the "byte-boundary
+  selector" the algorithm requires.
+
+**The DE needs to pick one of:** (a) treat the published MMR peak-bagging
+construction itself as a sufficiently "named production" to qualify under
+`as-transmitted` (stating the fold procedure in place of a byte-boundary
+selector, since REGISTRY.md's existing text ties that field to "a cited named
+production" without restricting it to octet-selection alone); or (b) register
+a new Payload Canonicalization Algorithm Registry entry for this construction
+(e.g. an `mmr-bagged-peaks` token), naming the fold order, the
+no-domain-separator property, and the empty-MMR convention (32 zero bytes) as
+its normative content. Option (b) matches how `jcs`/`jcs-n` each got their own
+token for byte-distinct JSON constructions rather than being folded into one;
+option (a) is the narrower reading of an existing token. This entry does not
+propose either — REGISTRY.md is explicit that CPB editors must not fill in an
+owner's digest-context parameters on the owner's behalf, and here ASG is the
+artifact owner but the algorithm-registry decision is a DE call either way.
+
+### Candidate discriminating vector (not yet committed in CPB vector format;
+Rung 3 does not require one for provisional status)
+
+A checkpoint whose `prev_root` does not match the actual MMR root recomputed
+at `prev_size` verifies as failed under `verify_checkpoint_consistency`
+(rollback / tamper detection — `checkpoint.py`) and would pass under a naive
+verifier that checks only the HMAC signature and never re-derives `root` at
+the referenced prior size. This before/after pair is already exercised in
+`tests/test_checkpoint.py`'s `TestVerifyCheckpointConsistency` (`test_rollback_detected`,
+`test_mmr_rollback_simulation`) and is the natural Gate-A candidate once
+promoted.
+
+### Candidate consuming profile
+
+`capsule-ledger`'s own checkpoint emit/verify path (self-consuming, ships
+today). The mesh-llm "checkpoint capsule" wrapper sketched in
+`_work/mesh-llm-capsule-architecture-2026-08-21.md` §4 is a future candidate
+once that engagement names this registered type rather than inventing its own
+`mmr_root` digest context — see the shape-correction note above.
+
+### Notes for the CPB editor (non-normative)
+
+- This entry targets the provisional track per Rung 3 of the Registration
+  Ladder (`REGISTRY.md`). Filed as the second entry of this pass, gated on
+  `capsule-ledger` PR #71 (single-commitment `CheckpointRecord`, dropping the
+  unused `peaks_digest` field) landing on `capsule-ledger` `main` first — it
+  has (`0fef1b2`), so this entry describes exactly one construction, not two.
+- The field is captured and validated in running code today (rollback/tamper
+  detection over `root`); what is missing is registry-level algorithm
+  definition, not field design.
+- Promotion path: once the DE resolves the algorithm-token question above,
+  this entry can move to `owner-confirmed` with a committed discriminating
+  vector built from the rollback-detection case cited above.
