@@ -242,6 +242,7 @@ one construction is ever in scope here):
 ```
 CheckpointRecord = {
     v: int, kind: str,                       # "1", "mmr_checkpoint"
+    log_id: str,                             # "" for single-node; identifies the log in a multi-log/peer deployment
     mmr_size: int, root: str,                # the peak-set commitment (hex)
     prev_size: int, prev_root: str,          # "" for the first checkpoint
     key_id: str, timestamp: str,             # ISO 8601 UTC
@@ -250,18 +251,29 @@ CheckpointRecord = {
 }
 ```
 
-**Note for the DE — a shape correction against the task's own working
-assumption.** The mesh integration doc that originally proposed this entry
+**Note for the DE — a shape correction, corrected 2026-08-22.** The mesh
+integration doc that originally proposed this entry
 (`_work/mesh-llm-capsule-architecture-2026-08-21.md` §4) sketches a
 `{log_id, peer_id, mmr_root(32B), mmr_size, prev_size, timestamp}` "checkpoint
-capsule" for posting a checkpoint off-node. `log_id` and `peer_id` are that
-sketch's own transport-wrapper fields for a consuming profile (a peer may run
-several logs; the wrapper needs to say which one) — they are NOT fields of the
-shipped `CheckpointRecord` above, which has no log/peer identity field at all
-(only `key_id`, the signer's key). This entry registers the artifact type as
-`capsule-ledger` actually emits it; a future consuming-profile entry (e.g. a
-mesh "checkpoint capsule" wrapper) would cite this entry's `root` construction
-rather than duplicate it.
+capsule" for posting a checkpoint off-node. `peer_id` is that sketch's own
+transport-wrapper field for a consuming profile (a peer may run several logs;
+the wrapper needs to say which one) and is NOT a field of the shipped
+`CheckpointRecord`. `log_id`, however, **is** a signed field of the canonical
+CLL `CheckpointRecord` shape — see the published `capsule-emit` 0.4.0
+(`capsule_emit/checkpoint/emit.py:204`, `CheckpointRecord.signing_body()`)
+and `scitt-cose` 0.2.2 (`scitt_cose/cll.py:593`, `Checkpoint.signing_body()`),
+both of which sign `{v, kind, log_id, mmr_size, root, prev_size, prev_root,
+key_id, timestamp}` — nine fields. `log_id` is `""` for a single-node
+deployment (`capsule-ledger` never multiplexes logs) and identifies the log
+in a multi-log/multi-peer deployment. `capsule-ledger`'s own
+`CheckpointRecord` (pinned at `0fef1b2` above) had drifted from this
+canonical shape by omitting `log_id` entirely; a companion fix
+(`ldg-fix-checkpoint-logid-divergence`) unifies it back to the 9-field
+shape. This entry registers the artifact type as the canonical CLL
+construction, not the drifted 8-field shape `capsule-ledger` emitted before
+that fix; a future consuming-profile entry (e.g. a mesh "checkpoint capsule"
+wrapper) would cite this entry's `root` construction rather than duplicate
+it.
 
 ### Why this is Rung 3 (provisional), not a live-table entry
 
@@ -277,10 +289,12 @@ Digest Context (purpose: `identifier`) — the commitment that does the actual
 verification work: `verify_checkpoint_consistency` and the rollback-detection
 check in `emit_checkpoint` compare against `root`/`prev_root` exclusively
 (`checkpoint.py`), never against the record's outer JSON envelope. That outer
-envelope (`signing_body()`, `checkpoint.py:153-165`: `json.dumps(body,
-sort_keys=True, separators=(",", ":"))` over the eight signing fields) is a
-distinct, HMAC-covered integrity digest one layer up — out of scope for this
-entry, which registers `root` itself:
+envelope (`signing_body()` — canonical construction published in
+`capsule-emit` 0.4.0's `capsule_emit/checkpoint/emit.py:204` and mirrored in
+`scitt-cose` 0.2.2's `scitt_cose/cll.py:593`: `json.dumps(body,
+sort_keys=True, separators=(",", ":"))` over the **nine** signing fields,
+including `log_id`) is a distinct, HMAC-covered integrity digest one layer
+up — out of scope for this entry, which registers `root` itself:
 
 | Field | Value |
 |---|---|
