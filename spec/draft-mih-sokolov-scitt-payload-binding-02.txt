@@ -1361,10 +1361,10 @@ Internet-Draft          Canonical Payload Binding            August 2026
    +=============+======================================+=============+
    | Name        | Description                          | Reference   |
    +=============+======================================+=============+
-   | jcs         | RFC 8785 JCS over the payload with   | This        |
-   |             | the exclusion set removed, no        | document    |
+   | jcs         | RFC 8785 JCS over the octets         | This        |
+   |             | supplied to the algorithm, no        | document    |
    |             | normalization pass; SHA-256;         |             |
-   |             | lowercase hex                        |             |
+   |             | 64-character lowercase hex           |             |
    +-------------+--------------------------------------+-------------+
    | jcs-n       | Withdrawn (2026-08-18) -- never      | This        |
    |             | carried to IANA.  The token was      | document    |
@@ -2029,7 +2029,8 @@ Internet-Draft          Canonical Payload Binding            August 2026
 
    *  Karthik Rampalli (Glyphzero) — independent JCS implementation
       byte-agreement on subject_digest 0b4da06b..., demonstrating that
-      jcs-n is reproducible across separately written implementations.
+      RFC 8785 JCS is reproducible across separately written
+      implementations.
 
    *  Iman Schrock (EMILIA/EP) — confirmed 2026-07-24 — the three-
       computation single-digest instance (8cf0c36e...) demonstrating
@@ -2051,7 +2052,6 @@ Authors' Addresses
    Anton Sokolov
    Tyche Institute
    Email: anton.sokolov@tyche.institute
-
 
 
 

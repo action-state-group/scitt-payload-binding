@@ -1010,7 +1010,7 @@ Initial contents:
 
 | Name | Description | Reference |
 |---|---|---|
-| jcs | RFC 8785 JCS over the payload with the exclusion set removed, no normalization pass; SHA-256; lowercase hex | This document |
+| jcs | RFC 8785 JCS over the octets supplied to the algorithm, no normalization pass; SHA-256; 64-character lowercase hex | This document |
 | jcs-n | Withdrawn (2026-08-18) -- never carried to IANA. The token was reserved and defined a JCS-plus-absent-field-normalization construction, but that construction is not carried forward; the permanent record of the construction is draft-mih-sokolov-scitt-payload-binding-00, Section 3.1 | This document (withdrawn) |
 | cde-n | Withdrawn (2026-08-18) -- never carried to IANA. The token was reserved and stays bound; it was never assigned a definition and never will be | This document (withdrawn) |
 | as-transmitted | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex | This document |
@@ -1343,7 +1343,7 @@ confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero, confirmed
 
 * Karthik Rampalli (Glyphzero) — independent JCS implementation
   byte-agreement on `subject_digest` `0b4da06b...`, demonstrating that
-  `jcs-n` is reproducible across separately written implementations.
+  RFC 8785 JCS is reproducible across separately written implementations.
 
 * Iman Schrock (EMILIA/EP) — confirmed 2026-07-24 — the three-computation single-digest instance
   (`8cf0c36e...`) demonstrating byte-agreement across three independent
