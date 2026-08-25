@@ -2,6 +2,15 @@
 # DCO sign-off gate — every commit in a pull request must carry a
 # "Signed-off-by: Name <email>" trailer (git commit -s).
 # This replaces dependence on the hosted probot DCO app.
+#
+# Merge commits are out of scope (--no-merges). A merge commit introduces no
+# authored content of its own — its parents each carry their own sign-off, and
+# those parents are in this range and are checked. Without --no-merges the gate
+# fails on merge commits written by GitHub's own UI, which never adds a trailer:
+# both the "Merge pull request" and "Update branch" buttons produce one. That
+# turns the one required check red for a reason unrelated to any contribution,
+# and it cannot be repaired by adding a sign-off commit on top — the offending
+# commit has to be rewritten. See PR #60, blocked by 53019fa6.
 name: dco
 
 on:
@@ -24,7 +33,7 @@ jobs:
           MISSING=0
           BASE="${{ github.event.pull_request.base.sha }}"
           HEAD="${{ github.event.pull_request.head.sha }}"
-          for sha in $(git log --format='%H' "$BASE..$HEAD"); do
+          for sha in $(git log --no-merges --format='%H' "$BASE..$HEAD"); do
             body=$(git log -1 --format='%B' "$sha")
             if ! printf '%s' "$body" | grep -qiE '^Signed-off-by: .+ <.+>'; then
               echo "MISSING DCO: $sha  $(git log -1 --format='%s' "$sha")"
