@@ -1985,11 +1985,39 @@ def _run_self_tests() -> None:
 # Checker
 # ---------------------------------------------------------------------------
 
+def _coverage_warnings(coverage: dict[str, dict[str, int]]) -> list[str]:
+    """Per-registered-name positive/MUST-FAIL coverage report.
+
+    A name with vectors on only one side is flagged as a WARNING, not a
+    failure: Registration Rule 2 requires a two-sided set, but Rung 2
+    (third-party) entries cite their vectors at an external, commit-pinned
+    URL rather than committing them here (Third-Party Registration Rule 4;
+    see decision cpb-39-vector-admission-rung2) -- this checker only ever
+    sees vectors actually present under the scanned root, so an externally-
+    cited Rung 2 set is exempt by construction, not by a special case here.
+    """
+    lines: list[str] = []
+    for name in sorted(coverage):
+        counts = coverage[name]
+        pos, mf = counts["positive"], counts["must_fail"]
+        lines.append(f"coverage {name!r}: {pos} positive, {mf} MUST-FAIL")
+        if pos == 0 or mf == 0:
+            lines.append(
+                f"WARNING: registered name {name!r} vector set is not two-sided "
+                f"({pos} positive, {mf} MUST-FAIL) -- Registration Rule 2 requires "
+                f"both directions for an in-repo (Rung 1) set. Rung 2 entries citing "
+                f"an external, commit-pinned vector set are exempt from this check "
+                f"(cpb-39-vector-admission-rung2)."
+            )
+    return lines
+
+
 def check_vectors(root: Path) -> int:
     _run_self_tests()
 
     passed = skipped = failed = informative = diverged = 0
     errors: list[str] = []
+    coverage: dict[str, dict[str, int]] = {}
 
     for vec_path in sorted(root.rglob("*.json")):
         raw = vec_path.read_text(encoding="utf-8")
@@ -2010,6 +2038,11 @@ def check_vectors(root: Path) -> int:
 
         vid = v.get("id", str(vec_path))
         exclusion_set: list[str] = v.get("exclusion_set", [])
+
+        registered_name = v.get("algorithm")
+        if registered_name:
+            counts = coverage.setdefault(registered_name, {"positive": 0, "must_fail": 0})
+            counts["must_fail" if v.get("must_fail") else "positive"] += 1
 
         if v.get("diverge"):
             ok, vec_errors = _exercise_diverge(v, vid)
@@ -2128,6 +2161,8 @@ def check_vectors(root: Path) -> int:
         f"vectors: {passed} pass/exercised, {diverged} diverged, "
         f"{informative} informative, {skipped} no-check (skipped), {failed} FAILED"
     )
+    for line in _coverage_warnings(coverage):
+        print(line)
     for err in errors:
         print(err)
     return 1 if errors else 0

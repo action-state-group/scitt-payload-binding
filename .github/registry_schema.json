@@ -36,6 +36,16 @@
             "type": "string",
             "minLength": 1,
             "description": "Legal values are NOT enumerated here. The vocabulary lives in REGISTRY.md's Entry Status Vocabulary table plus its legacy mapping, and gen_registry.py validates against it by parsing that table. A second list here could only drift from the first; JSON Schema cannot read REGISTRY.md, so it checks shape and leaves vocabulary to the generator."
+          },
+          "discriminating_vector": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Verbatim text of the '⌙ Discriminating-vector:' line, when present. Presence only; content is Designated Expert judgment (Gate A), not validated here."
+          },
+          "consuming_profile": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Verbatim text of the '⌙ Consuming-profile:' line, when present. Presence only; content is Designated Expert judgment (Gate B), not validated here."
           }
         }
       }
@@ -49,10 +59,21 @@
         "additionalProperties": false,
         "properties": {
           "reference": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           },
           "status": {
             "type": "string"
+          },
+          "discriminating_vector": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Verbatim text of the '**Discriminating-vector:**' prose line, when present. Presence only; content is Designated Expert judgment (Gate A), not validated here."
+          },
+          "consuming_profile": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Verbatim text of the '**Consuming-profile:**' prose line, when present. Presence only; content is Designated Expert judgment (Gate B), not validated here."
           },
           "digest_contexts": {
             "type": "array",
@@ -61,9 +82,9 @@
               "required": ["purpose", "algorithm"],
               "additionalProperties": false,
               "properties": {
-                "purpose": {"type": "string"},
+                "purpose": {"type": "string", "minLength": 1},
                 "profile_version": {"type": "string"},
-                "algorithm": {"type": "string"},
+                "algorithm": {"type": "string", "minLength": 1},
                 "field_set": {"type": "string"},
                 "exclusion_set": {"type": "string"},
                 "domain_separation": {"type": "string"},
