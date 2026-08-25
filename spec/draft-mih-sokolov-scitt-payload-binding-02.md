@@ -273,9 +273,11 @@ them) plus a float member (`jcs` admits it, `jcs-n` rejected it), failing
 loudly in both directions. `jcs-n` is withdrawn ({{algo-jcs-n}}) — the same
 terminal-marking disposition `cde-n` already carried in -01 — following an
 implementer census (the reference implementation was the only implementer
-of the normalization step it added), a byte audit showing the corpus was
-byte-identical under plain `jcs` without that step, and the admission bar
-this revision applies to every entry: a named consuming profile. Separately,
+of the normalization step it added), a byte audit showing 191 of 203
+evaluated records were byte-identical under plain `jcs` without that step,
+the 12 divergent records being proof-of-concept artefacts retained by
+vintage, and the admission bar this revision applies to every entry: a
+named consuming profile. Separately,
 a cross-language conformance harness (`vectors/CANONICALIZATION_DECLARATION.md`)
 versions `jcs-n`'s construction precisely enough for an independent
 implementation to conform against without reading the reference library;
@@ -352,12 +354,17 @@ Digest Context:
   independent and MUST NOT be conflated.
 
 CANONICAL-DIGEST:
-: A function parameterized by a canonicalization algorithm A: given a value
-  v, CANONICAL-DIGEST(A, v) = HEX(SHA-256(A(v))), where HEX denotes
-  lowercase hexadecimal encoding and A(v) is the octet string produced by
-  the algorithm applied to v. The specific pre-image construction — field
-  selection, normalization, and encoding — is part of A's definition and
-  is registered per {{iana-alg}}.
+: A function parameterized by a canonicalization algorithm A: for any such
+  algorithm A and payload v, CANONICAL-DIGEST(A, v) = ENCODE_A(H_A(A(v))),
+  where H_A is the digest function and ENCODE_A the output encoding
+  declared by A's entry in the Canonicalization Algorithm Registry
+  ({{iana-alg}}). Every entry registered by this document declares SHA-256
+  and 64-character lowercase hexadecimal; an entry registered by a later
+  document MAY declare another digest function or encoding, and a verifier
+  MUST read both from the entry rather than assuming them. A(v) is the
+  octet string produced by the algorithm applied to v; the specific
+  pre-image construction — field selection, normalization, and encoding —
+  is part of A's definition and is registered per {{iana-alg}}.
 
 Signed Statement:
 : A COSE_Sign1 object {{RFC9052}} that carries a payload, a protected
@@ -414,8 +421,11 @@ because its value is JSON null, an empty array, or an empty object.
 
 Pre-image construction:
 
-1. Apply JCS {{RFC8785}} to the payload with the exclusion set removed
-   ({{derived-id}}), to produce the canonical UTF-8 octet string.
+1. Apply JCS {{RFC8785}} to the octets supplied to the algorithm, to
+   produce the canonical UTF-8 octet string. Exclusion-set removal is not
+   part of this algorithm: the derived identifier construction
+   ({{derived-id}}) removes the payload class's declared exclusion set
+   before invoking the algorithm.
 
 2. Compute SHA-256 over those octets.
 
@@ -426,7 +436,7 @@ The CANONICAL-DIGEST of a payload P using `jcs` is therefore:
 
 ~~~
 CANONICAL-DIGEST(jcs, P) =
-    lowercase_hex(SHA-256(JCS(P minus exclusion_set)))
+    lowercase_hex(SHA-256(JCS(P)))
 ~~~
 
 The exclusion set is matched against the top-level member names of P only;
@@ -446,9 +456,11 @@ algorithm.
 ## Algorithm jcs-n (Withdrawn) {#algo-jcs-n}
 
 Algorithm `jcs-n` is withdrawn (2026-08-18) -- terminal marking, never
-deletion, the same disposition as `cde-n` ({{algo-cde-n}}): the token stays
-bound, the definition it once carried is not reassigned, and it is never
-carried forward to IANA. `jcs-n` applied JCS {{RFC8785}} to an
+deletion: the token stays bound, the definition it once carried is not
+reassigned, and it is never carried forward to IANA. That is a terminal
+marking that `cde-n` ({{algo-cde-n}}) also carries, though on different
+facts: `cde-n` never acquired a definition, while `jcs-n` did and its
+records remain verifiable by vintage. `jcs-n` applied JCS {{RFC8785}} to an
 absent-field-normalized JSON object -- the normalization step removed,
 bottom-up and recursively, every member whose value was JSON null, an empty
 array, or an empty object, before JCS serialization. The full original
@@ -458,18 +470,30 @@ here.
 
 The withdrawal followed from an implementer census (the reference
 implementation was the only implementer of the normalization step), a byte
-audit showing the corpus was byte-identical under plain `jcs` without it, and
-the admission bar this document now applies to every entry: a named
+audit showing 191 of 203 evaluated records were byte-identical under plain
+`jcs` without it, the 12 divergent records being proof-of-concept artefacts
+retained by vintage, and the admission bar this document now applies to
+every entry: a named
 consuming profile. `jcs` ({{algo-jcs}}) is the entry that replaces it going
 forward; a payload class or typed digest reference that named `jcs-n` used
 the withdrawn construction described above, and a party citing that
 historical construction going forward registers a new entry rather than
 resuming use of this token.
 
-A payload class or typed digest reference that names `jcs-n` cannot be
-verified: the token names a withdrawn algorithm, so a verifier encountering
-it MUST fail closed — MUST NOT report the payload class or typed digest
-reference as verified.
+Withdrawal forecloses new declarations of `jcs-n`; it does not
+retroactively invalidate records already sealed under it. A payload class
+or typed digest reference that names `jcs-n` MUST NOT be newly declared. A
+verifier encountering `jcs-n` in a record committed on or after 2026-08-18
+MUST fail closed — MUST NOT report the payload class or typed digest
+reference as verified. A verifier encountering `jcs-n` in a record
+committed before 2026-08-18 MAY verify it against the withdrawn
+construction as that construction is permanently recorded in
+draft-mih-sokolov-scitt-payload-binding-00, Section 3.1; such a record is a
+historical record, not a live conformance case, and a verifier that
+declines to implement the withdrawn construction MUST report the reference
+as unverified rather than as failed. A historical identifier MUST NOT be
+relabelled to another algorithm token or recomputed under another
+algorithm.
 
 ## Algorithm cde-n (Withdrawn) {#algo-cde-n}
 
@@ -539,8 +563,10 @@ id = CANONICAL-DIGEST(A, payload minus exclusion_set)
 
 where A is the canonicalization algorithm declared by the payload class and
 the exclusion set is the set of fields declared by the payload class as
-self-referential or chain-linkage fields. The derived identifier is a 64-character
-lowercase hex string when A is `jcs`.
+self-referential or chain-linkage fields. The derived identifier is a
+64-character lowercase hex string for every algorithm this document
+registers; for an algorithm registered elsewhere, its representation is the
+one that algorithm's registry entry declares.
 
 The exclusion set MUST be declared by the payload class in its specification.
 Fields excluded are those that either contain the derived identifier itself
@@ -625,9 +651,13 @@ alone. Unknown VDS identifiers MUST be rejected.
 
 ## Leaf Construction {#leaf-rule}
 
-When a Transparency Service keys its log on the derived identifier of a
-record, the log leaf MUST be computed over the raw bytes of the derived
-identifier, not over its hex-string encoding.
+This profile imposes no leaf construction on a Verifiable Data Structure.
+Where a Transparency Service's VDS keys its log on the derived identifier,
+the derived identifier is a 32-byte value and its hexadecimal form is a
+representation of that value ({{representation}}); a VDS or profile that
+keys on it therefore states which of the two it uses, and producer and
+verifier MUST use the same one. The following is the failure this
+requirement exists to prevent.
 
 That is, for a derived identifier whose string value is a 64-character
 hex string D, the log leaf input MUST be the raw 32-byte value:
@@ -980,18 +1010,20 @@ Initial contents:
 
 | Name | Description | Reference |
 |---|---|---|
-| jcs | RFC 8785 JCS over the payload with the exclusion set removed, no normalization pass; SHA-256; lowercase hex | This document |
+| jcs | RFC 8785 JCS over the octets supplied to the algorithm, no normalization pass; SHA-256; 64-character lowercase hex | This document |
 | jcs-n | Withdrawn (2026-08-18) -- never carried to IANA. The token was reserved and defined a JCS-plus-absent-field-normalization construction, but that construction is not carried forward; the permanent record of the construction is draft-mih-sokolov-scitt-payload-binding-00, Section 3.1 | This document (withdrawn) |
 | cde-n | Withdrawn (2026-08-18) -- never carried to IANA. The token was reserved and stays bound; it was never assigned a definition and never will be | This document (withdrawn) |
 | as-transmitted | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex | This document |
 
-A payload class or typed digest reference naming `cde-n` or `jcs-n` MUST NOT
-be treated as verifiable. Both are withdrawn: the reserved entries bound
-their tokens, so the tokens stay bound, never assigned (or, for `jcs-n`,
-never reassigned to a new definition), never reassigned. Both withdrawals
-are recorded terminal states, not deletions. A verifier encountering either
-token MUST fail closed (MUST NOT report verified). See {{algo-cde-n}} and
-{{algo-jcs-n}}.
+A payload class or typed digest reference naming `cde-n` MUST NOT be
+treated as verifiable under any vintage: the token was bound by a reserved
+entry but never assigned a definition, so no construction exists to verify
+against, and a verifier encountering it MUST fail closed. A payload class
+or typed digest reference naming `jcs-n` MUST NOT be newly declared;
+records committed under it before 2026-08-18 are governed by the vintage
+rule in {{algo-jcs-n}}. Both withdrawals are recorded terminal states, not
+deletions: the tokens stay bound and are never assigned or reassigned. See
+{{algo-cde-n}} and {{algo-jcs-n}}.
 
 An artifact type MUST NOT declare `as-transmitted` without a byte-boundary
 selector that cites a named production in the container specification
@@ -1182,14 +1214,20 @@ Public record: Glyphzero PEDIGREE delegation record, IETF 126 hackathon.
 
 **What ran:** Two independently written RFC 8785 JCS implementations —
 Glyphzero's (Rampalli), used to produce its PEDIGREE delegation records
-{{I-D.rampalli-pedigree}}, and the AAC reference implementation — each
-computed `jcs-n` over the same delegation record. Both produced `subject_digest`
-`0b4da06b...` without any coordination on byte ordering or normalization
-beyond the algorithm definition.
+{{I-D.rampalli-pedigree}}, and the AAC reference implementation — computed
+a digest over the same delegation record and both produced
+`subject_digest` `0b4da06b...` without any coordination on byte ordering
+beyond RFC 8785 itself. The record carried no null, empty-array or
+empty-object member, so the absent-field normalization pass `jcs-n` added
+to JCS did not apply to it; the agreement is an agreement about RFC 8785
+JCS, which is the part `jcs` ({{algo-jcs}}) carries forward.
 
-**Mechanism illustrated:** {{algo-jcs-n}}. `jcs-n` is reproducible across
-separately written implementations. The agreement was not premeditated; it
-emerged from two systems applying the same algorithm independently.
+**Mechanism illustrated:** {{algo-jcs}}. RFC 8785 JCS is reproducible
+across separately written implementations. The agreement was not
+premeditated; it emerged from two systems applying the same algorithm
+independently. This instance does not evidence an independent
+implementation of the withdrawn normalization pass, and the implementer
+census ({{algo-jcs-n}}) records that there was none.
 
 **Consent:** Karthik Rampalli (Glyphzero) confirmed 2026-07-25 (email, with corrections).
 
@@ -1305,7 +1343,7 @@ confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero, confirmed
 
 * Karthik Rampalli (Glyphzero) — independent JCS implementation
   byte-agreement on `subject_digest` `0b4da06b...`, demonstrating that
-  `jcs-n` is reproducible across separately written implementations.
+  RFC 8785 JCS is reproducible across separately written implementations.
 
 * Iman Schrock (EMILIA/EP) — confirmed 2026-07-24 — the three-computation single-digest instance
   (`8cf0c36e...`) demonstrating byte-agreement across three independent
