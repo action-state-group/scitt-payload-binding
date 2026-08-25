@@ -24,7 +24,8 @@ jobs:
           MISSING=0
           BASE="${{ github.event.pull_request.base.sha }}"
           HEAD="${{ github.event.pull_request.head.sha }}"
-          for sha in $(git log --format='%H' "$BASE..$HEAD"); do
+          # Merge commits carry no authored content, so they're excluded from the gate.
+          for sha in $(git log --no-merges --format='%H' "$BASE..$HEAD"); do
             body=$(git log -1 --format='%B' "$sha")
             if ! printf '%s' "$body" | grep -qiE '^Signed-off-by: .+ <.+>'; then
               echo "MISSING DCO: $sha  $(git log -1 --format='%s' "$sha")"
