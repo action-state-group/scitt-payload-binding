@@ -290,6 +290,22 @@ Independently reproduced byte-for-byte, including condition-removed
 mutants confirming each of the five negatives discriminates rather than
 pattern-matches (PR #4 thread, 2026-08-11).
 
+### `haltseal-public-resolve-receipt`
+
+**Owner:** Meridian Verity Group LLC
+**Reference:** `meridianverity/haltseal` @ `6e1e4c1fabf97cf057cc3299dafb09c2ffe182c3`,
+`docs/public-resolve/RECEIPT_PROFILE.md`
+**Status:** owner-confirmed
+
+**Discriminating-vector:** [DE REVIEW — to be resolved in this draft PR]
+**Consuming-profile:** [DE REVIEW — to be resolved in this draft PR]
+
+| Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
+|---|---|---|---|---|---|---|---|
+| `identifier` | `haltseal-public-resolve-1` | `as-transmitted` | byte-boundary selector — RFC 7515 §5.1 JWS Signing Input (`BASE64URL(protected header) || "." || BASE64URL(payload)`) of the compact-JWS receipt | N/A (`as-transmitted` has no field set) | none | N/A (no separate encoding step) | bare 64-character lowercase hex |
+
+The CPB-derived identifier is distinct from, and does not replace, the receipt payload's application-level `jti`.
+
 Proposed Artifact Type entries awaiting their owners' confirmation are listed in
 [`spec/cpb-provisional-registry.md`](spec/cpb-provisional-registry.md).
 
