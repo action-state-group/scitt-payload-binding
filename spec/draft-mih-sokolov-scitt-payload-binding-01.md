@@ -256,7 +256,7 @@ Algorithm Registry ({{iana-alg}}) are:
 
 | Name | Summary | Reference |
 |---|---|---|
-| jcs-n | JCS + absent-field normalization; SHA-256; lowercase hex output | {{algo-jcs-n}} |
+| jcs-n | Withdrawn (2026-08-18) -- never carried to IANA. JCS + absent-field normalization; SHA-256; lowercase hex output, retained as historical record | {{algo-jcs-n}} (withdrawn) |
 | cde-n | Withdrawn -- token reserved, never assigned a definition | {{algo-cde-n}} (withdrawn) |
 | as-transmitted | No canonicalization; digest over a byte sequence fixed by a cited named production in the container format; SHA-256; 64-character lowercase hex | {{algo-as-transmitted}} |
 
@@ -266,11 +266,33 @@ A reserved entry binds its token only; its summary is provisional until the
 entry is defined, at which point the full entry becomes immutable. A reserved
 entry may instead be withdrawn ({{algo-cde-n}}), which is terminal: the token
 stays bound, no definition is ever assigned, and the name is not reassigned.
-The hash function is part of each algorithm's definition; migration to a
+A previously-registered, fully-defined entry may likewise be withdrawn
+({{algo-jcs-n}}): the withdrawal is equally terminal and equally not a
+deletion — the definition already registered is retained unedited as the
+historical record of the construction, the token stays bound and is not
+reassigned, and no new record may declare it. The hash function is part of
+each algorithm's definition; migration to a
 different hash (for example, a future post-quantum function) is performed by
 registering a new algorithm entry, never by reinterpreting an existing one.
 
-## Algorithm jcs-n {#algo-jcs-n}
+## Algorithm jcs-n (Withdrawn) {#algo-jcs-n}
+
+**Withdrawal (2026-08-18).** `jcs-n` is withdrawn entirely: a recorded
+terminal state, not a deletion, the same disposition as {{algo-cde-n}}. The
+definition below is retained unedited as the permanent, content-addressed
+record of the construction IETF-126-era implementations built and this
+document's -00 revision describes; it is not a live registration going
+forward. Three facts motivated the withdrawal: the implementer census found
+`jcs-n`'s population was Action State alone; a byte audit of every held
+production record found the normalization step operationally inert (byte-
+identical to plain JCS) on all of them, with divergence confined to
+non-evidentiary demo artefacts; and the entry names no consuming profile,
+failing this document's own admission bar. If a tolerant-ingest use case
+ever materializes, it registers a fresh entry with domain separation
+designed in, rather than reviving this token. No new record may declare
+`jcs-n`; a record already committed under it prior to withdrawal remains
+verifiable by vintage. See {{iana-alg}} for the registry entry and the
+audit table it cites.
 
 Algorithm `jcs-n` is the JSON Canonicalization Scheme {{RFC8785}} applied to
 an absent-field-normalized JSON object, followed by SHA-256.
@@ -815,10 +837,20 @@ Initial contents:
 
 | Name | Description | Reference |
 |---|---|---|
-| jcs-n | RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex | This document |
+| jcs-n | Withdrawn (2026-08-18) -- never carried to IANA. RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex -- the construction this entry named, retained as historical record | This document (withdrawn) |
 | cde-n | Withdrawn (2026-08-18) -- never carried to IANA. The token was reserved and stays bound; it was never assigned a definition and never will be | This document (withdrawn) |
 | as-transmitted | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex | This document |
 | json-sk-cp | RFC 8785 subset. Object members serialized in ascending key order by Unicode code point; no insignificant whitespace; UTF-8 encoding; no member removal (null, empty array and empty object members are retained and serialized); numbers restricted to integers, since ES6 number formatting per RFC 8785 §3.2.2 is not implemented. Digest: SHA-256. Representation: lowercase hex. | This document (registration text: Anton Sokolov, Tyche Institute) |
+
+A payload class or typed digest reference naming `jcs-n` in a NEW record
+MUST NOT be treated as verifiable. `jcs-n` is withdrawn entirely (2026-08-18),
+the same disposition as `cde-n`: a recorded terminal state, not a deletion --
+the token stays bound, is never reassigned, and its definition ({{algo-jcs-n}})
+is retained unedited as the permanent record of the construction. A record
+already committed under `jcs-n` prior to withdrawal remains verifiable
+against it by vintage; withdrawal forecloses new use, it does not invalidate
+digests correctly computed under the algorithm as registered. See
+{{algo-jcs-n}}.
 
 A payload class or typed digest reference naming `cde-n` MUST NOT be
 treated as verifiable. `cde-n` is withdrawn: the reserved entry bound its

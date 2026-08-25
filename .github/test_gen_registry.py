@@ -336,9 +336,10 @@ class TestMalformedRowsFailClosed:
 def test_legacy_rows_are_a_closed_list_read_from_registry_md():
     rows = gen_registry._parse_legacy_rows(_MD_LINES)
     # Hardcoded on purpose: a second, independent reading of the document's
-    # closed list. cde-n predates the vocabulary too but carries the vocabulary
-    # term `withdrawn`, so it is not among the rows keeping a legacy spelling.
-    assert rows == {"jcs-n", "as-transmitted", "agent-action-capsule"}, rows
+    # closed list. jcs-n and cde-n both predate the vocabulary too but both
+    # now carry the vocabulary term `withdrawn`, so neither is among the rows
+    # keeping a legacy spelling.
+    assert rows == {"as-transmitted", "agent-action-capsule"}, rows
 
 
 def test_a_new_entry_cannot_use_a_legacy_spelling():
@@ -364,7 +365,7 @@ def test_a_new_entry_cannot_use_a_legacy_spelling():
 
     assert any("legacy spelling" in e for e in check("brand-new-alg", "Registered")), \
         "a new entry was allowed to use a legacy spelling"
-    assert check("jcs-n", "Registered") == [], \
+    assert check("as-transmitted", "Registered") == [], \
         "a row that predates the vocabulary must keep its spelling"
     assert check("brand-new-alg", "owner-confirmed") == [], \
         "a new entry using a vocabulary term verbatim must pass"
