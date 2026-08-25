@@ -189,12 +189,11 @@ This document does not define:
 
 * Artifact types and their digest contexts — which named categories of
   structured content exist, what fields and exclusion sets each declares,
-  and which purpose labels its digest contexts use. A payload profile that
-  uses CPB as its binding layer declares its own artifact types and
-  maintains its own registry of them; CPB defines only the typed-reference
-  container ({{typed-refs}}) and the algorithm by which a resolved digest
-  context is verified. (See {{I-D.mih-scitt-agent-action-capsule}} for the
-  profile that declares this document's example artifact types.)
+  and which purpose labels its digest contexts use. Artifact types are
+  registered in the shared Artifact Type Registry, governed separately from
+  this document; CPB defines only the algorithms and the typed-reference
+  container they use. (See {{I-D.mih-scitt-agent-action-capsule}} for an
+  example payload profile that registers artifact types there.)
 
 * Application meaning — the real-world interpretation of any record
   anchored via this construction.
@@ -216,20 +215,29 @@ converged on — is registered in its place. The rest of this revision
 consolidates registry, canonicalization, and conformance-checker work
 landed since -01 was posted, and rescopes the document to its charter.
 
-**Charter rescope.** This document no longer defines the Artifact Type
-Registry or any artifact-type-specific payload-shape rule. That machinery —
-the registration template, the purpose-label vocabulary, and both live
-entries (`agent-action-capsule`, `machine-mandate`) — moves to
-{{I-D.mih-scitt-agent-action-capsule}}, which absorbs it as the profile
-that declares payload meaning over this document's binding layer. The
-worked walkthrough of Artifact-Type-Registry governance (Specification
-Required / Designated Expert / third-party registration) that -01 carried
-as an appendix is removed, not moved — the receiving profile can write its
-own if one is wanted. This document now anchors {{RFC9995}} and keeps only
-the canonicalization algorithm(s), the derived identifier, Signed-Statement
-and Receipt binding, and the typed digest-reference container; the
-Abstract's former claim that this document governs "the artifact types" is
-corrected.
+**Charter rescope.** This document no longer normatively defines the
+Artifact Type Registry or any artifact-type-specific payload-shape rule.
+What changes is governance ownership, not location: `REGISTRY.md` does not
+move, and stays in this repository as the shared home for both registries
+this document's ecosystem uses. The Canonicalization Algorithm Registry
+({{iana-alg}}) remains CPB-normative. The Artifact Type Registry — its
+registration template, the purpose-label vocabulary, and both live entries
+(`agent-action-capsule`, `machine-mandate`) — is governed separately, by
+its own Designated Expert checklist and registration rungs already stated
+in `REGISTRY.md`, and this document references that registry rather than
+defining it. It is a single shared registry, not a per-profile one:
+{{I-D.mih-scitt-agent-action-capsule}} registers artifact types there
+alongside any other payload profile that wants to, TRACE, EMILIA, PEDIGREE,
+HaltSeal, and GAR among them, each citing a CPB algorithm for its
+canonicalization; no one profile owns the registry. The worked walkthrough
+of Artifact-Type-Registry governance (Specification Required / Designated
+Expert / third-party registration) that -01 carried as an appendix is
+removed from this document, not moved — it belongs beside the registry it
+documents, in `REGISTRY.md`, where it already lives. This document now
+anchors {{RFC9995}} and keeps only the canonicalization algorithm(s), the
+derived identifier, Signed-Statement and Receipt binding, and the typed
+digest-reference container; the Abstract's former claim that this document
+governs "the artifact types" is corrected.
 
 **Registry.**
 
@@ -245,8 +253,9 @@ corrected.
   removal/correction path, and Designated Expert review stated explicitly
   as a precondition of merging an entry rather than a status a merged entry
   can still assert. This infrastructure is shared by every registry this
-  file hosts, including the Artifact Type Registry that
-  {{I-D.mih-scitt-agent-action-capsule}} now owns.
+  file hosts, including the shared Artifact Type Registry, which
+  {{I-D.mih-scitt-agent-action-capsule}} registers into alongside every
+  other payload profile that does — no single profile owns it.
 * The registry generator and validator now source legal status values from
   `REGISTRY.md` itself instead of a hardcoded list, and reject a malformed
   table row (mismatched cell/header count) closed instead of silently
@@ -688,8 +697,8 @@ A typed digest reference is a JSON object with the following fields:
 
 | Field | Type | Req | Meaning |
 |---|---|---|---|
-| type | string | REQUIRED | The artifact type identifier. This document defines the reference container and its verification algorithm; it does not itself register artifact types or resolve `type` values to digest contexts. That resolution is provided by the payload profile that declares the cited artifact type (see {{I-D.mih-scitt-agent-action-capsule}} for an example). |
-| purpose | string | CONDITIONAL | The purpose label selecting which of the artifact type's digest contexts this reference targets, drawn from the vocabulary the declaring profile's registry defines. REQUIRED whenever the resolved artifact type declares more than one digest context. MAY be omitted only when the resolved artifact type declares exactly one digest context, in which case that single context applies; a verifier MUST NOT infer a default when more than one context is declared. |
+| type | string | REQUIRED | The artifact type identifier. This document defines the reference container and its verification algorithm; it does not itself register artifact types or resolve `type` values to digest contexts. That resolution is provided by the shared Artifact Type Registry, into which the payload profile that declares the cited artifact type registers it (see {{I-D.mih-scitt-agent-action-capsule}} for an example). |
+| purpose | string | CONDITIONAL | The purpose label selecting which of the artifact type's digest contexts this reference targets, drawn from the vocabulary the type's entry in the shared Artifact Type Registry defines. REQUIRED whenever the resolved artifact type declares more than one digest context. MAY be omitted only when the resolved artifact type declares exactly one digest context, in which case that single context applies; a verifier MUST NOT infer a default when more than one context is declared. |
 | digest_alg | string | REQUIRED | The hash algorithm of the digest value (e.g., "SHA-256"). The canonicalization context of the cited artifact is resolved from the digest context selected by `type` and `purpose`, not from this field. |
 | digest | string | REQUIRED | The digest of the cited artifact, in the representation declared by the selected digest context. |
 
@@ -967,15 +976,18 @@ intended to be anchored.
 # IANA Considerations {#iana}
 
 This document requests the creation of one new IANA registry, the
-Canonicalization Algorithm Registry, under a "Canonical Payload Binding"
-heading. The registry uses the Specification Required policy
-({{RFC8126}}, Section 4.6); a Designated Expert is required for each
-registration. This document defines no Artifact Type registry: an artifact
-type's digest-context declaration is maintained by the payload profile that
-defines the artifact type, not by this document (see {{outofscope}}). This
-revision's entries reflect a deliberate correction over -01's: the registry
-was re-derived from what the field actually built, rather than restated
-from what -01 originally specified ({{changes-01}}).
+Canonicalization Algorithm Registry ({{iana-alg}}), under a "Canonical
+Payload Binding" heading. The registry uses the Specification Required
+policy ({{RFC8126}}, Section 4.6); a Designated Expert is required for each
+registration. This document does not define an Artifact Type registry:
+artifact types are registered in the shared Artifact Type Registry in
+`REGISTRY.md`, governed separately from this document under its own
+Designated Expert checklist and registration rungs; this document
+references that registry (see {{outofscope}}) but does not define it. This
+revision's Canonicalization Algorithm Registry entries reflect a deliberate
+correction over -01's: the registry was re-derived from what the field
+actually built, rather than restated from what -01 originally specified
+({{changes-01}}).
 
 Registry entries are immutable. A registered entry defines a specific
 algorithm. If a behavior change is needed, a new entry MUST be registered;
