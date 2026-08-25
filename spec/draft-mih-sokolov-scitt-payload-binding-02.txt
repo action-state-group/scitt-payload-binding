@@ -34,8 +34,9 @@ Abstract
    canonicalization algorithms; entries are immutable.  This document
    defines no payload content formats and registers no artifact types;
    the artifact types that a typed reference may cite, and their
-   meaning, are declared by the payload profiles that use this
-   construction as their binding layer.
+   meaning, are registered in a single shared Artifact Type Registry,
+   governed separately from this document, that payload profiles
+   register into.
 
 Note to Readers
 
@@ -49,7 +50,6 @@ Note to Readers
    The source of this document and the companion interop record are
    maintained at: https://github.com/action-state-group/scitt-payload-
    binding
-
 
 
 
@@ -295,10 +295,9 @@ Internet-Draft          Canonical Payload Binding            August 2026
    REGISTRY.md, and this document references that registry rather than
    defining it.  It is a single shared registry, not a per-profile one:
    [I-D.mih-scitt-agent-action-capsule] registers artifact types there
-   alongside any other payload profile that wants to, TRACE, EMILIA,
-   PEDIGREE, HaltSeal, and GAR among them, each citing a CPB algorithm
-   for its canonicalization; no one profile owns the registry.  The
-   worked walkthrough of Artifact-Type-Registry governance
+   alongside any other payload profile that wants to, each citing a CPB
+   algorithm for its canonicalization; no one profile owns the registry.
+   The worked walkthrough of Artifact-Type-Registry governance
    (Specification Required / Designated Expert / third-party
    registration) that -01 carried as an appendix is removed from this
    document, not moved — it belongs beside the registry it documents, in
@@ -328,6 +327,7 @@ Internet-Draft          Canonical Payload Binding            August 2026
       including the shared Artifact Type Registry, which
       [I-D.mih-scitt-agent-action-capsule] registers into alongside
       every other payload profile that does — no single profile owns it.
+
 
 
 

@@ -118,8 +118,9 @@ digest is computed from structured content so that independently written
 implementations converge on the same bytes. An IANA registry governs the canonicalization
 algorithms; entries are immutable. This document defines no payload content
 formats and registers no artifact types; the artifact types that a typed
-reference may cite, and their meaning, are declared by the payload profiles
-that use this construction as their binding layer.
+reference may cite, and their meaning, are registered in a single shared
+Artifact Type Registry, governed separately from this document, that
+payload profiles register into.
 
 --- note_Note_to_Readers
 
@@ -227,9 +228,8 @@ its own Designated Expert checklist and registration rungs already stated
 in `REGISTRY.md`, and this document references that registry rather than
 defining it. It is a single shared registry, not a per-profile one:
 {{I-D.mih-scitt-agent-action-capsule}} registers artifact types there
-alongside any other payload profile that wants to, TRACE, EMILIA, PEDIGREE,
-HaltSeal, and GAR among them, each citing a CPB algorithm for its
-canonicalization; no one profile owns the registry. The worked walkthrough
+alongside any other payload profile that wants to, each citing a CPB
+algorithm for its canonicalization; no one profile owns the registry. The worked walkthrough
 of Artifact-Type-Registry governance (Specification Required / Designated
 Expert / third-party registration) that -01 carried as an appendix is
 removed from this document, not moved — it belongs beside the registry it
