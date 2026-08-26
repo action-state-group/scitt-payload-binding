@@ -556,25 +556,82 @@ satisfy Gate A — it demonstrates compatibility, not distinguishability.
    - Third-party entries: fill all fields from public artifacts and complete the `Registrant`
      field with the self-attestation.
    - Provisional entries: file in `spec/cpb-provisional-registry.md`, not in the live tables.
-3. **Open a pull request** against `main` on the upstream repository.
+3. **Validate before you submit.** Run your discriminating vectors through the same
+   mechanical checker the CI gate and the Designated Expert use, before opening the PR:
+
+   ```sh
+   make validate-entry DIR=path/to/your/vectors
+   ```
+
+   This is self-service and requires no push — it runs entirely against your own fork. See
+   [Validate before you submit](#validate-before-you-submit) below for the exact output,
+   including what a failing (one-direction-only) submission looks like.
+4. **Open a pull request** against `main` on the upstream repository.
    PR title convention: `registry: add <name> to <Registry Name>`.
-4. **CI must pass.** The repository CI gate runs five workflows (`dco`, `neutrality`,
-   `python`, `spec`, `vectors`); of these, `dco` and `neutrality` have no path filter and run
-   on every PR, while `python`, `spec`, and `vectors` are scoped to `lib/**`, `spec/**`, and
-   `vectors/**` respectively and do not run on a `REGISTRY.md`-only change. **None of these
-   checks structural validity of the registry tables** — no CI job verifies template
-   conformance, column counts, or required-field presence in `REGISTRY.md`. A PR with failing
-   CI will not be merged, but a green CI run is not evidence the registry-table edit itself is
-   well-formed. A structural registry-table checker is planned; track progress on the open
-   issue. Until it lands, the CPB editor and Designated Expert are the only gates — a
-   conforming-looking PR that omits a required field (e.g. `Discriminating-vector`,
-   `Consuming-profile`, `Disclosure`, `Vectors`) will merge without automated complaint.
-   Reviewers MUST verify required fields manually against this template, and the DE MUST
-   verify all three gates in the
+5. **CI must pass.** The repository CI gate runs seven workflows (`dco`, `neutrality`,
+   `candidate-validate`, `python`, `registry`, `spec`, `vectors`). `dco` and `neutrality` have
+   no path filter and run on every PR. `candidate-validate` and `vectors` are scoped to
+   `vectors/**` (and, for `candidate-validate`, also run on forks — it reruns step 3's exact
+   check against the PR head, using the checker version from `main` rather than the PR's own
+   copy, so a PR cannot weaken the checker it is graded against). `python` and `spec` are
+   scoped to `lib/**` and `spec/**` respectively. `registry` is the one that will read a
+   registry PR: it is scoped to `REGISTRY.md`, the generator, the schema, and `registry.json`,
+   and it runs `gen_registry.py --check`, the cell-fidelity test, JSON Schema validation, and a
+   `snapshot_sha256` integrity check.
+
+   **What `registry` does catch — the failure most likely to bite you.** A table row whose
+   cell count does not match its headers is a hard error, not a warning: `gen_registry.py`
+   raises `malformed table row: expected 8 cells ... got N` and the job fails. The usual cause
+   is an unescaped `|` inside a backticked span — write `` `A \| B` ``, not `` `A | B` ``,
+   anywhere a pipe appears in cell text. `registry` also fails if you edit `REGISTRY.md`
+   without regenerating `registry.json`; run `python3 .github/gen_registry.py` and commit both
+   files together.
+
+   **What no gate catches, and what therefore stays a human job.** No CI job verifies
+   **required-field presence**. A new entry that declares itself `owner-confirmed` while
+   omitting `Discriminating-vector`, `Consuming-profile`, `Vectors`, and `Disclosure`
+   regenerates cleanly and passes the whole `registry` gate green — verified by injecting
+   exactly that entry, not assumed. Nor does any job evaluate the Designated Expert Admission
+   Checklist's Gates A/B/C (discriminating vector, consuming profile, independence); those are
+   human judgment on evidence CI never sees, and `gen_registry.py` says so in its own output on
+   every run. So a PR with failing CI will not be merged, but a green CI run is evidence only
+   that the tables parse and `registry.json` is in sync — not that the entry is well-formed
+   against this template, and not that it is admissible. Reviewers MUST verify required fields
+   manually against this template, and the DE MUST verify all three gates in the
    [Designated Expert Admission Checklist](#designated-expert-admission-checklist).
-5. **Maintainer review.** A CPB editor reviews for completeness, accuracy, and policy
+6. **Maintainer review.** A CPB editor reviews for completeness, accuracy, and policy
    compliance. For third-party entries, the editor notifies the owner.
-6. **Merge.** On approval, the entry moves into the live tables in `REGISTRY.md`.
+7. **Merge.** On approval, the entry moves into the live tables in `REGISTRY.md`.
+
+### Validate before you submit
+
+`make validate-entry DIR=<dir>` (equivalently, `python3 .github/check_vectors.py --candidate
+<dir>`) runs your CPB-shaped vectors through the identical arithmetic checks and per-entry
+two-sidedness coverage report the CI gate runs, entirely locally against your own fork — no
+push required. It is mechanical only: it cannot and does not evaluate Gates B/C of the
+[Designated Expert Admission Checklist](#designated-expert-admission-checklist) (named
+consuming profile, independence of evidence), and says so in its own output.
+
+**Worked example — a one-direction-only submission (the failing case):** a candidate directory
+with a single positive vector for a new registered name and no `must_fail` counterpart —
+exactly the gap Registration Rule 2 requires closed before admission:
+
+```sh
+$ make validate-entry DIR=path/to/pos-only-alg
+python3 .github/check_vectors.py --candidate "path/to/pos-only-alg"
+vectors: 1 pass/exercised, 0 diverged, 0 informative, 0 no-check (skipped), 0 FAILED
+coverage 'pos-only-alg': 1 positive, 0 MUST-FAIL
+WARNING: registered name 'pos-only-alg' vector set is not two-sided (1 positive, 0 MUST-FAIL) -- Registration Rule 2 requires both directions for an in-repo (Rung 1) set. Rung 2 entries citing an external, commit-pinned vector set are exempt from this check (cpb-39-vector-admission-rung2).
+mechanical checks only; Gates B/C (consuming profile, independence) are Designated Expert judgment and are NOT checked here.
+```
+
+`0 FAILED` alone would look like a clean pass — the coverage line is the actual signal here:
+the fix is to add a `must_fail` vector for the same registered name. Exit code is still `0`
+(a coverage gap is a warning, not a hard failure, per the Rung 2 exemption above); read the
+WARNING line, not just the exit code.
+
+Registry PRs from forks get the same verdict automatically in CI — see the
+`candidate-validate` workflow.
 
 ### Entry Template
 

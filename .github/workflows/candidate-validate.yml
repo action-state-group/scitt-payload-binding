@@ -1,0 +1,66 @@
+# SPDX-License-Identifier: Apache-2.0
+# Self-service mechanical validation for registry PRs, including from forks.
+#
+# Reuses the fork-safe pull_request_target discipline documented in
+# neutrality.yml -- READ THAT FILE'S "WHY pull_request_target" comment before
+# editing this one; the reasoning is not repeated in full here.
+#
+# This gate needs no secret (check_vectors.py takes no external input), but
+# pull_request_target still earns its keep for a different reason: under a
+# plain `pull_request` trigger, a fork PR supplies its own version of
+# .github/check_vectors.py -- a submitter could weaken the checker in the
+# same PR that adds a weak vector set, and CI would show green for a check
+# that never actually ran. pull_request_target always runs the workflow AND
+# the scripts it invokes from the BASE branch, so the checker a registrant
+# sees here is the same one the Designated Expert trusts, not one the PR
+# controls.
+#
+# Same safety properties as neutrality.yml apply and must be preserved:
+#   1. This workflow and check_vectors.py always come from the base branch.
+#   2. The PR's files are checked out into ./pr as INERT DATA -- check_vectors.py
+#      only ever reads them as vector JSON, never executes anything from ./pr.
+#   3. No step runs, builds, or installs anything from ./pr.
+#   4. persist-credentials: false on both checkouts.
+#   5. permissions: contents: read -- the job can do nothing else.
+#
+# >>> IF YOU ADD A STEP THAT RUNS, BUILDS, OR INSTALLS ANYTHING FROM ./pr,
+# >>> STOP. See neutrality.yml.
+name: candidate-validate
+
+on:
+  pull_request_target:
+    paths: ["vectors/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-validate:
+    runs-on: ubuntu-latest
+    steps:
+      # Base repo — TRUSTED. Supplies check_vectors.py.
+      - name: Checkout base (trusted — provides the checker)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # PR head — UNTRUSTED, checked out as data only. Never executed.
+      - name: Checkout pull request head into ./pr (inert data — never executed)
+        if: github.event_name == 'pull_request_target'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          persist-credentials: false
+          allow-unsafe-pr-checkout: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Candidate vector validation (mechanical checks only; see disclaimer in output)
+        env:
+          CANDIDATE_ROOT: ${{ github.event_name == 'pull_request_target' && 'pr/vectors' || 'vectors' }}
+        run: python .github/check_vectors.py --candidate "$CANDIDATE_ROOT"
