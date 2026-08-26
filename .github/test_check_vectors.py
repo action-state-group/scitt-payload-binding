@@ -133,3 +133,48 @@ def test_candidate_mode_rejects_missing_directory(capsys):
     err = capsys.readouterr().err
     assert rc == 2
     assert "is not a directory" in err
+
+
+def test_candidate_mode_grades_the_directory_it_is_given_not_the_checkout_root(
+    tmp_path, capsys, monkeypatch
+):
+    """candidate-validate.yml runs the checker from the BASE checkout against
+    the PR head unpacked at ./pr -- `check_vectors.py --candidate pr/vectors`
+    with the base's own vectors/ sitting right there in the working directory.
+
+    That layout is exactly the shape of a gate that silently grades the wrong
+    tree: if the path argument were ignored, or resolved against the script's
+    own location, CI would score the base's (always-green) vectors and report
+    success for a PR it never read. The mutation probe below is what makes
+    this test carrying rather than decorative -- it asserts the checker
+    NOTICES a defect that exists only in the given directory.
+    """
+    base = tmp_path / "base"
+    (base / "vectors").mkdir(parents=True)
+    _write_pos_only_vector(base / "vectors", name="base-alg")
+
+    pr = tmp_path / "base" / "pr"
+    (pr / "vectors").mkdir(parents=True)
+    _write_pos_only_vector(pr / "vectors", name="pr-alg")
+
+    # Run from the base checkout root, as the workflow does.
+    monkeypatch.chdir(base)
+
+    rc = check_vectors.main(["--candidate", "pr/vectors"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    # The PR's registered name is the one graded; the base's is not read.
+    assert "coverage 'pr-alg':" in out
+    assert "coverage 'base-alg':" not in out
+
+    # Mutation probe: break a digest that exists ONLY in the PR tree. A gate
+    # reading the base tree would stay green here.
+    victim = pr / "vectors" / "one-direction-only" / "pos-only-01.json"
+    vector = json.loads(victim.read_text())
+    vector["digest"] = "0" * 64
+    victim.write_text(json.dumps(vector), encoding="utf-8")
+
+    rc = check_vectors.main(["--candidate", "pr/vectors"])
+    out = capsys.readouterr().out
+    assert rc == 1, "checker did not read the directory it was given"
+    assert "1 FAILED" in out
