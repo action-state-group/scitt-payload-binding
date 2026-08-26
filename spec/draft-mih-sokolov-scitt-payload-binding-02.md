@@ -1,7 +1,7 @@
 ---
 title: "Canonical Payload Binding: A Signed Statement Construction Profile"
 abbrev: "Canonical Payload Binding"
-docname: draft-mih-sokolov-scitt-payload-binding-01
+docname: draft-mih-sokolov-scitt-payload-binding-02
 category: std
 submissiontype: IETF
 ipr: trust200902
@@ -98,12 +98,6 @@ informative:
       - ins: Y. Lee
         name: Yong Bok Lee
         organization: Meridian Verity Group
-  OCI-image-spec:
-    title: "OCI Image Format Specification, Version 1.1.0"
-    target: https://specs.opencontainers.org/image-spec/
-    author:
-      - org: Open Container Initiative
-    date: 2024
 
 --- abstract
 
@@ -117,8 +111,16 @@ the Canonical Payload Binding — so that each payload class declares its
 canonicalization algorithm and exclusion set once, obtains an interoperable
 derived identifier, and inherits statement-to-receipt binding and typed
 digest reference semantics without restating the mechanics in every profile.
-IANA registries govern both the canonicalization algorithms and the artifact
-types that may appear in typed references; entries are immutable.
+It complements the COSE Hash Envelope mechanism defined in RFC 9995: where
+that mechanism signals that a Signed Statement's payload is a digest
+standing in for content held elsewhere, this document defines how that
+digest is computed from structured content so that independently written
+implementations converge on the same bytes. An IANA registry governs the canonicalization
+algorithms; entries are immutable. This document defines no payload content
+formats and registers no artifact types; the artifact types that a typed
+reference may cite, and their meaning, are registered in a single shared
+Artifact Type Registry, governed separately from this document, that
+payload profiles register into.
 
 --- note_Note_to_Readers
 
@@ -129,7 +131,7 @@ The short name "Canonical Payload Binding" and the document title are
 expected to be settled by the adopting working group.
 
 The source of this document and the companion interop record are maintained
-at: https://github.com/action-state-group/agent-action-capsule
+at: https://github.com/action-state-group/scitt-payload-binding
 
 --- middle
 
@@ -145,7 +147,16 @@ by digest — but they have been restated independently in every profile that
 needed them, with small variations that defeat interoperability.
 
 This document extracts those four moves into a single reusable profile
-called the Canonical Payload Binding (CPB). It is derived from
+called the Canonical Payload Binding (CPB). CPB is the missing piece the COSE
+Hash Envelope mechanism {{RFC9995}} deliberately leaves open: RFC 9995 defines
+how a Signed Statement signals that its payload field carries a hash rather
+than the content itself, but it does not say how that hash is computed from
+structured content so that two independently written implementations arrive
+at the same bytes. CPB fills that gap and stops there — it defines the
+canonicalization algorithm, the derived identifier it produces, the binding
+of that identifier to a Signed Statement and its Receipt, and a typed
+reference mechanism for citing other digests, and it defines nothing about
+what the hashed content means. CPB is derived from
 {{I-D.mih-scitt-agent-action-capsule}} (§Conventions, §envelope, §registration,
 §identity), which first stated the construction in a SCITT context, and
 generalized at the IETF 126 hackathon in Vienna, where seven parties
@@ -155,18 +166,19 @@ Other frozen artifacts retained separately declared digest contexts. ORPRG
 retained its CP-JSON-2 context and was represented in the interop design through a typed reference rather
 than through an assertion of cross-profile digest equality. Digests remain
 governed by their original contexts; CPB does not relabel an ORPRG CP-JSON-2
-commitment as jcs-n. The provenance is stated here once and not repeated in
-subsequent sections.
+commitment as a CPB canonicalization algorithm's output. The provenance is
+stated here once and not repeated in subsequent sections.
 
 For generic citation-binding verification, a CPB verifier can process a
-typed reference to any registered artifact type. Whether a particular
-citation slot permits that artifact type is determined by the consuming
-profile. Artifact-specific appraisal, authorization semantics, and
-application integration remain separate.
+typed reference to any artifact type whose digest context it can resolve.
+Whether a particular citation slot permits that artifact type is determined
+by the consuming profile. Artifact-specific appraisal, authorization
+semantics, and application integration remain separate.
 
-Supporting a newly registered artifact type does not require a new generic
-citation-binding algorithm. It may still require consuming-profile
-integration and artifact-specific appraisal.
+Supporting a new artifact type requires no change to this document's
+citation-binding algorithm. Declaring the type, its digest context, and its
+meaning is a matter for the payload profile that defines it; it may also
+require consuming-profile integration and artifact-specific appraisal.
 
 ## Out of Scope {#outofscope}
 
@@ -175,6 +187,14 @@ This document does not define:
 * Payload semantics — what fields a payload contains, what their values mean,
   or what verdicts or decisions are carried. Those belong to payload profiles
   that use CPB as their binding layer.
+
+* Artifact types and their digest contexts — which named categories of
+  structured content exist, what fields and exclusion sets each declares,
+  and which purpose labels its digest contexts use. Artifact types are
+  registered in the shared Artifact Type Registry, governed separately from
+  this document; CPB defines only the algorithms and the typed-reference
+  container they use. (See {{I-D.mih-scitt-agent-action-capsule}} for an
+  example payload profile that registers artifact types there.)
 
 * Application meaning — the real-world interpretation of any record
   anchored via this construction.
@@ -186,6 +206,128 @@ This document does not define:
 * Transports — how registration requests or retrieval queries travel between
   producers, Transparency Services, or verifiers.
 
+# Changes from -01 {#changes-01}
+
+The most consequential correction since -01 is registry-level: the registry
+was re-derived from what the field actually built, not from what -01
+originally specified. `jcs-n`, live and Registered in -01, is withdrawn;
+`jcs` — the construction every independent implementation actually
+converged on — is registered in its place. The rest of this revision
+consolidates registry, canonicalization, and conformance-checker work
+landed since -01 was posted, and rescopes the document to its charter.
+
+**Charter rescope.** This document no longer normatively defines the
+Artifact Type Registry or any artifact-type-specific payload-shape rule.
+What changes is governance ownership, not location: `REGISTRY.md` does not
+move, and stays in this repository as the shared home for both registries
+this document's ecosystem uses. The Canonicalization Algorithm Registry
+({{iana-alg}}) remains CPB-normative. The Artifact Type Registry — its
+registration template, the purpose-label vocabulary, and both live entries
+(`agent-action-capsule`, `machine-mandate`) — is governed separately, by
+its own Designated Expert checklist and registration rungs already stated
+in `REGISTRY.md`, and this document references that registry rather than
+defining it. It is a single shared registry, not a per-profile one:
+{{I-D.mih-scitt-agent-action-capsule}} registers artifact types there
+alongside any other payload profile that wants to, each citing a CPB
+algorithm for its canonicalization; no one profile owns the registry. The worked walkthrough
+of Artifact-Type-Registry governance (Specification Required / Designated
+Expert / third-party registration) that -01 carried as an appendix is
+removed from this document, not moved — it belongs beside the registry it
+documents, in `REGISTRY.md`, where it already lives. This document now
+anchors {{RFC9995}} and keeps only the canonicalization algorithm(s), the
+derived identifier, Signed-Statement and Receipt binding, and the typed
+digest-reference container; the Abstract's former claim that this document
+governs "the artifact types" is corrected.
+
+**Registry.**
+
+* A machine-readable `registry.json` is now generated by CI from
+  `REGISTRY.md`; releases pin a snapshot. A lookup against an identifier
+  absent from the pinned snapshot but potentially valid in a later snapshot
+  now returns a distinct verdict, `id-unknown-to-snapshot`, rather than
+  being indistinguishable from a genuinely unknown identifier.
+* `REGISTRY.md` gained an onboarding ladder and a controlled entry-status
+  vocabulary (`owner-confirmed`, `third-party-documented`, `provisional`,
+  `standards-referenced`), a three-rung registration path (owner-authored /
+  third-party-documented / provisional) with a template, lifecycle, and
+  removal/correction path, and Designated Expert review stated explicitly
+  as a precondition of merging an entry rather than a status a merged entry
+  can still assert. This infrastructure is shared by every registry this
+  file hosts, including the shared Artifact Type Registry, which
+  {{I-D.mih-scitt-agent-action-capsule}} registers into alongside every
+  other payload profile that does — no single profile owns it.
+* The registry generator and validator now source legal status values from
+  `REGISTRY.md` itself instead of a hardcoded list, and reject a malformed
+  table row (mismatched cell/header count) closed instead of silently
+  mis-assigning columns; a small number of rows that predate the controlled
+  vocabulary are named explicitly as the only ones permitted a legacy
+  status spelling.
+* A `Reserved` placeholder token no longer reads as `Verified`: registry
+  lookups previously returned a "verified" verdict on entry presence alone;
+  a distinct `VERDICT_RESERVED` verdict now applies to any entry present
+  but not in `Registered` status.
+* The required-fields table, the "immutable" language, and the
+  upgrade-acknowledgment gate were corrected: the required-fields table is
+  scoped to new entries; "immutable" is stated consistently as "immutable
+  in behavior"; and the acknowledgment gate now requires the same
+  consuming-profile acknowledgment for an upgrade to `owner-confirmed` that
+  it already required for initial admission, closing a path where an owner
+  could file without an acknowledgment and self-acknowledge afterward.
+
+**Canonicalization algorithms.** `jcs` — plain RFC 8785 JCS, no
+normalization pass — is registered ({{algo-jcs}}), with a named consuming
+profile and a discriminating vector against `jcs-n`: one payload carrying a
+null member and an empty array (`jcs` preserves both, `jcs-n` stripped
+them) plus a float member (`jcs` admits it, `jcs-n` rejected it), failing
+loudly in both directions. `jcs-n` is withdrawn ({{algo-jcs-n}}) — the same
+terminal-marking disposition `cde-n` already carried in -01 — following an
+implementer census (the reference implementation was the only implementer
+of the normalization step it added), a byte audit showing 191 of 203
+evaluated records were byte-identical under plain `jcs` without that step,
+the 12 divergent records being proof-of-concept artefacts retained by
+vintage, and the admission bar this revision applies to every entry: a
+named consuming profile. Separately,
+a cross-language conformance harness (`vectors/CANONICALIZATION_DECLARATION.md`)
+versions `jcs-n`'s construction precisely enough for an independent
+implementation to conform against without reading the reference library;
+it stands as part of the permanent historical record for the now-withdrawn
+algorithm. The lowercase-`\u` string-escaping rule and the corresponding
+control-character sort order — properties of RFC 8785 JCS itself, and
+therefore shared by `jcs` and the withdrawn `jcs-n` alike — are now stated
+in prose and cross-linked from `REGISTRY.md`. The shared JCS serialization
+helper also now rejects non-finite numeric values (`Infinity`, `-Infinity`,
+`NaN`) before serialization, consistent with RFC 8785 Section 3.2.2.3
+admitting finite values only.
+
+**Digest determinism and typed references.** Two paragraphs now state
+explicitly what -01 only implied: each algorithm entry and each artifact
+type's digest-context declaration names exactly one hash algorithm, so
+`digest_alg` is fully determined by `type` (together with `purpose` where
+needed) for any registered reference, and a verifier encountering a
+`digest_alg` inconsistent with the resolved context MUST treat it as a
+failure and MUST NOT attempt to reconcile it ({{comparability}}). A
+MUST-FAIL/PASS vector pair pins that an assembled pre-image — one built
+from selected source fields rather than the payload minus an exclusion
+set — is under-determined by algorithm and field set alone; producer-chosen
+member naming and nesting are part of the bytes. Two conformance-checker
+categories exercise this: recomputing both pinned pre-images and asserting
+they diverge for exactly the demonstrated reason, and applying a declared
+`member_mapping` to assert it reproduces the vector's own input. Contributed
+by Rul1an as an external submission, reproduced independently against the
+reference canonicalizer.
+
+**Conformance checker.** A grammar/wire-layer conformance checker
+(`cpb-check`) validates a record against its declared profile grammar — a
+presence-and-number-form walk and duplicate-key rejection — built around a
+duplicate-preserving raw-bytes lexer, since a standard JSON parser silently
+drops duplicate keys before any rule can see them; digest recomputation and
+`canonicalization_id` resolution remain out of scope pending a later gate.
+Vector-harness fixes landed alongside it: the lexer now rejects trailing
+bytes after a JSON document ends and NFC-normalizes before duplicate-key
+detection, and an inverted must-fail assertion and a `-0`/duplicate-key gap
+that could previously let the harness certify a vector as passing for the
+wrong reason are both closed.
+
 # Conventions and Definitions {#conventions}
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
@@ -195,11 +337,12 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 as shown here.
 
 Payload Class:
-: A named category of structured content that has declared: a
-  canonicalization algorithm (from the registry in {{iana-alg}}), an
-  exclusion set of fields that are omitted from the canonical form before
-  the derived identifier is computed, and an entry in the Artifact Type
-  registry ({{iana-art}}).
+: A named category of structured content that has declared a canonicalization
+  algorithm (from the registry in {{iana-alg}}) and an exclusion set of
+  fields that are omitted from the canonical form before the derived
+  identifier is computed. A payload class is declared by the payload profile
+  that defines it; this document does not maintain a registry of payload
+  classes or artifact types.
 
 Derived Identifier:
 : The content-address of a payload: the output of CANONICAL-DIGEST applied
@@ -215,16 +358,22 @@ Digest Context:
   and the representation of the output. Two digest values are comparable
   only when their full digest contexts are established as compatible. A
   payload class or artifact type MAY declare more than one digest context
-  over the same payload, each serving a distinct purpose ({{iana-art}}); the
-  contexts are independent and MUST NOT be conflated.
+  over the same payload, each serving a distinct purpose declared by the
+  payload profile that defines the class or type; the contexts are
+  independent and MUST NOT be conflated.
 
 CANONICAL-DIGEST:
-: A function parameterized by a canonicalization algorithm A: given a value
-  v, CANONICAL-DIGEST(A, v) = HEX(SHA-256(A(v))), where HEX denotes
-  lowercase hexadecimal encoding and A(v) is the octet string produced by
-  the algorithm applied to v. The specific pre-image construction — field
-  selection, normalization, and encoding — is part of A's definition and
-  is registered per {{iana-alg}}.
+: A function parameterized by a canonicalization algorithm A: for any such
+  algorithm A and payload v, CANONICAL-DIGEST(A, v) = ENCODE_A(H_A(A(v))),
+  where H_A is the digest function and ENCODE_A the output encoding
+  declared by A's entry in the Canonicalization Algorithm Registry
+  ({{iana-alg}}). Every entry registered by this document declares SHA-256
+  and 64-character lowercase hexadecimal; an entry registered by a later
+  document MAY declare another digest function or encoding, and a verifier
+  MUST read both from the entry rather than assuming them. A(v) is the
+  octet string produced by the algorithm applied to v; the specific
+  pre-image construction — field selection, normalization, and encoding —
+  is part of A's definition and is registered per {{iana-alg}}.
 
 Signed Statement:
 : A COSE_Sign1 object {{RFC9052}} that carries a payload, a protected
@@ -256,7 +405,8 @@ Algorithm Registry ({{iana-alg}}) are:
 
 | Name | Summary | Reference |
 |---|---|---|
-| jcs-n | Withdrawn (2026-08-18) -- never carried to IANA. JCS + absent-field normalization; SHA-256; lowercase hex output, retained as historical record | {{algo-jcs-n}} (withdrawn) |
+| jcs | Plain RFC 8785 JCS, no normalization pass; SHA-256; lowercase hex output | {{algo-jcs}} |
+| jcs-n | Withdrawn -- JCS + absent-field normalization; never carried to IANA | {{algo-jcs-n}} (withdrawn) |
 | cde-n | Withdrawn -- token reserved, never assigned a definition | {{algo-cde-n}} (withdrawn) |
 | as-transmitted | No canonicalization; digest over a byte sequence fixed by a cited named production in the container format; SHA-256; 64-character lowercase hex | {{algo-as-transmitted}} |
 
@@ -264,77 +414,95 @@ Entries in the Canonicalization Algorithm Registry are immutable: new
 behavior requires a new entry, never a retroactive edit to an existing one.
 A reserved entry binds its token only; its summary is provisional until the
 entry is defined, at which point the full entry becomes immutable. A reserved
-entry may instead be withdrawn ({{algo-cde-n}}), which is terminal: the token
-stays bound, no definition is ever assigned, and the name is not reassigned.
-A previously-registered, fully-defined entry may likewise be withdrawn
-({{algo-jcs-n}}): the withdrawal is equally terminal and equally not a
-deletion — the definition already registered is retained unedited as the
-historical record of the construction, the token stays bound and is not
-reassigned, and no new record may declare it. The hash function is part of
-each algorithm's definition; migration to a
-different hash (for example, a future post-quantum function) is performed by
-registering a new algorithm entry, never by reinterpreting an existing one.
+entry may instead be withdrawn ({{algo-cde-n}}, {{algo-jcs-n}}), which is
+terminal: the token stays bound, no definition is ever assigned (or, for an
+entry that was already defined, no further definition ever attaches to it),
+and the name is not reassigned. The hash function is part of each algorithm's
+definition; migration to a different hash (for example, a future
+post-quantum function) is performed by registering a new algorithm entry,
+never by reinterpreting an existing one.
 
-## Algorithm jcs-n (Withdrawn) {#algo-jcs-n}
+## Algorithm jcs {#algo-jcs}
 
-**Withdrawal (2026-08-18).** `jcs-n` is withdrawn entirely: a recorded
-terminal state, not a deletion, the same disposition as {{algo-cde-n}}. The
-definition below is retained unedited as the permanent, content-addressed
-record of the construction IETF-126-era implementations built and this
-document's -00 revision describes; it is not a live registration going
-forward. Three facts motivated the withdrawal: the implementer census found
-`jcs-n`'s population was Action State alone; a byte audit of every held
-production record found the normalization step operationally inert (byte-
-identical to plain JCS) on all of them, with divergence confined to
-non-evidentiary demo artefacts; and the entry names no consuming profile,
-failing this document's own admission bar. If a tolerant-ingest use case
-ever materializes, it registers a fresh entry with domain separation
-designed in, rather than reviving this token. No new record may declare
-`jcs-n`; a record already committed under it prior to withdrawal remains
-verifiable by vintage. See {{iana-alg}} for the registry entry and the
-audit table it cites.
-
-Algorithm `jcs-n` is the JSON Canonicalization Scheme {{RFC8785}} applied to
-an absent-field-normalized JSON object, followed by SHA-256.
+Algorithm `jcs` is the JSON Canonicalization Scheme {{RFC8785}} applied
+directly to the payload, with no normalization pass: no member is removed
+because its value is JSON null, an empty array, or an empty object.
 
 Pre-image construction:
 
-1. Normalize the input: remove, bottom-up and recursively, every member whose
-   value is JSON null, an empty array (zero elements), or an empty object
-   (zero members). Members explicitly set to a non-null value are not removed.
-   Apply this normalization after the exclusion set is removed ({{derived-id}})
-   and before JCS serialization. The semantic equivalence among JSON null, an
-   empty array, an empty object, and the absence of a field is a payload-class
-   (profile) decision; `jcs-n` defines only the byte construction after the
-   profile's declared normalization has been applied.
+1. Apply JCS {{RFC8785}} to the octets supplied to the algorithm, to
+   produce the canonical UTF-8 octet string. Exclusion-set removal is not
+   part of this algorithm: the derived identifier construction
+   ({{derived-id}}) removes the payload class's declared exclusion set
+   before invoking the algorithm.
 
-2. Apply JCS {{RFC8785}} to produce the canonical UTF-8 octet string.
+2. Compute SHA-256 over those octets.
 
-3. Compute SHA-256 over those octets.
-
-4. Encode the digest as lowercase hexadecimal. The output is a 64-character
+3. Encode the digest as lowercase hexadecimal. The output is a 64-character
    ASCII string.
 
-Additional constraint: monetary and quantity values anywhere in a payload
-using `jcs-n` MUST be exact decimal strings, not JSON floating-point numbers
-({{RFC8259}} number values that are not integers). A float in a digest-bearing
-field cannot be reproduced deterministically across implementations.
-
-The CANONICAL-DIGEST of a payload P using `jcs-n` is therefore:
+The CANONICAL-DIGEST of a payload P using `jcs` is therefore:
 
 ~~~
-CANONICAL-DIGEST(jcs-n, P) =
-    lowercase_hex(SHA-256(JCS(normalize(P minus exclusion_set))))
+CANONICAL-DIGEST(jcs, P) =
+    lowercase_hex(SHA-256(JCS(P)))
 ~~~
 
 The exclusion set is matched against the top-level member names of P only;
 a member of the same name nested inside a member's value is not removed.
 
-This algorithm is Suite 1 of this profile. The four codebases demonstrating
-byte agreement at IETF 126 all used `jcs-n` in shared, declared contexts; all
-are valid under `jcs-n` without modification. Independently written
-implementations produced byte-identical `subject_digest` values for the same
-input, with no coordination beyond the specification; see Appendix C.
+`jcs` places no additional restriction on JSON numbers beyond RFC 8785 itself:
+a JSON floating-point number is permitted and is serialized per the
+canonical ECMAScript-based number-to-string procedure RFC 8785 {{RFC8785}}
+Section 3.2.2.3 defines for IEEE 754 double-precision values. Two conforming
+implementations that parse the same numeric literal into the same
+double-precision value therefore produce byte-identical output; see
+{{floats}}. A payload profile MAY still declare its own stricter constraint
+(for example, requiring monetary fields to be exact decimal strings) — such a
+constraint is a payload-profile decision, not a requirement of this
+algorithm.
+
+## Algorithm jcs-n (Withdrawn) {#algo-jcs-n}
+
+Algorithm `jcs-n` is withdrawn (2026-08-18) -- terminal marking, never
+deletion: the token stays bound, the definition it once carried is not
+reassigned, and it is never carried forward to IANA. That is a terminal
+marking that `cde-n` ({{algo-cde-n}}) also carries, though on different
+facts: `cde-n` never acquired a definition, while `jcs-n` did and its
+records remain verifiable by vintage. `jcs-n` applied JCS {{RFC8785}} to an
+absent-field-normalized JSON object -- the normalization step removed,
+bottom-up and recursively, every member whose value was JSON null, an empty
+array, or an empty object, before JCS serialization. The full original
+construction is the permanent record in
+draft-mih-sokolov-scitt-payload-binding-00, Section 3.1, and is not restated
+here.
+
+The withdrawal followed from an implementer census (the reference
+implementation was the only implementer of the normalization step), a byte
+audit showing 191 of 203 evaluated records were byte-identical under plain
+`jcs` without it, the 12 divergent records being proof-of-concept artefacts
+retained by vintage, and the admission bar this document now applies to
+every entry: a named
+consuming profile. `jcs` ({{algo-jcs}}) is the entry that replaces it going
+forward; a payload class or typed digest reference that named `jcs-n` used
+the withdrawn construction described above, and a party citing that
+historical construction going forward registers a new entry rather than
+resuming use of this token.
+
+Withdrawal forecloses new declarations of `jcs-n`; it does not
+retroactively invalidate records already sealed under it. A payload class
+or typed digest reference that names `jcs-n` MUST NOT be newly declared. A
+verifier encountering `jcs-n` in a record committed on or after 2026-08-18
+MUST fail closed — MUST NOT report the payload class or typed digest
+reference as verified. A verifier encountering `jcs-n` in a record
+committed before 2026-08-18 MAY verify it against the withdrawn
+construction as that construction is permanently recorded in
+draft-mih-sokolov-scitt-payload-binding-00, Section 3.1; such a record is a
+historical record, not a live conformance case, and a verifier that
+declines to implement the withdrawn construction MUST report the reference
+as unverified rather than as failed. A historical identifier MUST NOT be
+relabelled to another algorithm token or recomputed under another
+algorithm.
 
 ## Algorithm cde-n (Withdrawn) {#algo-cde-n}
 
@@ -390,7 +558,7 @@ byte-boundary selector is:
 CANONICAL-DIGEST(as-transmitted, B) = lowercase_hex(SHA-256(B))
 ~~~
 
-Digest: SHA-256, 64-character lowercase hex, matching `jcs-n`. These are
+Digest: SHA-256, 64-character lowercase hex, matching `jcs`. These are
 stated explicitly here as part of this entry, not inherited silently from
 the generic CANONICAL-DIGEST definition ({{conventions}}).
 
@@ -404,8 +572,10 @@ id = CANONICAL-DIGEST(A, payload minus exclusion_set)
 
 where A is the canonicalization algorithm declared by the payload class and
 the exclusion set is the set of fields declared by the payload class as
-self-referential or chain-linkage fields. The derived identifier is a 64-character
-lowercase hex string when A is `jcs-n`.
+self-referential or chain-linkage fields. The derived identifier is a
+64-character lowercase hex string for every algorithm this document
+registers; for an algorithm registered elsewhere, its representation is the
+one that algorithm's registry entry declares.
 
 The exclusion set MUST be declared by the payload class in its specification.
 Fields excluded are those that either contain the derived identifier itself
@@ -453,8 +623,8 @@ A Signed Statement carrying a CPB-bound payload MUST be a COSE_Sign1
 * `kid` or `x5chain`: the signing key identifier or certificate chain.
 * `content_type`: the media type of the payload, as `application/CLASS+json`
   or `application/CLASS+cbor` according to the serialization the payload
-  class declares, where CLASS is the payload class name registered in the
-  Artifact Type Registry ({{iana-art}}).
+  class declares, where CLASS is the payload class name as declared by the
+  payload class's own defining specification.
 
 A field belongs in the protected header only if a SCITT-generic party — a
 Transparency Service registration policy or a profile-unaware verifier —
@@ -490,9 +660,13 @@ alone. Unknown VDS identifiers MUST be rejected.
 
 ## Leaf Construction {#leaf-rule}
 
-When a Transparency Service keys its log on the derived identifier of a
-record, the log leaf MUST be computed over the raw bytes of the derived
-identifier, not over its hex-string encoding.
+This profile imposes no leaf construction on a Verifiable Data Structure.
+Where a Transparency Service's VDS keys its log on the derived identifier,
+the derived identifier is a 32-byte value and its hexadecimal form is a
+representation of that value ({{representation}}); a VDS or profile that
+keys on it therefore states which of the two it uses, and producer and
+verifier MUST use the same one. The following is the failure this
+requirement exists to prevent.
 
 That is, for a derived identifier whose string value is a 64-character
 hex string D, the log leaf input MUST be the raw 32-byte value:
@@ -523,9 +697,9 @@ A typed digest reference is a JSON object with the following fields:
 
 | Field | Type | Req | Meaning |
 |---|---|---|---|
-| type | string | REQUIRED | The artifact type, from the Artifact Type Registry ({{iana-art}}). |
-| purpose | string | CONDITIONAL | The purpose label ({{iana-art}}) selecting which of the artifact type's digest contexts this reference targets. REQUIRED whenever the resolved artifact type registers more than one digest context. MAY be omitted only when the resolved artifact type registers exactly one digest context, in which case that single context applies; a verifier MUST NOT infer a default when more than one context is registered. |
-| digest_alg | string | REQUIRED | The hash algorithm of the digest value (e.g., "SHA-256"). The canonicalization context of the cited artifact is resolved from the digest context selected by `type` and `purpose` ({{iana-art}}), not from this field. |
+| type | string | REQUIRED | The artifact type identifier. This document defines the reference container and its verification algorithm; it does not itself register artifact types or resolve `type` values to digest contexts. That resolution is provided by the shared Artifact Type Registry, into which the payload profile that declares the cited artifact type registers it (see {{I-D.mih-scitt-agent-action-capsule}} for an example). |
+| purpose | string | CONDITIONAL | The purpose label selecting which of the artifact type's digest contexts this reference targets, drawn from the vocabulary the type's entry in the shared Artifact Type Registry defines. REQUIRED whenever the resolved artifact type declares more than one digest context. MAY be omitted only when the resolved artifact type declares exactly one digest context, in which case that single context applies; a verifier MUST NOT infer a default when more than one context is declared. |
+| digest_alg | string | REQUIRED | The hash algorithm of the digest value (e.g., "SHA-256"). The canonicalization context of the cited artifact is resolved from the digest context selected by `type` and `purpose`, not from this field. |
 | digest | string | REQUIRED | The digest of the cited artifact, in the representation declared by the selected digest context. |
 
 Additional fields MAY be present and MUST be ignored by verifiers that do
@@ -544,12 +718,13 @@ present but not verified. Two situations produce that outcome and a
 verifier MUST distinguish them in what it reports, because they call for
 different responses:
 
-* The type is absent from the Artifact Type Registry. Nothing is
-  registered under that name, and the citation becomes verifiable only
-  once a conforming entry exists.
-* The type is absent from the particular registry snapshot the verifier
-  holds, which may predate an entry that does exist. The remedy is to
-  obtain a current snapshot, not to seek a registration.
+* The type is absent from every registry the verifier consults. No payload
+  profile has declared a digest context under that name, and the citation
+  becomes verifiable only once one does.
+* The type is declared somewhere, but absent from the particular registry
+  snapshot the verifier holds, which may predate an entry that does exist.
+  The remedy is to obtain a current snapshot, not to seek a new
+  registration.
 
 A verifier that reports these as one condition sends an implementer to fix
 the wrong thing. A verifier that cannot tell them apart -- because it holds
@@ -558,30 +733,20 @@ may be stale.
 
 The consuming profile determines the disposition, and a profile MUST state
 what it does with a present-but-not-verified reference. A citation carrying
-an unregistered `type` is not an error in the citing record. It is also not
+an unresolvable `type` is not an error in the citing record. It is also not
 evidence: {{immutable-coordinates}} requires that citations pin content by
 CANONICAL-DIGEST precisely so that an unverified reference cannot be relied
 on, so a profile MUST NOT treat "not an error" as permission to proceed as
-though the reference had verified. See {{appendix-d}} for a worked example.
-
-A third party MAY author an Artifact Type Registry entry for an
-externally-defined artifact type without requiring participation by the
-body that owns or defines that type. The Specification Required policy
-({{RFC8126}}, Section 4.6) requires a citable specification describing the
-digest context; it does not require that the body controlling the external
-type be the registrant. An implementer or profile author who can produce a
-citable specification for the pre-image construction of, for example, an
-OCI image manifest {{OCI-image-spec}}, a SEV-SNP measurement, a TDX quote,
-or an in-toto subject digest may submit a registry entry for that type
-independently.
+though the reference had verified.
 
 To verify the reference, the verifier MUST use the `type` field, together
-with the `purpose` field when the resolved artifact type registers more than
+with the `purpose` field when the resolved artifact type declares more than
 one digest context, to resolve exactly one of the referenced artifact's
-registered digest contexts. If `type` resolves to more than one digest
-context and `purpose` is absent, ambiguous (matching no registered purpose
-label), or names a purpose label the resolved artifact type does not
-register, the reference is unresolvable: the verifier MUST NOT guess a
+declared digest contexts. If `type` resolves to more than one digest
+context and `purpose` is absent, ambiguous (matching no purpose label the
+resolved artifact type declares), or names a purpose label the resolved
+artifact type does not declare, the reference is unresolvable: the verifier
+MUST NOT guess a
 context and MUST NOT report the typed reference as verified. It MUST confirm
 that `digest_alg` identifies a hash algorithm consistent with the resolved
 context.
@@ -594,8 +759,9 @@ than being decorative because only one value is legal now.
 
 The hash algorithm is not chosen per-reference: each entry in the
 Canonicalization Algorithm Registry names its hash function as an immutable
-part of its definition ({{algorithms}}), and each artifact type entry names
-exactly one such algorithm ({{iana-art}}). `digest_alg` is therefore fully
+part of its definition ({{algorithms}}), and each artifact type's own
+digest-context declaration names exactly one such algorithm. `digest_alg` is
+therefore fully
 determined by `type` (together with `purpose` where needed): a conforming
 reference can only carry the hash algorithm the resolved digest context
 mandates. It is a redundant consistency declaration by design — hash-in-algorithm
@@ -647,22 +813,23 @@ separate verification step. Missing, indeterminate, or failed required
 appraisal MUST NOT be treated as authorization success.
 
 The interchangeability property of typed digest references -- that any
-registered artifact type may fill a citation slot -- applies to
-citation-binding interoperability only and does not extend to any appraisal
-or authorization semantics defined by the artifact type or consuming profile.
+artifact type whose digest context can be resolved may fill a citation slot
+-- applies to citation-binding interoperability only and does not extend to
+any appraisal or authorization semantics defined by the artifact type or
+consuming profile.
 
 # Profile Independence {#profile-independence}
 
 A payload profile MUST NOT impose requirements on the internal structure or field
 values of another payload profile. Relationships between artifacts of different types
-are expressed solely through typed references ({{typed-refs}}) and entries in the
-artifact-type registry ({{iana-art}}).
+are expressed solely through typed references ({{typed-refs}}) that resolve against
+each artifact type's own digest-context declaration.
 
 This constraint keeps verification of a multi-artifact chain decomposable: a verifier
 evaluates each binding under each profile's own semantics independently and never needs
 to evaluate a pair of profiles jointly. Implementations therefore need not implement,
-or be aware of, profiles they neither produce nor consume, and a new profile may be
-registered without revalidating existing profiles or implementations.
+or be aware of, profiles they neither produce nor consume, and a new profile may declare
+its own artifact types without revalidating existing profiles or implementations.
 
 # Discovery Mirror {#discovery}
 
@@ -724,15 +891,26 @@ mechanism (see the SD-JWT commitment pattern in {{RFC9901}}) rather than
 digesting the bare value. Bare digests of low-entropy fields are not
 confidential.
 
-## Float Values and Digest Reproducibility
+## Float Values and Digest Reproducibility {#floats}
 
-JSON floating-point numbers ({{RFC8259}} number values that are not integers)
-MUST NOT appear in any field from which a digest is computed. The same
-numeric quantity can be serialized as `1.0`, `1e0`, or `1.00` in different
-JSON implementations; JCS does not normalize these forms. A float in a
-digest-bearing field silently produces implementation-dependent digests that
-cannot be reproduced and therefore cannot be verified. Exact decimal strings
-are the only portable encoding for monetary and quantity values.
+Different JSON implementations can serialize the same numeric quantity
+({{RFC8259}} number values that are not integers) as
+`1.0`, `1e0`, or `1.00`; a canonicalization algorithm's number-serialization
+rule determines whether that variation survives into the digest pre-image.
+Algorithm `jcs` ({{algo-jcs}}) inherits RFC 8785's canonical
+ECMAScript-based number-to-string procedure ({{RFC8785}} Section 3.2.2.3),
+which fixes one serialization per IEEE 754 double-precision value; two
+conforming implementations that parse the same numeric literal into the same
+double-precision value therefore produce byte-identical output under `jcs`.
+That guarantee is bounded by parsing, not by canonicalization: a JSON parser
+that rounds a numeric literal to a different double-precision value than
+another parser produces a different pre-image under any algorithm, `jcs`
+included. A payload profile for which this residual risk is unacceptable —
+for example, one carrying monetary or quantity values — MAY declare its own
+stricter constraint, such as requiring exact decimal strings instead of
+JSON numbers, in the fields it selects for digesting; such a constraint is a
+payload-profile decision, not a requirement this document imposes on every
+payload class.
 
 ## Immutable Coordinates {#immutable-coordinates}
 
@@ -745,13 +923,11 @@ CANONICAL-DIGEST. Names, labels, and human-readable identifiers MAY appear
 alongside a typed reference for display purposes but carry no evidentiary
 weight.
 
-When an externally-defined artifact type cited in an immutable coordinate
-has no entry in the Artifact Type Registry at verification time, the
-citation is present but not verified; the consuming profile determines the
-disposition ({{comparability}}). This is not a defect in the citing record:
-the citation becomes verifiable once a conforming registry entry exists, and
-that entry may be authored by a third party independently of the body that
-defines the external artifact type.
+When an artifact type cited in an immutable coordinate has no resolvable
+digest-context declaration at verification time, the citation is present
+but not verified; the consuming profile determines the disposition
+({{comparability}}). This is not a defect in the citing record: the
+citation becomes verifiable once a conforming declaration exists.
 
 ## Tamper Evidence and Runtime Honesty
 
@@ -799,18 +975,27 @@ intended to be anchored.
 
 # IANA Considerations {#iana}
 
-This document requests the creation of two new IANA registries under a
-"Canonical Payload Binding" heading. Both registries use the Specification
-Required policy ({{RFC8126}}, Section 4.6); a Designated Expert is required
-for each registration.
+This document requests the creation of one new IANA registry, the
+Canonicalization Algorithm Registry ({{iana-alg}}), under a "Canonical
+Payload Binding" heading. The registry uses the Specification Required
+policy ({{RFC8126}}, Section 4.6); a Designated Expert is required for each
+registration. This document does not define an Artifact Type registry:
+artifact types are registered in the shared Artifact Type Registry in
+`REGISTRY.md`, governed separately from this document under its own
+Designated Expert checklist and registration rungs; this document
+references that registry (see {{outofscope}}) but does not define it. This
+revision's Canonicalization Algorithm Registry entries reflect a deliberate
+correction over -01's: the registry was re-derived from what the field
+actually built, rather than restated from what -01 originally specified
+({{changes-01}}).
 
 Registry entries are immutable. A registered entry defines a specific
-algorithm or artifact type. If a behavior change is needed, a new entry
-MUST be registered; existing entries MUST NOT be modified retroactively.
-Maintainer is IANA per standard process; no other governance body is defined.
+algorithm. If a behavior change is needed, a new entry MUST be registered;
+existing entries MUST NOT be modified retroactively. Maintainer is IANA per
+standard process; no other governance body is defined.
 
-Until these registries come into existence at RFC publication, the tables
-below serve as the provisional living registry, maintained in this
+Until this registry comes into existence at RFC publication, the table
+below serves as the provisional living registry, maintained in this
 document's source repository. If the document is adopted, the provisional
 registry moves with the document to a repository of the working group's
 choosing.
@@ -823,7 +1008,7 @@ compute CANONICAL-DIGEST values.
 Each entry pins its canonicalization steps, its hash function, and its
 output representation together as a single immutable triple, so that
 changing any one of the three requires registering a new token rather than
-reinterpreting an existing one — otherwise a token such as `jcs-n` would
+reinterpreting an existing one — otherwise a token such as `jcs` would
 silently come to mean more than its name states.
 
 Registration template:
@@ -837,207 +1022,26 @@ Initial contents:
 
 | Name | Description | Reference |
 |---|---|---|
-| jcs-n | Withdrawn (2026-08-18) -- never carried to IANA. RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex -- the construction this entry named, retained as historical record | This document (withdrawn) |
+| jcs | RFC 8785 JCS over the octets supplied to the algorithm, no normalization pass; SHA-256; 64-character lowercase hex | This document |
+| jcs-n | Withdrawn (2026-08-18) -- never carried to IANA. The token was reserved and defined a JCS-plus-absent-field-normalization construction, but that construction is not carried forward; the permanent record of the construction is draft-mih-sokolov-scitt-payload-binding-00, Section 3.1 | This document (withdrawn) |
 | cde-n | Withdrawn (2026-08-18) -- never carried to IANA. The token was reserved and stays bound; it was never assigned a definition and never will be | This document (withdrawn) |
-| as-transmitted | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex | This document |
-| json-sk-cp | RFC 8785 subset. Object members serialized in ascending key order by Unicode code point; no insignificant whitespace; UTF-8 encoding; no member removal (null, empty array and empty object members are retained and serialized); numbers restricted to integers, since ES6 number formatting per RFC 8785 §3.2.2 is not implemented. Digest: SHA-256. Representation: lowercase hex. | This document (registration text: Anton Sokolov, Tyche Institute) |
-
-A payload class or typed digest reference naming `jcs-n` in a NEW record
-MUST NOT be treated as verifiable. `jcs-n` is withdrawn entirely (2026-08-18),
-the same disposition as `cde-n`: a recorded terminal state, not a deletion --
-the token stays bound, is never reassigned, and its definition ({{algo-jcs-n}})
-is retained unedited as the permanent record of the construction. A record
-already committed under `jcs-n` prior to withdrawal remains verifiable
-against it by vintage; withdrawal forecloses new use, it does not invalidate
-digests correctly computed under the algorithm as registered. See
-{{algo-jcs-n}}.
+| as-transmitted | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex | This document |
 
 A payload class or typed digest reference naming `cde-n` MUST NOT be
-treated as verifiable. `cde-n` is withdrawn: the reserved entry bound its
-token, so the token stays bound, never assigned, never reassigned, and the
-withdrawal is a recorded terminal state, not a deletion. A verifier
-encountering it MUST fail closed (MUST NOT report verified). See
-{{algo-cde-n}}.
+treated as verifiable under any vintage: the token was bound by a reserved
+entry but never assigned a definition, so no construction exists to verify
+against, and a verifier encountering it MUST fail closed. A payload class
+or typed digest reference naming `jcs-n` MUST NOT be newly declared;
+records committed under it before 2026-08-18 are governed by the vintage
+rule in {{algo-jcs-n}}. Both withdrawals are recorded terminal states, not
+deletions: the tokens stay bound and are never assigned or reassigned. See
+{{algo-cde-n}} and {{algo-jcs-n}}.
 
-An artifact type entry MUST NOT register `as-transmitted` without a
-byte-boundary selector that cites a named production in the container
-specification ({{algo-as-transmitted}}). Without that selector, an
-`as-transmitted` entry states nothing: there is no field set, no exclusion
-set, and no canonicalization to fall back on for the pre-image construction.
-
-**json-sk-cp — owner attribution and integer ceiling.** The registration
-text above is Anton Sokolov's (Tyche Institute), reproduced as he stated it
-rather than as a normative reference to an external repository, per his
-proposal on the PR #4 thread (2026-08-04). The "subset" wording is
-retained from that text as written; implementers should note json-sk-cp is
-not always substitutable for full RFC 8785 output, since its key ordering
-is by Unicode code point rather than {{RFC8785}} §3.2.3's UTF-16
-code-unit ordering -- the two diverge only for non-BMP keys. An integer
-whose magnitude exceeds 2^53-1 (the ECMAScript safe-integer bound) MUST
-NOT appear in a json-sk-cp pre-image; a conforming implementation rejects
-it as a typed error rather than serializing it, since such a value does
-not round-trip through an ECMAScript-Number-based reader and two
-conforming implementations could otherwise derive different digests from
-the same nominal value. This ceiling was agreed between the CPB editors
-and the registering owner on the same thread (2026-08-04), extending the
-registration text's own integer restriction above.
-
-## Artifact Type Registry {#iana-art}
-
-This registry records the artifact types that may appear in the `type`
-field of a typed digest reference ({{typed-refs}}).
-
-An artifact type declares one or more digest contexts. More than one is
-needed whenever an artifact type has more than one digest that a verifier
-might need to establish independently — for example, a digest that serves
-as the artifact's own derived identifier, and a separate digest computed
-over a declared subset of the same artifact to test equivalence with
-another instance. Each digest context is independent: it states its own
-canonicalization algorithm (which MAY differ per context, and MAY be an
-identity algorithm such as `as-transmitted` when one is registered in the
-Canonicalization Algorithm Registry) and its own field set, exclusion set,
-domain separation, pre-image encoding, profile version, and representation,
-as that algorithm requires. A single-context artifact type is the
-degenerate case of this template, not a different template.
-
-Registration template:
-
-* Name: A short ASCII identifier. For a CPB-bound profile, this Name is
-  the registered profile label that a citing composition profile treats
-  as a protocol input; CPB takes no separate IANA action to register
-  profile labels beyond registering this artifact type.
-* Digest Contexts: One or more digest contexts. Each digest context states:
-  * Purpose: a label drawn from the purpose-label vocabulary below,
-    distinguishing this context from any other digest context the same
-    artifact type registers.
-  * Profile version: the version of the profile or specification that
-    defines this digest context, or `N/A` if the artifact type's
-    reference does not itself distinguish profile versions (for example,
-    a type identifier that names a type but not a version).
-  * Canonicalization algorithm: the algorithm name from {{iana-alg}} (MAY
-    be `as-transmitted`). This token also pins the digest context's hash
-    algorithm and output representation, recorded once in the cited
-    Canonicalization Algorithm Registry entry ({{iana-alg}}) rather than
-    restated per artifact type.
-  * Field set: the field set selected for this context ({{derived-id}}).
-    When the canonicalization algorithm is an identity algorithm with no
-    field set (such as `as-transmitted`), this element is instead the
-    byte-boundary selector that algorithm requires.
-  * Exclusion set: the fields omitted from the field set before digesting.
-    Not applicable to a context using an identity algorithm with no field
-    set.
-  * Domain separation: any domain-separation prefix or tag applied to the
-    pre-image, or `none`.
-  * Pre-image encoding: the encoding of the pre-image octets before
-    digesting.
-  * Representation: the representation of the output digest
-    ({{representation}}).
-* Reference: The document that defines the artifact type.
-
-A digest context element that does not apply to a given context (for
-example, exclusion set under `as-transmitted`) MUST be stated explicitly as
-`none` or `N/A` rather than omitted. A registry entry is read in isolation
-by a verifier that has not read this document's prose, and cannot assume a
-default for an absent element.
-
-**Purpose-label vocabulary.** Every digest context's purpose label is drawn
-from a single vocabulary shared across this entire registry, so that a
-companion specification introducing digest bindings at another layer (for
-example, a statement-level multi-binding facility) has one namespace to
-adopt rather than inventing a second, incompatible one. The initial
-vocabulary, extensible by the same Specification-Required process as the
-registries in this section:
-
-| Label | Meaning |
-|---|---|
-| `identifier` | The digest context that computes the artifact's derived identifier ({{derived-id}}): the artifact's primary content-address. |
-| `equivalence` | A digest context, distinct from `identifier`, computed over a declared field subset, used to determine whether two artifacts represent the same underlying content or action. |
-
-This is CPB's first published definition of this namespace; neither this
-document nor a companion may register a second purpose-label vocabulary
-that overlaps this one in meaning.
-
-A CPB purpose label is orthogonal to, not competing with, any role a
-companion composition profile assigns a digest within a cross-document
-join (for example, roles such as `subject`, `authority-reference`, or
-`receipt-payload`). The purpose label describes a digest context's
-function within its own artifact type; a join role describes which slot
-in a multi-document binding that same digest fills. The two axes are
-independent, and a single digest may carry one label from each at once —
-for example, an artifact's `identifier` digest context ({{iana-art}}) may
-simultaneously be the `subject` of a composition join. Neither vocabulary
-constrains the other, and neither document needs to adopt the other's
-terms.
-
-A typed digest reference ({{typed-refs}}) selects which digest context of a
-multi-context artifact type it targets via the reference's own `purpose`
-field, using the purpose label from this vocabulary. Each digest context an
-artifact type registers MUST carry a purpose label distinct from every other
-digest context the same artifact type registers, so that `type` plus
-`purpose` together resolve to exactly one digest context with no remaining
-ambiguity. This mechanism is orthogonal to, and does not substitute for,
-whatever role vocabulary a companion statement-level multi-binding facility
-may separately define for its own join semantics.
-
-Initial contents:
-
-### `agent-action-capsule` {#art-agent-action-capsule}
-
-Reference: {{I-D.mih-scitt-agent-action-capsule}}
-
-Digest context (`identifier`):
-
-* Profile version: N/A — draft-mih-scitt-agent-action-capsule does not
-  currently register more than one profile version in this registry.
-* Canonicalization algorithm: `jcs-n`
-* Field set: all capsule fields
-* Exclusion set: {capsule_id, chain}
-* Domain separation: none
-* Pre-image encoding: JCS UTF-8 octets, per `jcs-n` ({{algo-jcs-n}})
-* Representation: 64-char lowercase hex
-
-### `machine-mandate` {#art-machine-mandate}
-
-Owner: Anton Sokolov, Tyche Institute. Reference: `tyche-institute/machine-mandate`
-@ `524e6a3129b7f1ab850dd9471967458d3cb6f4cd`. Owner-confirmed (PR #4 thread,
-2026-08-09 and 2026-08-13).
-
-Digest context (`identifier`):
-
-* Profile version: N/A
-* Canonicalization algorithm: `as-transmitted`
-* Field set: byte-boundary selector, in place of a field set (per
-  {{algo-as-transmitted}}) -- the issuer-signed JWS component of the SD-JWT
-  (RFC 7515 §7.1 compact serialization; the first `~`-separated component
-  exactly as transmitted); everything after the first `~` (salted
-  disclosures and the KB-JWT) is outside the pre-image.
-* Exclusion set: N/A -- `as-transmitted` has no field set and therefore no
-  exclusion set.
-* Domain separation: none
-* Pre-image encoding: N/A -- the pre-image is the exact transmitted octets;
-  there is no separate encoding step.
-* Representation: bare 64-char lowercase hex
-
-Digest context (`equivalence`):
-
-* Profile version: N/A
-* Canonicalization algorithm: `json-sk-cp`
-* Field set: `{action_id, outcome}`, closed
-* Exclusion set: none
-* Domain separation: none
-* Pre-image encoding: json-sk-cp UTF-8 octets, per `json-sk-cp` ({{iana-alg}})
-* Representation: `sha256:` + 64-char lowercase hex, as carried in the
-  in-document `action_hash` claim
-
-Conformance vectors: `tyche-institute/machine-mandate`, branch
-`feat/cpb-registry-vectors-v0.1`, commit `5605783a` (supersedes
-`640f2a668cfc4a357f9b34ecb0add5faf8bbdda1`),
-`vectors/cpb-registry/machine-mandate-vectors-v0.1.json`, file SHA-256
-`06572fccb7afa3eda4c68604221a83476faac8f8509b7165724553d58384d816`.
-Independently reproduced byte-for-byte against a from-scratch
-implementation, including condition-removed mutants confirming each of the
-five negatives discriminates rather than pattern-matches (PR #4 thread,
-2026-08-11).
+An artifact type MUST NOT declare `as-transmitted` without a byte-boundary
+selector that cites a named production in the container specification
+({{algo-as-transmitted}}). Without that selector, an `as-transmitted`
+declaration states nothing: there is no field set, no exclusion set, and no
+canonicalization to fall back on for the pre-image construction.
 
 # Related Work {#related}
 
@@ -1060,7 +1064,7 @@ statement context.
 {{I-D.hillier-scitt-arp}} independently derives a similar canonical claim
 construction in its §2. Its Canonical Claim defines its own key-sort, NFC,
 number-rendering, and undefined-stripping rules, plus a Claim Hash join
-key. The construction is near-`jcs-n` but not byte-compatible. The
+key. The construction is near-`jcs` but not byte-compatible. The
 independent re-derivation is evidence that this layer is consistently
 re-invented when it is not standardized; CPB exists to stop the
 re-invention. Implementations must not assume byte compatibility; ARP's
@@ -1093,7 +1097,7 @@ vocabulary from any specific profile is used.
 
 **Payload class:** `temperature-record`. Fields: `station_id` (string),
 `timestamp` (string), `celsius` (exact decimal string), `record_id` (string).
-Exclusion set: `{record_id}`. Algorithm: `jcs-n`. Representation: bare 64-char
+Exclusion set: `{record_id}`. Algorithm: `jcs`. Representation: bare 64-char
 lowercase hex.
 
 **Step 1 — Construct the payload:**
@@ -1107,10 +1111,9 @@ lowercase hex.
 }
 ~~~
 
-**Step 2 — Apply the exclusion set and normalize:**
+**Step 2 — Apply the exclusion set:**
 
-Remove `record_id` (it is in the exclusion set). After absent-field
-normalization (null members removed), the normalized object is:
+Remove `record_id` (it is in the exclusion set). The resulting object is:
 
 ~~~json
 {
@@ -1142,7 +1145,7 @@ now suitable for distribution to verifiers.
 
 **Step 6 — Verify:**
 
-A verifier extracts the payload, strips `record_id`, normalizes, applies JCS,
+A verifier extracts the payload, strips `record_id`, applies JCS,
 recomputes SHA-256, and compares to the carried `record_id`. The verifier
 then verifies the envelope signature and, if present, the Receipt under
 a trusted service key. All three checks must pass for the record to be
@@ -1156,7 +1159,7 @@ classes. No domain vocabulary is used.
 **Scenario:** a `decision-record` payload class cites an `authorization-doc`
 using a typed digest reference.
 
-**Authorization doc** (payload class `authorization-doc`; algorithm `jcs-n`):
+**Authorization doc** (payload class `authorization-doc`; algorithm `jcs`):
 
 ~~~json
 {
@@ -1170,7 +1173,7 @@ using a typed digest reference.
 Its derived identifier is computed with `doc_id` in the exclusion set.
 Suppose the result is `"ab12cd34..."`.
 
-**Decision record** (payload class `decision-record`; algorithm `jcs-n`):
+**Decision record** (payload class `decision-record`; algorithm `jcs`):
 
 ~~~json
 {
@@ -1186,17 +1189,17 @@ Suppose the result is `"ab12cd34..."`.
 
 The typed reference `authorization` cites the authorization doc by its
 artifact type and derived identifier. A verifier can confirm the doc was
-cited by resolving the `authorization-doc` artifact type from the registry
-({{iana-art}}), recomputing `"ab12cd34..."` from the doc's bytes, and
-matching.
+cited by resolving the `authorization-doc` artifact type's digest context
+from its governing specification, recomputing `"ab12cd34..."` from the
+doc's bytes, and matching.
 
-**Composability:** the verifier needs only the registry entry for
-`authorization-doc` — it does not need to understand the `decision-record`
-format to verify the citation binding. For generic citation-binding verification, a CPB verifier can process a
-typed reference to any registered artifact type. Whether a particular
-citation slot permits that artifact type is determined by the consuming
-profile. Artifact-specific appraisal, authorization semantics, and
-application integration remain separate.
+**Composability:** the verifier needs only the `authorization-doc` digest
+context — it does not need to understand the `decision-record` format to
+verify the citation binding. For generic citation-binding verification, a CPB verifier can process a
+typed reference to any artifact type whose digest context it can resolve.
+Whether a particular citation slot permits that artifact type is determined
+by the consuming profile. Artifact-specific appraisal, authorization
+semantics, and application integration remain separate.
 
 # Field-Verified Instances {#appendix-c}
 
@@ -1205,7 +1208,11 @@ The instances in this appendix were chosen to illustrate the mechanisms of
 ranking. Two parties appear in every instance: the implementing system and
 the verification counterparty. The common counterparty in each case is the
 AAC reference implementation, which is present as a verifier, not as the
-subject.
+subject. This is a historical record and is not edited retroactively: the
+instances below report what ran at the time, under algorithm `jcs-n`, which
+is withdrawn as of this revision ({{algo-jcs-n}}). The byte-agreement result
+each instance reports is a property of applying RFC 8785 JCS consistently,
+which `jcs` ({{algo-jcs}}) also provides going forward.
 
 **Owner consent status:** Anton Sokolov (Tyche Institute) — confirmed
 2026-07-24. Tom Sato (GAR/SOOS) — confirmed 2026-07-25. Tymofii
@@ -1219,14 +1226,20 @@ Public record: Glyphzero PEDIGREE delegation record, IETF 126 hackathon.
 
 **What ran:** Two independently written RFC 8785 JCS implementations —
 Glyphzero's (Rampalli), used to produce its PEDIGREE delegation records
-{{I-D.rampalli-pedigree}}, and the AAC reference implementation — each
-computed `jcs-n` over the same delegation record. Both produced `subject_digest`
-`0b4da06b...` without any coordination on byte ordering or normalization
-beyond the algorithm definition.
+{{I-D.rampalli-pedigree}}, and the AAC reference implementation — computed
+a digest over the same delegation record and both produced
+`subject_digest` `0b4da06b...` without any coordination on byte ordering
+beyond RFC 8785 itself. The record carried no null, empty-array or
+empty-object member, so the absent-field normalization pass `jcs-n` added
+to JCS did not apply to it; the agreement is an agreement about RFC 8785
+JCS, which is the part `jcs` ({{algo-jcs}}) carries forward.
 
-**Mechanism illustrated:** {{algo-jcs-n}}. `jcs-n` is reproducible across
-separately written implementations. The agreement was not premeditated; it
-emerged from two systems applying the same algorithm independently.
+**Mechanism illustrated:** {{algo-jcs}}. RFC 8785 JCS is reproducible
+across separately written implementations. The agreement was not
+premeditated; it emerged from two systems applying the same algorithm
+independently. This instance does not evidence an independent
+implementation of the withdrawn normalization pass, and the implementer
+census ({{algo-jcs-n}}) records that there was none.
 
 **Consent:** Karthik Rampalli (Glyphzero) confirmed 2026-07-25 (email, with corrections).
 
@@ -1294,7 +1307,7 @@ produced field-verified instances at time of writing:
 
 * VTO/libp2p (M.S. Gupta) — content-addressed telemetry objects citing
   action records across grains.
-* VSO/VeritasChain (Kamimura) — verifiable service objects under `jcs-n`.
+* VSO/VeritasChain (Kamimura) — verifiable service objects under `jcs`.
 
 Field-verified instances are expected to be added in future revisions as
 cross-verifications complete.
@@ -1302,101 +1315,6 @@ cross-verifications complete.
 The PermitReceipt × MachineMandate composition is excluded from this appendix.
 It is recorded in the AAC interop registry (INTEROP.md).
 
-
-# Verifier Behavior for an Unregistered Artifact Type: OCI Image Manifest Digest {#appendix-d}
-
-This appendix is informative.
-
-An OCI image manifest is content-addressed by the SHA-256 digest of its
-serialized JSON bytes, as specified by the OCI Image Format Specification
-{{OCI-image-spec}}. A record that cites a specific OCI image MAY use a
-typed digest reference. This appendix illustrates conforming verifier
-behavior before and after an Artifact Type Registry entry for this artifact
-type exists.
-
-**Typed digest reference (illustrative):**
-
-~~~json
-{
-  "type": "oci-image-manifest",
-  "purpose": "identifier",
-  "digest_alg": "SHA-256",
-  "digest": "<64 lowercase hex characters>"
-}
-~~~
-
-The type name `oci-image-manifest` used here is illustrative; the actual
-registered name would be whatever token an Artifact Type Registry entry
-establishes.
-
-**Before registration.** No entry named `oci-image-manifest` (or any other
-token for this artifact type) exists in the Artifact Type Registry. A
-conforming verifier:
-
-1. Looks up the `type` value in the Artifact Type Registry — no entry found.
-2. MUST NOT report the typed reference as verified.
-3. Treats the reference as present but not verified.
-4. Returns the error disposition to the consuming profile for the profile
-   to resolve; the citing record is not defective.
-
-The Open Container Initiative need not register this type. A third party —
-an implementer or profile author — may author a registry entry by producing
-a citable specification describing the pre-image construction. The
-Specification Required policy ({{RFC8126}}, Section 4.6) requires a citable
-specification, not participation by the artifact type's owning body.
-
-**After registration.** Suppose a third party produces a citable
-specification and a Designated Expert approves the following entry:
-
-Name: `oci-image-manifest`
-
-Reference: the citable specification produced by the registrant,
-describing OCI image manifest digest construction per {{OCI-image-spec}}.
-
-This example is worth following closely, because the obvious entry is not
-a conforming one. `as-transmitted` looks like the natural algorithm here --
-an OCI manifest is content-addressed over its exact serialized bytes, and
-re-canonicalizing them would break that binding. But {{algo-as-transmitted}}
-requires an `as-transmitted` entry to state a byte-boundary selector that
-cites *the name the referenced specification gives* to the byte sequence,
-as `RFC 7515 §5.1, JWS Signing Input` does. The OCI Image Format
-Specification does not give that byte sequence a name: it is organized as
-unnumbered documents and defines no production for the serialized manifest
-octets. {{algo-as-transmitted}} says what follows -- an artifact type whose
-container specification does not name the bytes as a discrete production
-MUST NOT use `as-transmitted`, and registers a canonicalization algorithm
-instead. The registrant's citable specification is what supplies the
-missing definition:
-
-Digest context (`identifier`):
-
-* Profile version: N/A
-* Canonicalization algorithm: the algorithm the registrant registers for
-  this purpose, whose specification states exactly which octets form the
-  pre-image -- for an OCI manifest, the serialized JSON document as
-  transmitted, defined by the registrant rather than borrowed from a name
-  {{OCI-image-spec}} does not provide.
-* Field set: as stated by that algorithm's specification
-* Exclusion set: N/A
-* Domain separation: none
-* Pre-image encoding: raw bytes
-* Representation: 64-character lowercase hexadecimal
-
-A conforming verifier can now:
-
-1. Look up `oci-image-manifest` in the Artifact Type Registry — entry found.
-2. Use `purpose` (`identifier`) to select the single registered digest
-   context.
-3. Confirm `digest_alg` is consistent with the registered context (SHA-256).
-4. Recompute SHA-256 over the manifest byte sequence and compare to the
-   `digest` field.
-5. Report the typed reference as verified if the values match, or not
-   verified if they do not.
-
-The citing record is unchanged between the two scenarios; only the registry
-state differs. This is the verifiable-once-registered property: a citation
-with an unregistered type is a present-but-unverified citation awaiting a
-conforming registry entry, not a structural defect in the citing record.
 
 # Acknowledgments {#acknowledgments}
 {:numbered="false"}
@@ -1437,7 +1355,7 @@ confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero, confirmed
 
 * Karthik Rampalli (Glyphzero) — independent JCS implementation
   byte-agreement on `subject_digest` `0b4da06b...`, demonstrating that
-  `jcs-n` is reproducible across separately written implementations.
+  RFC 8785 JCS is reproducible across separately written implementations.
 
 * Iman Schrock (EMILIA/EP) — confirmed 2026-07-24 — the three-computation single-digest instance
   (`8cf0c36e...`) demonstrating byte-agreement across three independent
