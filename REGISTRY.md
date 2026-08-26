@@ -251,11 +251,52 @@ artifact type.
 | Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
 |---|---|---|---|---|---|---|---|
 | `identifier` | N/A (no versioned profile registered yet) | `jcs-n` | all capsule fields | `{capsule_id, chain}` | none | JCS UTF-8 octets (per `jcs-n`) | 64-char lowercase hex |
+| `identifier` | `draft-mih-scitt-agent-action-capsule-04` | `jcs` | all capsule fields | `{capsule_id}` | none | JCS UTF-8 octets (per `jcs`) | 64-char lowercase hex |
 
 Content unchanged from the prior 3-element shape — only the shape changed to the
 full digest-context template above. Domain separation and pre-image encoding are
 not new owner-supplied parameters: both are stated directly by `jcs-n`'s own
 normative definition, not invented for this row.
+
+**Second digest context (`jcs`, profile version -04).** `jcs-n` was withdrawn on
+2026-08-18 and nothing verifies against it — see its `withdrawn` row in the Payload
+Canonicalization Algorithm Registry above — so the first row is a vintage
+verification path and **no live digest context remained for this artifact type**.
+Profile version -04 supplies one: capsules declare `canonicalization_id: "jcs"` and
+the identifier is SHA-256 over plain JCS of the capsule with **only `capsule_id`**
+removed. The `canonicalization_id` declaration and the `chain` block **participate**.
+That exclusion set is the whole difference from the vintage row, and it is why this
+is a separate digest context rather than an edit of the existing one: the registered
+behavior of the `jcs-n` row is untouched, as the immutability rule in the policy
+header requires. Two rows under one entry is exactly what the registration template
+anticipates — one entry, one row per digest context, profile version stated per
+context.
+
+⌙ Registrant: added by Anton Sokolov, read from the `spec_version`,
+  `format_version`, `canonicalization_id` and `capsule_id` rows of the Capsule field
+  table in `draft-mih-scitt-agent-action-capsule-04`, at
+  `action-state-group/agent-action-capsule` commit
+  `8ccf345731360bbaa421141e0936e6b189053d0f`.
+⌙ Disclosure: the registrant is a co-author of the CPB draft and a co-editor of this
+  registry, and is **not** the owner of this artifact type. This row is a third-party
+  reading of the owner's own specification text and is **pending owner confirmation**
+  before it is treated as owner-confirmed.
+⌙ Discriminating-vector: `test-vectors/pos-v4-jcs-chain-committed/` in the artifact
+  type's own repository — *"Format 4 plain JCS commits the chain block and a present
+  empty array to capsule_id"*, recomputed identifier
+  `862024869f00481bb4f59d9528a45c2d4885f64c5222a9324a38ac2c2cd119f2`. Recomputed
+  from that vector's input with the artifact type's own JCS implementation, the two
+  exclusion sets do not agree, and the difference is stated here rather than
+  asserted:
+
+  | Exclusion set | SHA-256 over JCS of the remainder |
+  |---|---|
+  | `{capsule_id}` (this row) | `862024869f00481bb4f59d9528a45c2d4885f64c5222a9324a38ac2c2cd119f2` — matches the vector |
+  | `{capsule_id, chain}` (vintage row) | `1164b5696cf27d9c13965de1929b8e2b14097b7824f25e63f9ac7e954369d886` — does not |
+
+  The two contexts are therefore not interchangeable on a record that carries a
+  `chain` block, which is what makes this a distinct digest context and not a
+  restatement of the vintage one.
 
 ### `machine-mandate`
 
