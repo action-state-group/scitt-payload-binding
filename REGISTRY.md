@@ -302,7 +302,7 @@ pattern-matches (PR #4 thread, 2026-08-11).
 
 | Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
 |---|---|---|---|---|---|---|---|
-| `identifier` | `haltseal-public-resolve-1` | `as-transmitted` | byte-boundary selector — RFC 7515 §5.1 JWS Signing Input (`BASE64URL(protected header) || "." || BASE64URL(payload)`) of the compact-JWS receipt | N/A (`as-transmitted` has no field set) | none | N/A (no separate encoding step) | bare 64-character lowercase hex |
+| `identifier` | `haltseal-public-resolve-1` | `as-transmitted` | byte-boundary selector — RFC 7515 §5.1 JWS Signing Input (`BASE64URL(protected header) \|\| "." \|\| BASE64URL(payload)`) of the compact-JWS receipt | N/A (`as-transmitted` has no field set) | none | N/A (no separate encoding step) | bare 64-character lowercase hex |
 
 The CPB-derived identifier is distinct from, and does not replace, the receipt payload's application-level `jti`.
 
