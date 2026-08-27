@@ -160,7 +160,7 @@ token does. Proposed for the Payload Canonicalization Algorithm Registry:
 
 | Name | Description | Reference | Status |
 |---|---|---|---|
-| `json-sk-ascii` | Sorted-key ASCII JSON. Member names sorted by Unicode code point; separators `,` and `:` with no whitespace; non-ASCII characters escaped as `\uXXXX` with lowercase hex digits (non-BMP as a UTF-16 surrogate pair) and the result encoded as ASCII octets; no member removal; non-integer JSON numbers are outside the profile and are rejected rather than serialized; SHA-256; 64-character lowercase hex | `agentrust-io/trace-spec` @ `e0afe8e`, `spec/registry-anchor-v1.md` §1 | `owner-confirmed` |
+| `json-sk-ascii` | Sorted-key ASCII JSON. Member names sorted by Unicode code point; separators `,` and `:` with no whitespace; non-ASCII characters escaped as `\uXXXX` with lowercase hex digits (non-BMP as a UTF-16 surrogate pair) and the result encoded as ASCII octets; no member removal; non-integer JSON numbers are outside the profile and are rejected rather than serialized; SHA-256; 64-character lowercase hex | `agentrust-io/trace-spec` @ `e0afe8e`, `spec/registry-anchor-v1.md` §1 | `provisional` |
 
 **Why this is not `json-sk-cp` revived, and not `jcs` under another name.**
 `json-sk-cp` was retired on the finding that it produced byte-identical
@@ -168,8 +168,10 @@ pre-images to `jcs` across the `machine-mandate` vector set, differing only on
 non-BMP member names and an integer restriction. That finding does not carry
 here. `json-sk-ascii` escapes non-ASCII where `jcs` emits literal UTF-8, so the
 two pre-images diverge on **any** record containing a single non-ASCII
-character anywhere, not only on a supplementary-plane member name. Measured, on
-`01-non-ascii-values.json`: 849 JCS octets against 964. The digests are below.
+character anywhere, not only on a supplementary-plane member name. Measured on
+`01-non-ascii-values.json`, holding the field set constant: 950 JCS octets
+against 964. `01` contains no key-order divergence, so that difference is
+escaping alone. The digests are below.
 
 ### Vectors
 
@@ -191,9 +193,10 @@ MUST-FAIL counterparts are in preparation and the owner will supply the commit.
 
 `03-utf16-key-order.json`, cited above at its commit-pinned URL and file digest.
 
-It is the only record in the corpus whose UTF-16 code-unit and Unicode
-code-point member orderings actually disagree, so it separates the two rows on
-key ordering rather than on escaping alone.
+It is the shallowest record in the corpus whose UTF-16 code-unit and Unicode
+code-point member orderings disagree (at `cnf.jwk`); `04` exercises the same
+divergence one level deeper. It therefore separates the two rows on key
+ordering rather than on escaping alone.
 
 Recomputed with the owner's own implementation (`rfc8785` for row 1, the §1
 construction for row 2), from the bytes GitHub serves at the pinned commit:
