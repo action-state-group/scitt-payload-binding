@@ -284,8 +284,8 @@ and registered in the normative Artifact Type Registry — see
 **Reference:** `action-state-group/capsule-emit-mesh` @ `0304296` (`mesh_record_emitter.py`, `mesh_record_verifier.py`)
 **Proposed by:** ASG (owner-authored — see Disclosure)
 **DE reviewer:** Anton Sokolov — this entry promotes to the live Artifact Type
-Registry only on your confirmation of the two open items below; edit or hold
-freely.
+Registry only on your confirmation of the two open items below, plus the
+`role` field addition (issue #69, filed below); edit or hold freely.
 **Disclosure:** the proposer is a co-editor of this registry; this entry is
 owner-authored and is not independent or third-party validation.
 
@@ -334,15 +334,66 @@ Digest Context (purpose: `identifier`) — as far as pinned:
 | Field | Value |
 |---|---|
 | Algorithm | `as-transmitted` — provisionally; scope pending DE confirmation, item 1 above |
-| Field set | the `x-mesh-lifecycle-v1` block: `terminal_state` (∈ eight-value closed set), `terminal_reason`, `observation_point` (∈ four-value closed set, nullable), `exchange_id`, `hop_id`, `attempt`, `local_peer_id`, `transcript.{event_count, expected_count, complete}` |
+| Field set | the `x-mesh-lifecycle-v1` block: `terminal_state` (∈ eight-value closed set), `terminal_reason`, `observation_point` (∈ four-value closed set, nullable), `role` (∈ two-value closed set, conditional — see Role field below), `exchange_id`, `hop_id`, `attempt`, `local_peer_id`, `transcript.{event_count, expected_count, complete}` |
 | Exclusion set | N/A pending item 1 above |
 | Domain separation | none observed in code |
 | Pre-image encoding | N/A pending item 1 above |
 | Representation | `request_digest`/`response_digest` sub-fields: bare 64-char lowercase hex (SHA-256) |
 
-**Vocabulary (closed sets, quoted from `mesh_record_verifier.py`):**
-- `terminal_state` ∈ `{completed, policy_denied, request_invalid, backend_error, transport_error, client_cancelled, timed_out, evidence_unavailable}`
-- `observation_point` ∈ `{gateway_ingress, serving_host_ingress, backend_dispatch, client_egress}` (nullable — absent when a record covers a whole exchange rather than one vantage point)
+**Vocabulary (closed sets):**
+- `terminal_state` ∈ `{completed, policy_denied, request_invalid, backend_error, transport_error, client_cancelled, timed_out, evidence_unavailable}` — quoted from `mesh_record_verifier.py`
+- `observation_point` ∈ `{gateway_ingress, serving_host_ingress, backend_dispatch, client_egress}` (nullable — absent when a record covers a whole exchange rather than one vantage point) — quoted from `mesh_record_verifier.py`
+- `role` ∈ `{requested, served}` — proposed, not yet in `mesh_record_verifier.py` at `0304296`; see Role field below
+
+### Role field (added 2026-08-28, issue #69)
+
+**Proposed alongside this entry, not yet implemented.** `role` is not present
+in `mesh_record_emitter.py`/`mesh_record_verifier.py` at `0304296` — it is
+filed here as registry mechanics ahead of implementation because the entry
+becomes immutable once it moves to the live table (#69's stated timing
+rationale). It is therefore not covered by "validated in running code" in
+the section heading above; implementation lands before promotion.
+
+`role` records *whose account a record is*, a second axis from
+`observation_point`, which records *where* a record was observed. The two
+axes are not cleanly interchangeable — `gateway_ingress` has no role, and a
+vantage-to-role mapping would have to be re-derived by every consumer as
+vantage points grow — so `role` is carried explicitly rather than derived.
+
+- OPTIONAL overall.
+- REQUIRED wherever the vantage carries a role: `observation_point =
+  client_egress` → `role = requested`; `observation_point ∈
+  {serving_host_ingress, backend_dispatch}` → `role = served`.
+- MUST be ABSENT at `observation_point = gateway_ingress` — the one
+  role-less vantage.
+
+**Fail-closed consistency invariant (#69).** Where both `role` and
+`observation_point` are present, they MUST form one of the pairings above;
+an inconsistent pairing — including any `role` alongside `gateway_ingress`,
+or an absent `role` at a vantage that requires one — MUST be rejected. A
+verifier implementing this rule raises a named error,
+`RoleObservationPointMismatchError`, kept distinct from
+`IncompleteTranscriptError` below so the two invariants stay independently
+diagnosable.
+
+**Binary-domain note.** The coordinator never emits this artifact type — it
+has its own coordinator-receipt entry — so `{requested, served}` is
+exhaustive for every record `x-mesh-lifecycle-v1` actually carries; there is
+no third role to reserve room for.
+
+**Discriminating vectors (synthetic, illustrative — not yet a committed CPB
+vector; Rung 3 does not require one, consistent with the
+transcript-completeness candidate below).** Each row shows only the two
+fields at issue; the rest of the block is elided as `…`.
+
+| # | `observation_point` | `role` | Verdict | Why |
+|---|---|---|---|---|
+| 1 | `client_egress` | `requested` | PASS | consistent pair — the required mapping |
+| 2 | `client_egress` | `served` | MUST-FAIL | contradictory pair — `client_egress` requires `requested`; mutating vector 1's `role` alone, holding every other byte constant, produces this vector, so the pairing check is what must flip the verdict |
+| 3 | `gateway_ingress` | `requested` | MUST-FAIL | role present at the role-less vantage — `gateway_ingress` MUST carry no `role` at all |
+| 4 | `backend_dispatch` | *(absent)* | MUST-FAIL | role absent at a vantage that requires one — `backend_dispatch` is a served-side vantage, so a missing `role` is itself the inconsistency |
+
+Rows 2–4 each raise `RoleObservationPointMismatchError`.
 
 **Producer invariant (load-bearing, not owner-invented for this entry):**
 `transcript.complete` MUST be `False` whenever `event_count < expected_count`
@@ -382,6 +433,12 @@ registered name.
   entry can move directly to `owner-confirmed` (Rung 3 → owner-direct,
   skipping Rung 2 — `REGISTRY.md` Entry Lifecycle) with a committed
   two-sided vector set built from the truncation-guard case above.
+- The `role` field and its consistency invariant (issue #69, "Role field"
+  above) were filed on this same entry ahead of promotion, per the owner's
+  timing rationale on #69: the entry is immutable once it moves to the live
+  table. This addition does not resolve items 1–2 above; DE confirmation
+  covers all three together, and the field lands in
+  `mesh_record_emitter.py`/`mesh_record_verifier.py` before promotion.
 
 ---
 
