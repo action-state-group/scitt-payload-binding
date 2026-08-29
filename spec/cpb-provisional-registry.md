@@ -334,11 +334,11 @@ Digest Context (purpose: `identifier`) — as far as pinned:
 | Field | Value |
 |---|---|
 | Algorithm | `as-transmitted` — provisionally; scope pending DE confirmation, item 1 above |
-| Field set | the `x-mesh-lifecycle-v1` block: `terminal_state` (∈ eight-value closed set), `terminal_reason`, `observation_point` (∈ four-value closed set, nullable), `role` (∈ two-value closed set, conditional — see Role field below), `exchange_id`, `hop_id`, `attempt`, `local_peer_id`, `transcript.{event_count, expected_count, complete}` |
+| Field set | the `x-mesh-lifecycle-v1` block: `terminal_state` (∈ eight-value closed set), `terminal_reason`, `observation_point` (∈ four-value closed set, nullable), `role` (∈ two-value closed set, conditional — see Role field below), `exchange_id`, `hop_id`, `attempt`, `local_peer_id`, `transcript.{event_count, expected_count, complete}`, `reasoning_digest` (OPTIONAL labeled sub-digest — see Reasoning / tool-call sub-digests below), `tool_calls_digest` (OPTIONAL labeled sub-digest — see Reasoning / tool-call sub-digests below) |
 | Exclusion set | N/A pending item 1 above |
 | Domain separation | none observed in code |
 | Pre-image encoding | N/A pending item 1 above |
-| Representation | `request_digest`/`response_digest` sub-fields: bare 64-char lowercase hex (SHA-256) |
+| Representation | `request_digest`/`response_digest`/`reasoning_digest`/`tool_calls_digest` sub-fields: bare 64-char lowercase hex (SHA-256) |
 
 **Vocabulary (closed sets):**
 - `terminal_state` ∈ `{completed, policy_denied, request_invalid, backend_error, transport_error, client_cancelled, timed_out, evidence_unavailable}` — quoted from `mesh_record_verifier.py`
@@ -419,6 +419,53 @@ block-name confirmation in item 2 above; the mesh-llm PoC gateway
 (mesh-llm#1233) once that engagement's own documentation cites this
 registered name.
 
+### Reasoning / tool-call sub-digests (added 2026-08-28, tier-2 fold-scoped disclosure)
+
+**Proposed alongside this entry, not yet implemented** — same status as
+`role` above: `reasoning_digest` and `tool_calls_digest` are not present in
+`mesh_record_emitter.py`/`mesh_record_verifier.py` at `0304296`. They are
+filed here as registry mechanics ahead of implementation because the entry
+becomes immutable once it moves to the live table; implementation lands
+before promotion.
+
+`reasoning_digest` and `tool_calls_digest` are OPTIONAL labeled sub-digest
+fields carried in the `x-mesh-lifecycle-v1` block, alongside the existing
+`request_digest`/`response_digest` sub-fields. Each is a bare 64-char
+lowercase hex SHA-256 digest — same representation as the existing digest
+sub-fields — over its own labeled byte range within the record:
+`reasoning_digest` over the bytes emitted as reasoning/chain-of-thought
+content (when the exchange carries any), `tool_calls_digest` over the bytes
+emitted as tool/function-call content (when the exchange carries any).
+
+- **Both OPTIONAL.** Absent when the exchange carried no reasoning content
+  and/or no tool calls, or when the producer chooses not to label the
+  split. Carrying them costs nothing when unused; adding them after
+  promotion would not be possible at all (entries are immutable once live),
+  which is why they are filed on this same pre-promotion train rather than
+  as a follow-up.
+- **Why now — tier-2 fold-scoped disclosure.** Labeling the sub-digests
+  separately is what makes it possible to disclose *just* the tool calls
+  without disclosing the prompt or reasoning: a discloser can reveal
+  `tool_calls_digest` (and the tool-call bytes it commits to) on its own,
+  because the two are digested under distinct labels rather than folded
+  into one opaque `response_digest`. Without the split, any fold-scoped
+  disclosure of tool-call activity would necessarily also disclose
+  everything else bound into `response_digest`.
+- **Scope discipline (keep the reasoning-scope framing honest).** A digest
+  commits only to the bytes emitted under its label — `reasoning_digest`
+  binds to what the model emitted as reasoning output, nothing more. It is
+  NOT a claim that the digested bytes are a faithful causal trace of the
+  model's actual internal reasoning process; a model may emit reasoning
+  text that does not reflect its true computation, and this field cannot
+  and does not distinguish that case. This mirrors the entry's existing
+  `gate_executed` vs `runtime_claimed` discipline elsewhere in this
+  registry: label what was observed (bytes emitted under a name), never
+  imply more (a faithful trace of how the output was produced).
+- Like `role`, this addition does not resolve promotion items 1–2 above
+  (algorithm scope, fresh `x-mesh-lifecycle-v1` example); DE confirmation
+  covers all fields together, and both land in
+  `mesh_record_emitter.py`/`mesh_record_verifier.py` before promotion.
+
 ### Notes for the CPB editor (non-normative)
 
 - This entry targets the provisional track per Rung 3 of the Registration
@@ -434,11 +481,13 @@ registered name.
   skipping Rung 2 — `REGISTRY.md` Entry Lifecycle) with a committed
   two-sided vector set built from the truncation-guard case above.
 - The `role` field and its consistency invariant (issue #69, "Role field"
-  above) were filed on this same entry ahead of promotion, per the owner's
-  timing rationale on #69: the entry is immutable once it moves to the live
-  table. This addition does not resolve items 1–2 above; DE confirmation
-  covers all three together, and the field lands in
-  `mesh_record_emitter.py`/`mesh_record_verifier.py` before promotion.
+  above), and the `reasoning_digest`/`tool_calls_digest` sub-digest fields
+  ("Reasoning / tool-call sub-digests" above), were filed on this same
+  entry ahead of promotion, per the owner's timing rationale on #69: the
+  entry is immutable once it moves to the live table. Neither addition
+  resolves items 1–2 above; DE confirmation covers all fields together, and
+  each lands in `mesh_record_emitter.py`/`mesh_record_verifier.py` before
+  promotion.
 
 ---
 
