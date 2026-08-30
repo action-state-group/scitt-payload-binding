@@ -60,10 +60,12 @@ sees them; `cpb-check` reports them at their exact JSON path.
 
 ## Reference implementation and conformance vectors
 
-The reference library is in `lib/cpb/`.  Conformance vectors live in
-`vectors/` — `jcs-n/kats/` for the canonicalization algorithm and
-`cpb-check/` for the grammar checker.  Run `cpb-check --self-test` to
-execute the grammar-checker suite.
+The reference library is in `lib/cpb/`. Conformance vectors live in
+`vectors/`: start with `subject-binding-diff/` for the registered `jcs`
+construction and its discriminating pairs against the withdrawn `jcs-n`
+construction. The broader `jcs-n/kats/` suite is retained as the historical
+record for that withdrawn construction; `cpb-check/` covers the grammar
+checker. Run `cpb-check --self-test` to execute the grammar-checker suite.
 
 ## Registries
 
