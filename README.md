@@ -24,8 +24,9 @@ digest reference semantics without restating the mechanics in every profile.
 
 ## The specification
 
-- [`spec/draft-mih-sokolov-scitt-payload-binding-00.txt`](spec/draft-mih-sokolov-scitt-payload-binding-00.txt)
-  (`.md` source and rendered `.xml` alongside).
+- [`spec/draft-mih-sokolov-scitt-payload-binding-02.txt`](spec/draft-mih-sokolov-scitt-payload-binding-02.txt)
+  — the current revision (`.md` source and rendered `.xml` alongside; earlier
+  `-00`/`-01` revisions are retained in `spec/`).
 - Datatracker: [datatracker.ietf.org/doc/draft-mih-sokolov-scitt-payload-binding](https://datatracker.ietf.org/doc/draft-mih-sokolov-scitt-payload-binding/)
 - Intended venue: the SCITT Working Group (`scitt@ietf.org`). This is an
   individual submission; the short name and title are expected to be settled by
