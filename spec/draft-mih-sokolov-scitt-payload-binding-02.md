@@ -324,8 +324,9 @@ them. New discriminating vectors exercise that boundary and recursive
 bottom-up removal of a nested null. The historical-`jcs-n` vintage rule now
 requires profile-defined cryptographically verifiable time evidence and
 fails closed when vintage is not established; it does not infer a date from
-source control or a payload field. Duplicate-member rejection is tied to
-the observable JSON construction input before parsing or exclusions, and
+source control or a payload field. The duplicate-member refusal inherited
+from RFC 8785 and I-JSON is now made explicit at the observable JSON
+construction input, before parsing or exclusions, and
 the selective-disclosure hook now states its prerequisite and its CPB-level
 unverified disposition without defining a selective-disclosure mechanism.
 
@@ -336,8 +337,9 @@ duplicate-preserving raw-bytes lexer, since a standard JSON parser silently
 drops duplicate keys before any rule can see them; digest recomputation and
 `canonicalization_id` resolution remain out of scope pending a later gate.
 Vector-harness fixes landed alongside it: the lexer now rejects trailing
-bytes after a JSON document ends and NFC-normalizes before duplicate-key
-detection, and an inverted must-fail assertion and a `-0`/duplicate-key gap
+bytes after a JSON document ends and compares member names after JSON escape
+processing, without Unicode normalization, before duplicate-key detection;
+an inverted must-fail assertion and a `-0`/duplicate-key gap
 that could previously let the harness certify a vector as passing for the
 wrong reason are both closed.
 
@@ -622,17 +624,21 @@ A verifier MUST recompute the identifier from the payload bytes and the
 declared exclusion set. If the recomputed value does not match the carried
 value, the verifier MUST treat this as a defect in the record.
 
-For a JSON construction, duplicate-member rejection is a property of the
-construction input, not of the map or object produced by a general-purpose
-parser. Before exclusion-set removal or canonicalization, a producer and a
-verifier MUST reject any object in the input JSON text that contains two
-member names equal after NFC normalization. This check applies recursively,
-including to duplicate members that would later be excluded, and MUST be
-performed while all occurrences are still observable. A parser that silently
-keeps the first or last occurrence does not satisfy this requirement. NFC is
-used here only for duplicate detection; it does not otherwise normalize the
-member names passed to `jcs`. This requirement applies to algorithms that
-interpret a JSON value (`jcs` and historical `jcs-n`), not to the opaque
+For a JSON construction, duplicate-member refusal is inherited from the
+input requirements of JCS. RFC 8785 Section 3.1 requires input data to be
+adapted for I-JSON and therefore forbids duplicate property names. RFC 7493
+Section 2.3 defines duplicate names as names that, after processing JSON
+escapes, are identical sequences of Unicode characters. It does not apply
+Unicode normalization; RFC 8785 requires Unicode string data to be preserved
+"as is".
+
+Accordingly, before exclusion-set removal or canonicalization, a producer
+and a verifier MUST reject any object in the input JSON text that contains
+such duplicate names. This check applies recursively, including to duplicate
+members that would later be excluded, and MUST be performed while all
+occurrences are still observable. A parser that silently keeps the first or
+last occurrence does not satisfy this inherited requirement. This applies to
+algorithms that invoke JCS (`jcs` and historical `jcs-n`), not to the opaque
 octets selected by `as-transmitted`.
 
 The selective-disclosure rule applies only when the applicable payload

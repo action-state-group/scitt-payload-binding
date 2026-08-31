@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import json
 import re
-import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
@@ -124,7 +123,7 @@ class _Scanner:
         try:
             self._p += 1                            # consume '{'
             result: dict[str, Any] = {}
-            seen: dict[str, int] = {}               # NFC(key) -> char-position of first occurrence
+            seen: dict[str, int] = {}               # decoded key -> char-position of first occurrence
             first = True
             while True:
                 self._ws()
@@ -147,24 +146,21 @@ class _Scanner:
                 # whole fake violation lines into an operator's log. ensure_ascii
                 # also keeps a lone surrogate from crashing the printer.
                 member_path = f'{path}[{json.dumps(key)}]'
-                # Duplicate detection compares NFC-normalized keys: two members whose
-                # keys are distinct Unicode encodings of the same identifier (e.g. one
-                # NFC, one NFD) are the same wire-layer key and must not both survive —
-                # jcs-n itself does not normalize (CANONICALIZATION_DECLARATION.md §3),
-                # so an un-normalized duplicate check would let an attacker smuggle two
-                # "different" keys that collapse to one identifier downstream.
-                norm_key = unicodedata.normalize('NFC', key)
-                if norm_key in seen:
+                # RFC 7493 §2.3 compares names after JSON escapes are processed:
+                # they are duplicates only when the decoded Unicode-character
+                # sequences are identical. RFC 8785 preserves strings "as is",
+                # so NFC-equivalent but distinct sequences remain distinct names.
+                if key in seen:
                     self.violations.append(RawViolation(
                         path=member_path,
                         code='duplicate_key',
                         detail=(
                             f'key "{key}" appears more than once in the object at '
-                            f'{path} (first occurrence at character {seen[norm_key]})'
+                            f'{path} (first occurrence at character {seen[key]})'
                         ),
                     ))
                 else:
-                    seen[norm_key] = self._p
+                    seen[key] = self._p
                 val = self.parse(member_path)
                 result[key] = val                   # last-wins, same as json.loads
         finally:

@@ -101,7 +101,7 @@ Table of Contents
      4.3.  Algorithm cde-n (Withdrawn) . . . . . . . . . . . . . . .  13
      4.4.  Algorithm as-transmitted  . . . . . . . . . . . . . . . .  13
    5.  The Derived Identifier  . . . . . . . . . . . . . . . . . . .  14
-     5.1.  Representation  . . . . . . . . . . . . . . . . . . . . .  15
+     5.1.  Representation  . . . . . . . . . . . . . . . . . . . . .  16
    6.  Envelope Conventions  . . . . . . . . . . . . . . . . . . . .  16
    7.  Statement-to-Receipt Binding  . . . . . . . . . . . . . . . .  17
      7.1.  Leaf Construction . . . . . . . . . . . . . . . . . . . .  17
@@ -420,11 +420,12 @@ Internet-Draft          Canonical Payload Binding            August 2026
    null.  The historical-jcs-n vintage rule now requires profile-defined
    cryptographically verifiable time evidence and fails closed when
    vintage is not established; it does not infer a date from source
-   control or a payload field.  Duplicate-member rejection is tied to
-   the observable JSON construction input before parsing or exclusions,
-   and the selective-disclosure hook now states its prerequisite and its
-   CPB-level unverified disposition without defining a selective-
-   disclosure mechanism.
+   control or a payload field.  The duplicate-member refusal inherited
+   from RFC 8785 and I-JSON is now made explicit at the observable JSON
+   construction input, before parsing or exclusions, and the selective-
+   disclosure hook now states its prerequisite and its CPB-level
+   unverified disposition without defining a selective-disclosure
+   mechanism.
 
    *Conformance checker.* A grammar/wire-layer conformance checker (cpb-
    check) validates a record against its declared profile grammar — a
@@ -434,12 +435,11 @@ Internet-Draft          Canonical Payload Binding            August 2026
    digest recomputation and canonicalization_id resolution remain out of
    scope pending a later gate.  Vector-harness fixes landed alongside
    it: the lexer now rejects trailing bytes after a JSON document ends
-   and NFC-normalizes before duplicate-key detection, and an inverted
+   and compares member names after JSON escape processing, without
+   Unicode normalization, before duplicate-key detection; an inverted
    must-fail assertion and a -0/duplicate-key gap that could previously
    let the harness certify a vector as passing for the wrong reason are
    both closed.
-
-
 
 
 
@@ -800,19 +800,23 @@ Internet-Draft          Canonical Payload Binding            August 2026
    not match the carried value, the verifier MUST treat this as a defect
    in the record.
 
-   For a JSON construction, duplicate-member rejection is a property of
-   the construction input, not of the map or object produced by a
-   general-purpose parser.  Before exclusion-set removal or
-   canonicalization, a producer and a verifier MUST reject any object in
-   the input JSON text that contains two member names equal after NFC
-   normalization.  This check applies recursively, including to
-   duplicate members that would later be excluded, and MUST be performed
-   while all occurrences are still observable.  A parser that silently
-   keeps the first or last occurrence does not satisfy this requirement.
-   NFC is used here only for duplicate detection; it does not otherwise
-   normalize the member names passed to jcs.  This requirement applies
-   to algorithms that interpret a JSON value (jcs and historical jcs-n),
-   not to the opaque octets selected by as-transmitted.
+   For a JSON construction, duplicate-member refusal is inherited from
+   the input requirements of JCS.  RFC 8785 Section 3.1 requires input
+   data to be adapted for I-JSON and therefore forbids duplicate
+   property names.  RFC 7493 Section 2.3 defines duplicate names as
+   names that, after processing JSON escapes, are identical sequences of
+   Unicode characters.  It does not apply Unicode normalization; RFC
+   8785 requires Unicode string data to be preserved "as is".
+
+   Accordingly, before exclusion-set removal or canonicalization, a
+   producer and a verifier MUST reject any object in the input JSON text
+   that contains such duplicate names.  This check applies recursively,
+   including to duplicate members that would later be excluded, and MUST
+   be performed while all occurrences are still observable.  A parser
+   that silently keeps the first or last occurrence does not satisfy
+   this inherited requirement.  This applies to algorithms that invoke
+   JCS (jcs and historical jcs-n), not to the opaque octets selected by
+   as-transmitted.
 
    The selective-disclosure rule applies only when the applicable
    payload profile normatively selects a selective-disclosure mechanism,
@@ -827,11 +831,7 @@ Internet-Draft          Canonical Payload Binding            August 2026
    verified.  The consuming profile determines any application-level
    disposition beyond that unverified binding.
 
-5.1.  Representation
 
-   Representation is normative and MUST be declared by the payload
-   class.  The following representations are distinct and are not
-   implicitly interchangeable:
 
 
 
@@ -841,6 +841,12 @@ Mih & Sokolov           Expires 25 February 2027               [Page 15]
 
 Internet-Draft          Canonical Payload Binding            August 2026
 
+
+5.1.  Representation
+
+   Representation is normative and MUST be declared by the payload
+   class.  The following representations are distinct and are not
+   implicitly interchangeable:
 
    *  bare-hex: exactly 64 lowercase hexadecimal ASCII characters
       encoding a 32-octet SHA-256 value;
@@ -880,6 +886,18 @@ Internet-Draft          Canonical Payload Binding            August 2026
       payload class name as declared by the payload class's own defining
       specification.
 
+
+
+
+
+
+
+
+Mih & Sokolov           Expires 25 February 2027               [Page 16]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
    A field belongs in the protected header only if a SCITT-generic party
    — a Transparency Service registration policy or a profile-unaware
    verifier — must act on it without understanding the payload class.
@@ -890,13 +908,6 @@ Internet-Draft          Canonical Payload Binding            August 2026
    extensions are payload-only.  A Transparency Service that does not
    understand a protected-header extension MUST be able to register the
    Signed Statement and verify the envelope without it.
-
-
-
-Mih & Sokolov           Expires 25 February 2027               [Page 16]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
    The closed-claim principle does not prevent payload-class-specific
    protected-header fields from existing; it requires that such fields
@@ -935,6 +946,14 @@ Internet-Draft          Canonical Payload Binding            August 2026
    verifier MUST use that exact representation.  CPB does not choose one
    on the VDS's behalf.
 
+
+
+
+Mih & Sokolov           Expires 25 February 2027               [Page 17]
+
+Internet-Draft          Canonical Payload Binding            August 2026
+
+
    For a VDS that declares the raw representation, a derived identifier
    whose canonical string D is 64-character hexadecimal text MUST be
    decoded to the 32-octet leaf input:
@@ -945,14 +964,6 @@ Internet-Draft          Canonical Payload Binding            August 2026
    used in its place:
 
    leaf_input = D.encode("utf-8")  -- WRONG: 64 ASCII bytes
-
-
-
-
-Mih & Sokolov           Expires 25 February 2027               [Page 17]
-
-Internet-Draft          Canonical Payload Binding            August 2026
-
 
    For a VDS that instead declares bare-hex text as its leaf input,
    D.encode("ascii") is the declared 64-octet input and bytes.fromhex(D)
@@ -970,17 +981,6 @@ Internet-Draft          Canonical Payload Binding            August 2026
    address without embedding it.
 
    A typed digest reference is a JSON object with the following fields:
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -317,21 +317,18 @@ def _handle_invalid_wire_number_token(v: dict) -> None:
 
 def _handle_duplicate_key(v: dict) -> None:
     """jcs-n-kat-37 (was kat-30 pre-renumber): duplicate keys must be
-    rejected after NFC normalization.  The cpb library operates on
+    rejected after JSON escapes are processed.  The cpb library operates on
     already-parsed Python objects (where duplicate keys are lost to
     last-wins); rejection must occur at the wire level using
     object_pairs_hook.  We verify that the raw vector text fails the strict
     duplicate-key check."""
-    import unicodedata as _ud
-
     def _no_dup_keys(pairs):
         seen = {}
         result = {}
         for k, val in pairs:
-            nfc = _ud.normalize('NFC', k)
-            if nfc in seen:
-                raise ValueError(f"duplicate key after NFC normalization: {k!r}")
-            seen[nfc] = True
+            if k in seen:
+                raise ValueError(f"duplicate key after JSON escape processing: {k!r}")
+            seen[k] = True
             result[k] = val
         return result
 

@@ -141,7 +141,6 @@ import json
 import math
 import re
 import sys
-import unicodedata
 from pathlib import Path
 
 
@@ -181,10 +180,12 @@ def _no_dup_keys(pairs):
     seen = {}
     result = {}
     for k, v in pairs:
-        nfc = unicodedata.normalize('NFC', k)
-        if nfc in seen:
-            raise ValueError(f"duplicate key after NFC normalization: {k!r}")
-        seen[nfc] = True
+        # RFC 7493 Section 2.3: compare the decoded names as identical
+        # Unicode-character sequences. RFC 8785 preserves strings "as is";
+        # NFC-equivalent but distinct sequences are not duplicate names.
+        if k in seen:
+            raise ValueError(f"duplicate key after JSON escape processing: {k!r}")
+        seen[k] = True
         result[k] = v
     return result
 
