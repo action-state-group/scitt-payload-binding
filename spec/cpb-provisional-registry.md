@@ -281,11 +281,26 @@ and registered in the normative Artifact Type Registry — see
 ## Proposed: `mesh-inference-exchange`
 
 **Owner:** Action State Group (`action-state-group/capsule-emit-mesh`)
-**Reference:** `action-state-group/capsule-emit-mesh` @ `0304296` (`mesh_record_emitter.py`, `mesh_record_verifier.py`)
+**Reference:** `action-state-group/capsule-emit-mesh` @ `9be03df` —
+`mesh_record_emitter.py`, `mesh_record_verifier.py` (the `x-mesh-lifecycle-v1`
+record); `plugins/capsule-producer/src/capsule.rs`,
+`plugins/admission-policy/src/capsule_emit.rs` (the generic
+`compute_attestation` sub-digest placement — see "Reasoning / tool-call
+sub-digests" below)
 **Proposed by:** ASG (owner-authored — see Disclosure)
 **DE reviewer:** Anton Sokolov — this entry promotes to the live Artifact Type
-Registry only on your confirmation of the two open items below, plus the
-`role` field addition (issue #69, filed below); edit or hold freely.
+Registry only on your confirmation of the two open items below; edit or hold
+freely.
+
+**Revision (2026-08-31):** revised per Anton's `CHANGES_REQUESTED` review on
+PR #70 (approval withdrawn — the live implementation had moved past the
+pinned snapshot). Each of the four numbered points from that review is
+addressed inline below, marked **(Anton #n)**. The `role` field proposed in
+an earlier revision of this entry (issue #69) is **WITHDRAWN** from this
+change (Anton #3) — issue #69 stays open, deferred to a follow-up once a
+role vocabulary is settled and actually implemented in
+`mesh_record_emitter.py`/`mesh_record_verifier.py`.
+
 **Disclosure:** the proposer is a co-editor of this registry; this entry is
 owner-authored and is not independent or third-party validation.
 
@@ -297,7 +312,7 @@ reference exists and the fields are validated in running code, but:
 1. **The identifier's serialization is not a registered algorithm yet.**
    The record bytes a verifier receives are produced by `capsule_to_bytes()`:
    `json.dumps(capsule, sort_keys=True, separators=(",", ":")).encode("utf-8")`
-   (`mesh_record_emitter.py:286-288`). This is deterministic, but it is
+   (`mesh_record_emitter.py:327-329`). This is deterministic, but it is
    neither `jcs-n`/`jcs` (RFC 8785 escaping and number-formatting rules
    differ from Python's `json.dumps` output) nor a byte-boundary selector in
    the `as-transmitted` sense (`REGISTRY.md`: "an artifact type entry using
@@ -309,12 +324,17 @@ reference exists and the fields are validated in running code, but:
    `jcs-n` identifier context already covers it; (b) register
    `capsule_to_bytes()`'s exact construction as its own algorithm token; or
    (c) scope `as-transmitted` to only the sub-fields that are genuinely
-   as-transmitted today — `request_digest`/`response_digest`, literally
-   `sha256(raw_body)` with no canonicalization (`capsule_sidecar.py:231-238`)
-   — rather than the whole record. The inbox item that proposed this entry
-   named `as-transmitted` as the identifier context; this note is the
-   DE-facing detail needed to pin exactly what that means before it is
-   immutable.
+   as-transmitted today — the `x-mesh-lifecycle-v1` block's own
+   `request_digest`/`response_digest` sub-fields, literally `sha256(raw_body)`
+   with no canonicalization, currently produced by the mock lifecycle-host
+   test fixture's `_digest` (`mock_lifecycle_host.py:275-276`) — and
+   explicitly **not** the AAC-level `agent_input_digest`/`agent_output_digest`
+   in `compute_attestation`, which ARE the canonical JSON-DIGEST (see
+   "Reasoning / tool-call sub-digests" below); it is (c)'s narrower pair of
+   fields, not the whole record, that would be scoped this way. The inbox
+   item that proposed this entry named `as-transmitted` as the identifier
+   context; this note is the DE-facing detail needed to pin exactly what
+   that means before it is immutable.
 2. **The one committed real-traffic example set predates the current block
    name.** The lifecycle vocabulary below (`terminal_state`,
    `observation_point`, `exchange_id`, `hop_id`, `transcript`) is carried in
@@ -334,66 +354,46 @@ Digest Context (purpose: `identifier`) — as far as pinned:
 | Field | Value |
 |---|---|
 | Algorithm | `as-transmitted` — provisionally; scope pending DE confirmation, item 1 above |
-| Field set | the `x-mesh-lifecycle-v1` block: `terminal_state` (∈ eight-value closed set), `terminal_reason`, `observation_point` (∈ four-value closed set, nullable), `role` (∈ two-value closed set, conditional — see Role field below), `exchange_id`, `hop_id`, `attempt`, `local_peer_id`, `transcript.{event_count, expected_count, complete}`, `reasoning_digest` (OPTIONAL labeled sub-digest — see Reasoning / tool-call sub-digests below), `tool_calls_digest` (OPTIONAL labeled sub-digest — see Reasoning / tool-call sub-digests below) |
+| Field set | the `x-mesh-lifecycle-v1` block: `terminal_state` (∈ eight-value closed set), `terminal_reason`, `observation_point` (∈ four-value closed set, nullable), `exchange_id`, `hop_id`, `attempt`, `local_peer_id`, `transcript.{event_count, expected_count, complete}`. `role` is NOT a member — withdrawn, see "Role field" below. `reasoning_digest`/`tool_calls_digest` are NOT members either — they are generic `compute_attestation` fields, see "Reasoning / tool-call sub-digests" below. |
 | Exclusion set | N/A pending item 1 above |
 | Domain separation | none observed in code |
 | Pre-image encoding | N/A pending item 1 above |
-| Representation | `request_digest`/`response_digest`/`reasoning_digest`/`tool_calls_digest` sub-fields: bare 64-char lowercase hex (SHA-256) |
+| Representation | `request_digest`/`response_digest` sub-fields: bare 64-char lowercase hex (SHA-256) |
 
 **Vocabulary (closed sets):**
 - `terminal_state` ∈ `{completed, policy_denied, request_invalid, backend_error, transport_error, client_cancelled, timed_out, evidence_unavailable}` — quoted from `mesh_record_verifier.py`
 - `observation_point` ∈ `{gateway_ingress, serving_host_ingress, backend_dispatch, client_egress}` (nullable — absent when a record covers a whole exchange rather than one vantage point) — quoted from `mesh_record_verifier.py`
-- `role` ∈ `{requested, served}` — proposed, not yet in `mesh_record_verifier.py` at `0304296`; see Role field below
 
-### Role field (added 2026-08-28, issue #69)
+### Role field — WITHDRAWN from this entry (2026-08-31, Anton #3; issue #69 deferred)
 
-**Proposed alongside this entry, not yet implemented.** `role` is not present
-in `mesh_record_emitter.py`/`mesh_record_verifier.py` at `0304296` — it is
-filed here as registry mechanics ahead of implementation because the entry
-becomes immutable once it moves to the live table (#69's stated timing
-rationale). It is therefore not covered by "validated in running code" in
-the section heading above; implementation lands before promotion.
+The `{requested, served}` role field carried in an earlier revision of this
+entry is removed. **(Anton #3):** `role` is not present anywhere in
+`mesh_record_emitter.py`/`mesh_record_verifier.py` at the pin above — the
+`x-mesh-lifecycle-v1` record carries no role field in running code today —
+and `{requested, served}` matches neither vocabulary that IS implemented
+elsewhere in this repo:
 
-`role` records *whose account a record is*, a second axis from
-`observation_point`, which records *where* a record was observed. The two
-axes are not cleanly interchangeable — `gateway_ingress` has no role, and a
-vantage-to-role mapping would have to be re-derived by every consumer as
-vantage points grow — so `role` is carried explicitly rather than derived.
+- `capsule_sidecar.py`'s `ROLE_PROVIDER`/`ROLE_REQUESTER`
+  (`"provider"`/`"requester"`, `capsule_sidecar.py:107-109`) label which half
+  of one exchange a given sidecar seals — `provider` attests what it served,
+  `requester` attests its own outbound half. This is a different mechanism
+  (own-half sealing, `[b6a-requester-seal]`), not the `x-mesh-lifecycle-v1`
+  record this entry registers.
+- The coordinator receipt's `TopologyEntry.role`
+  (`mesh_coordinator_receipt_emitter.py:117-131`) takes free-string
+  `"requester"`/`"responder"` values in its own tests, but the field is
+  validated only as a non-empty string — its docstring says it "reuses
+  `[mesh-exchange-role-field]` A1's registry-defined enum once it lands in
+  this repo's code," i.e. it forward-references this very issue rather than
+  establishing a settled vocabulary of its own.
 
-- OPTIONAL overall.
-- REQUIRED wherever the vantage carries a role: `observation_point =
-  client_egress` → `role = requested`; `observation_point ∈
-  {serving_host_ingress, backend_dispatch}` → `role = served`.
-- MUST be ABSENT at `observation_point = gateway_ingress` — the one
-  role-less vantage.
-
-**Fail-closed consistency invariant (#69).** Where both `role` and
-`observation_point` are present, they MUST form one of the pairings above;
-an inconsistent pairing — including any `role` alongside `gateway_ingress`,
-or an absent `role` at a vantage that requires one — MUST be rejected. A
-verifier implementing this rule raises a named error,
-`RoleObservationPointMismatchError`, kept distinct from
-`IncompleteTranscriptError` below so the two invariants stay independently
-diagnosable.
-
-**Binary-domain note.** The coordinator never emits this artifact type — it
-has its own coordinator-receipt entry — so `{requested, served}` is
-exhaustive for every record `x-mesh-lifecycle-v1` actually carries; there is
-no third role to reserve room for.
-
-**Discriminating vectors (synthetic, illustrative — not yet a committed CPB
-vector; Rung 3 does not require one, consistent with the
-transcript-completeness candidate below).** Each row shows only the two
-fields at issue; the rest of the block is elided as `…`.
-
-| # | `observation_point` | `role` | Verdict | Why |
-|---|---|---|---|---|
-| 1 | `client_egress` | `requested` | PASS | consistent pair — the required mapping |
-| 2 | `client_egress` | `served` | MUST-FAIL | contradictory pair — `client_egress` requires `requested`; mutating vector 1's `role` alone, holding every other byte constant, produces this vector, so the pairing check is what must flip the verdict |
-| 3 | `gateway_ingress` | `requested` | MUST-FAIL | role present at the role-less vantage — `gateway_ingress` MUST carry no `role` at all |
-| 4 | `backend_dispatch` | *(absent)* | MUST-FAIL | role absent at a vantage that requires one — `backend_dispatch` is a served-side vantage, so a missing `role` is itself the inconsistency |
-
-Rows 2–4 each raise `RoleObservationPointMismatchError`.
+Since neither existing vocabulary belongs to the artifact this entry
+registers, and `role` is unimplemented for that artifact, `role` is
+withdrawn from this change rather than carried as registry mechanics ahead
+of code. Issue #69 stays open — deferred, not closed — and tracks settling
+one vocabulary and landing it in
+`mesh_record_emitter.py`/`mesh_record_verifier.py`; it is not part of this
+entry's promotion path.
 
 **Producer invariant (load-bearing, not owner-invented for this entry):**
 `transcript.complete` MUST be `False` whenever `event_count < expected_count`
@@ -419,52 +419,114 @@ block-name confirmation in item 2 above; the mesh-llm PoC gateway
 (mesh-llm#1233) once that engagement's own documentation cites this
 registered name.
 
-### Reasoning / tool-call sub-digests (added 2026-08-28, tier-2 fold-scoped disclosure)
+### Reasoning / tool-call sub-digests — generic `compute_attestation` fields, not `x-mesh-lifecycle-v1` members (revised 2026-08-31, Anton #1/#2)
 
-**Proposed alongside this entry, not yet implemented** — same status as
-`role` above: `reasoning_digest` and `tool_calls_digest` are not present in
-`mesh_record_emitter.py`/`mesh_record_verifier.py` at `0304296`. They are
-filed here as registry mechanics ahead of implementation because the entry
-becomes immutable once it moves to the live table; implementation lands
-before promotion.
+**(Anton #1):** `reasoning_digest` and `tool_calls_digest` are implemented
+today, but not where an earlier revision of this entry placed them. Running
+code (`action-state-group/capsule-emit-mesh` @ `9be03df`,
+`plugins/capsule-producer/src/capsule.rs:318-323` inserting fields declared
+at `capsule.rs:249,254`; construction in
+`plugins/admission-policy/src/capsule_emit.rs:156-188`) puts both directly
+into `model_attestation.compute_attestation`, as siblings of
+`agent_input_digest`/`agent_output_digest` (`capsule.rs:313-317`) — **not**
+inside `x-mesh-lifecycle-v1`, and not inside the PoC-only `x-mesh-poc-v1`
+extension either (`x-mesh-poc-v1` is inserted as its own nested sub-object,
+`capsule.rs:325`). They are GENERIC compute-attestation fields, the same
+class as `agent_input_digest`/`agent_output_digest`, usable by any
+`model_attestation` producer — this entry references that generic
+construction rather than defining its own.
 
-`reasoning_digest` and `tool_calls_digest` are OPTIONAL labeled sub-digest
-fields carried in the `x-mesh-lifecycle-v1` block, alongside the existing
-`request_digest`/`response_digest` sub-fields. Each is a bare 64-char
-lowercase hex SHA-256 digest — same representation as the existing digest
-sub-fields — over its own labeled byte range within the record:
-`reasoning_digest` over the bytes emitted as reasoning/chain-of-thought
-content (when the exchange carries any), `tool_calls_digest` over the bytes
-emitted as tool/function-call content (when the exchange carries any).
+**Exact construction.** Each is the AAC JSON-DIGEST
+(`draft-mih-scitt-agent-action-capsule` §2/§5.1:
+`HEX(SHA-256(JCS(normalize(v))))`, RFC 8785 JCS — `jcs.rs:144-147`) of a JSON
+array built by flattening the labeled content across the response's
+assistant message(s) (`capsule_emit.rs::output_sub_digests`,
+`capsule_emit.rs:156-188`):
+- `tool_calls_digest` = `JSON-DIGEST([...message.tool_calls for each choice])`
+- `reasoning_digest` = `JSON-DIGEST([...message.reasoning_content for each choice, excluding null/empty string])`
 
-- **Both OPTIONAL.** Absent when the exchange carried no reasoning content
-  and/or no tool calls, or when the producer chooses not to label the
-  split. Carrying them costs nothing when unused; adding them after
-  promotion would not be possible at all (entries are immutable once live),
-  which is why they are filed on this same pre-promotion train rather than
-  as a follow-up.
-- **Why now — tier-2 fold-scoped disclosure.** Labeling the sub-digests
-  separately is what makes it possible to disclose *just* the tool calls
-  without disclosing the prompt or reasoning: a discloser can reveal
-  `tool_calls_digest` (and the tool-call bytes it commits to) on its own,
-  because the two are digested under distinct labels rather than folded
-  into one opaque `response_digest`. Without the split, any fold-scoped
-  disclosure of tool-call activity would necessarily also disclose
-  everything else bound into `response_digest`.
-- **Scope discipline (keep the reasoning-scope framing honest).** A digest
-  commits only to the bytes emitted under its label — `reasoning_digest`
-  binds to what the model emitted as reasoning output, nothing more. It is
-  NOT a claim that the digested bytes are a faithful causal trace of the
-  model's actual internal reasoning process; a model may emit reasoning
-  text that does not reflect its true computation, and this field cannot
-  and does not distinguish that case. This mirrors the entry's existing
-  `gate_executed` vs `runtime_claimed` discipline elsewhere in this
-  registry: label what was observed (bytes emitted under a name), never
-  imply more (a faithful trace of how the output was produced).
-- Like `role`, this addition does not resolve promotion items 1–2 above
-  (algorithm scope, fresh `x-mesh-lifecycle-v1` example); DE confirmation
-  covers all fields together, and both land in
-  `mesh_record_emitter.py`/`mesh_record_verifier.py` before promotion.
+No float-stringification is applied before digesting (unlike
+`agent_output_digest`'s `canonical_body_digest`, which does stringify floats
+first, `capsule_emit.rs:64-70`) — `tool_calls`/`reasoning_content` are
+structural JSON/strings with no floats, so plain JCS already matches the
+Python reference exactly (`capsule_emit.rs:145-155`, doc comment).
+
+**Absence semantics.** Each key is OMITTED entirely — never `null`, never a
+digest computed over `[]` — whenever the response carried no tool calls
+and/or no reasoning content. This is enforced at the type level, not by a
+runtime check: both fields are `Option<String>` in `CapsuleInput`
+(`capsule.rs:249,254`) and are inserted into `compute_attestation` only via
+`if let Some(...)` (`capsule.rs:318-323`); `output_sub_digests` itself
+returns `None` rather than a digest over an empty array whenever the source
+list is empty (`capsule_emit.rs:177-187`).
+
+**Positive vector.** Real captured traffic (a live SETI@Home `web_search`
+tool call), reproduced verbatim in
+`capsule_emit.rs::output_sub_digests_over_real_seti_response_matches_python_reference`:
+given the response body
+```json
+{"id":"chatcmpl-seti","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","content":"","tool_calls":[{"function":{"arguments":"{\"query\": \"mesh-llm vs SETI@Home\"}","name":"web_search"},"id":"call_719a955fb46a41008dd847d412f00795","type":"function"}]},"finish_reason":"tool_calls"}]}
+```
+`tool_calls_digest = f294be8a53bb9c29cd94472721f0857591f34b23fe010882de79b9fb210b1395`
+(byte-for-byte equal to the Python reference `json_digest(tool_calls)`), and
+`reasoning_digest` is absent (non-reasoning model) — never a fabricated
+digest over `[]`.
+
+**MUST-FAIL / discriminating vectors** (paired with the positive vector
+above; not yet a committed CPB vector file, consistent with the
+transcript-completeness candidate above — Rung 3 does not require one):
+
+| # | Input | `tool_calls_digest` | Verdict | Why |
+|---|---|---|---|---|
+| P | response body above (one real `web_search` tool call) | `f294be8...b1395` | PASS | real digest over the real emitted tool call — `output_sub_digests_over_real_seti_response_matches_python_reference` |
+| F1 | same shape, `choices[].message.tool_calls` empty/absent | absent key | PASS (this IS correct — the paired contrast) | `output_sub_digests_absent_when_no_tool_calls` — the honest-absence case |
+| F2 | a record asserting `tool_calls_digest: null` | — | MUST-FAIL | no conforming producer emits `null`; a conforming consumer MUST reject it as malformed — the field is either the real digest or entirely absent, never a null placeholder |
+| F3 | a record asserting `tool_calls_digest` = `JSON-DIGEST([])` (a digest computed over an empty array, to falsely imply "checked, found none" rather than "not labeled") | — | MUST-FAIL | a fabricated digest over emptiness is shape-indistinguishable from a real digest, which is exactly the ambiguity the absence rule exists to prevent; a conforming consumer MUST reject a `tool_calls_digest` that recomputes to `JSON-DIGEST([])` |
+
+F2/F3 are spec-level MUST invariants derived directly from the producer's
+`Option`-typed, insert-only-when-`Some` construction (`capsule.rs:318-323`);
+there is no dedicated runtime verifier check for them in this repo yet
+(unlike the transcript-completeness invariant above, which
+`mesh_record_verifier.verify_record_bytes` actively enforces) — flagged here
+as the natural companion checks for whichever verifier eventually validates
+this generic placement.
+
+**Current pins.** Producer: `action-state-group/capsule-emit-mesh` @
+`9be03df` — `plugins/capsule-producer/src/capsule.rs`,
+`plugins/admission-policy/src/capsule_emit.rs`. Consumer/parity reference:
+same commit, `capsule_emit.rs`'s own test suite
+(`output_sub_digests_over_real_seti_response_matches_python_reference`,
+`output_sub_digests_absent_when_no_tool_calls`,
+`observed_host_exchange_seals_real_tool_calls_and_response_digest`) — there
+is no standalone consumer/verifier binary for these two fields specifically
+yet; today they are consumed generically by whatever reads
+`compute_attestation` (e.g. `capsule_mesh_viewer.py`).
+
+**Scope discipline (unchanged from the prior revision).** A digest commits
+only to the bytes emitted under its label — `reasoning_digest` binds to what
+the model emitted as reasoning output, nothing more. It is NOT a claim that
+the digested bytes are a faithful causal trace of the model's actual
+internal reasoning process; a model may emit reasoning text that does not
+reflect its true computation, and this field cannot and does not
+distinguish that case. This mirrors the entry's existing `gate_executed` vs
+`runtime_claimed` discipline elsewhere in this registry: label what was
+observed (bytes emitted under a name), never imply more (a faithful trace of
+how the output was produced).
+
+### Coordinator receipt — confirmed a separate artifact, not folded in here (Anton #4)
+
+**(Anton #4):** this entry does not fold coordinator-receipt mechanics in,
+and stays that way. The coordinator's own record is a SEPARATE artifact
+type, produced by `mesh_coordinator_receipt_emitter.py` in its own
+extension namespace (`x-mesh-coordinator-receipt-v1` inside
+`compute_attestation`, module docstring "CITATION, NOT COMPOSITION" — design
+doc §5.4, `mesh_coordinator_receipt_emitter.py:22-36`): its `stages[]` array
+cites the ordered per-hop bundles by typed digest reference (`{type,
+digest_alg, digest}`, the same shape as AAC's own CPB typed digest ref),
+never composes them into the coordinator record's own who/can/did/audit
+legs. That artifact type is out of scope for this entry and will be filed
+separately, with its own implementation pin and vectors/verifier, once
+ready for registry review.
 
 ### Notes for the CPB editor (non-normative)
 
@@ -480,14 +542,15 @@ emitted as tool/function-call content (when the exchange carries any).
   entry can move directly to `owner-confirmed` (Rung 3 → owner-direct,
   skipping Rung 2 — `REGISTRY.md` Entry Lifecycle) with a committed
   two-sided vector set built from the truncation-guard case above.
-- The `role` field and its consistency invariant (issue #69, "Role field"
-  above), and the `reasoning_digest`/`tool_calls_digest` sub-digest fields
-  ("Reasoning / tool-call sub-digests" above), were filed on this same
-  entry ahead of promotion, per the owner's timing rationale on #69: the
-  entry is immutable once it moves to the live table. Neither addition
-  resolves items 1–2 above; DE confirmation covers all fields together, and
-  each lands in `mesh_record_emitter.py`/`mesh_record_verifier.py` before
-  promotion.
+- **2026-08-31 revision summary:** `role` withdrawn from this entry (issue
+  #69 deferred to a follow-up, not closed); `reasoning_digest`/
+  `tool_calls_digest` moved to their real generic `compute_attestation`
+  placement with exact JCS construction, absence semantics, positive +
+  MUST-FAIL vectors, and current pins; stale `0304296` pin and stale
+  "not yet implemented" language refreshed throughout; coordinator-receipt
+  separation confirmed with a pointer to the real separate artifact. This
+  entry's remaining promotion gate is unchanged by this revision: items 1–2
+  above (identifier algorithm scope, fresh `x-mesh-lifecycle-v1` example).
 
 ---
 
