@@ -12,7 +12,9 @@ requires-python = ">=3.10"
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=7"]
+# The installed-package regression test builds without isolation or network
+# access, so its active development environment must provide the build backend.
+dev = ["pytest>=7", "setuptools>=61"]
 
 [project.scripts]
 cpb-check = "cpb._cli:main"
