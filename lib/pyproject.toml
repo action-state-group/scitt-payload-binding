@@ -21,5 +21,11 @@ cpb-check = "cpb._cli:main"
 where = ["."]
 include = ["cpb*"]
 
+[tool.setuptools.package-data]
+cpb = [
+  "_vectors/cpb-check/conforming/*.json",
+  "_vectors/cpb-check/non-conforming/*.json",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

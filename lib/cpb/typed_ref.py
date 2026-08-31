@@ -30,6 +30,14 @@ __all__ = [
 
 _BARE_HEX_CHARS = frozenset("0123456789abcdef")
 
+
+def _is_bare_hex_256(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(char in _BARE_HEX_CHARS for char in value)
+    )
+
 # The hash algorithm implied by each canonicalization algorithm's registry
 # entry (REGISTRY.md §Payload Canonicalization Algorithm Registry). jcs-n is
 # defined as "JCS + absent-field normalization; SHA-256; lowercase hex
@@ -48,6 +56,10 @@ def hex_to_raw(digest_hex: str) -> bytes:
     different byte sequences of different lengths (32 vs 64 bytes) and MUST
     NOT be substituted for one another.
     """
+    if not _is_bare_hex_256(digest_hex):
+        raise ValueError(
+            "digest_hex must be exactly 64 lowercase hexadecimal characters"
+        )
     return bytes.fromhex(digest_hex)
 
 
@@ -57,6 +69,8 @@ def raw_to_hex(digest_raw: bytes) -> str:
     This is the ONLY sanctioned way to obtain the hex representation from the
     raw-octet representation.
     """
+    if not isinstance(digest_raw, bytes) or len(digest_raw) != 32:
+        raise ValueError("digest_raw must be exactly 32 raw octets")
     return digest_raw.hex()
 
 
@@ -239,14 +253,18 @@ def _check_representation(digest: str | bytes, representation: str, artifact_typ
     ``hex_to_raw``/``raw_to_hex`` functions; there is no implicit path.
     """
     if representation == "bare_hex":
-        if not isinstance(digest, str) or len(digest) != 64 or not all(c in _BARE_HEX_CHARS for c in digest):
+        if not _is_bare_hex_256(digest):
             raise RepresentationMismatchError(
                 carried=digest,
                 expected_repr="bare_hex (64-char lowercase hex str)",
                 artifact_type=artifact_type,
             )
     elif representation == "prefixed":
-        if not isinstance(digest, str) or not digest.startswith("sha256:") or len(digest) != 7 + 64:
+        if (
+            not isinstance(digest, str)
+            or not digest.startswith("sha256:")
+            or not _is_bare_hex_256(digest[len("sha256:"):])
+        ):
             raise RepresentationMismatchError(
                 carried=digest,
                 expected_repr="prefixed ('sha256:' + 64-char lowercase hex str)",

@@ -1,0 +1,29 @@
+{
+  "id": "subject-binding-diff-05",
+  "diverge": true,
+  "description": "Action with a null member nested two objects deep. Plain RFC 8785 JCS retains the complete context object. Historical jcs-n removes note:null, then removes the newly empty details object, then removes the newly empty context object. This pins the bottom-up recursive case that a top-level-null vector does not discriminate.",
+  "stakes_ref": "draft-mih-sokolov-scitt-payload-binding-02 §4.2 (withdrawn jcs-n); draft-mih-sato-agent-accountability-composition §6.3.2",
+  "action": {
+    "task": "write-report",
+    "context": {
+      "details": {
+        "note": null
+      }
+    },
+    "device": "sensor-01"
+  },
+  "jcs": {
+    "algorithm": "RFC 8785 (plain JCS, no normalization pass)",
+    "spec_ref": "draft-mih-sato-agent-accountability-composition §6.3.2",
+    "pre_image": "{\"context\":{\"details\":{\"note\":null}},\"device\":\"sensor-01\",\"task\":\"write-report\"}",
+    "pre_image_bytes_hex": "7b22636f6e74657874223a7b2264657461696c73223a7b226e6f7465223a6e756c6c7d7d2c22646576696365223a2273656e736f722d3031222c227461736b223a2277726974652d7265706f7274227d",
+    "digest": "adf6aa8ae318b12bd2d5c5fd4e853944f460d91be4039ad49353381c380e6834"
+  },
+  "jcs_n": {
+    "algorithm": "jcs-n (withdrawn; RFC 8785 + bottom-up null/empty-member normalization)",
+    "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §3.1",
+    "pre_image": "{\"device\":\"sensor-01\",\"task\":\"write-report\"}",
+    "pre_image_bytes_hex": "7b22646576696365223a2273656e736f722d3031222c227461736b223a2277726974652d7265706f7274227d",
+    "digest": "163468697dd1eca263fef4dc5311a0711eb32b8fcc4083b6447973b7f5b42a5d"
+  }
+}

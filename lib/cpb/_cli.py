@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Iterable
+from importlib import resources
 from pathlib import Path
 
 from .check import CheckResult, check
@@ -48,18 +50,31 @@ Exit codes: 0=verified  1=non-conforming  2=error
 # Self-test: run the built-in cpb-check vector suite
 # ---------------------------------------------------------------------------
 
+def _vector_files(root) -> Iterable:
+    """Yield packaged vector resources without assuming a filesystem Path.
+
+    ``importlib.resources`` may return a Traversable backed by an installed
+    wheel rather than a checkout, so use only the Traversable interface.
+    """
+    for child in sorted(root.iterdir(), key=lambda item: item.name):
+        if child.is_dir():
+            yield from _vector_files(child)
+        elif child.name.endswith('.json'):
+            yield child
+
+
 def _self_test() -> int:
-    vectors_root = Path(__file__).parent.parent.parent / 'vectors' / 'cpb-check'
+    vectors_root = resources.files('cpb').joinpath('_vectors', 'cpb-check')
     if not vectors_root.is_dir():
-        print(f'self-test: vector directory not found: {vectors_root}', file=sys.stderr)
+        print('self-test: packaged vector directory not found', file=sys.stderr)
         return _EXIT_ERROR
 
     passed = failed = skipped = 0
 
-    for vec_file in sorted(vectors_root.rglob('*.json')):
+    for vec_file in _vector_files(vectors_root):
         try:
             vec = json.loads(vec_file.read_text(encoding='utf-8'))
-        except Exception as exc:
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
             print(f'  LOAD-ERROR  {vec_file.name}: {exc}', file=sys.stderr)
             failed += 1
             continue
@@ -83,7 +98,7 @@ def _self_test() -> int:
 
         try:
             result = check(raw)
-        except Exception as exc:
+        except (RecursionError, TypeError, UnicodeError, ValueError) as exc:
             print(f'  PARSE-ERROR {vec_file.name}: {exc}', file=sys.stderr)
             failed += 1
             continue

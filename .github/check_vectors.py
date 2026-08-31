@@ -27,6 +27,13 @@ For diverge vectors ('diverge': true) — category J:
      These vectors document the gap between composition §6.3.2 (plain JCS) and
      CPB's Canonicalization Algorithm Registry (jcs-n only).
 
+For leaf-construction vectors ('leaf_construction': true):
+  - decode the bare 64-character SHA-256 identifier to the pinned 32-octet raw
+    leaf input and verify its hash;
+  - independently encode the same 64 characters as ASCII, verify the pinned
+    64-octet contrast input and its hash; and
+  - assert the two inputs and leaf hashes differ.
+
 For must_fail vectors — each MUST match at least one category (enforced):
   A. Algorithm-rejection: 'input' present, no 'jcs_n_correct_digest'/'pre_image'
      -> assert jcs_n_pre_image(input) raises ValueError.
@@ -1319,6 +1326,26 @@ def _exercise_must_fail(
 # Subject-binding divergence exerciser (Category J)
 # ---------------------------------------------------------------------------
 
+def _neutralize_normalization_divergence(value: object) -> object:
+    """Replace every object-member value that jcs-n would remove.
+
+    The walk is recursive so the mutation probe remains live for a nested-null
+    vector: replacing only top-level null/empty values leaves the nested
+    divergence intact and incorrectly makes the probe pass.
+    """
+    if isinstance(value, dict):
+        out: dict[str, object] = {}
+        for key, member in value.items():
+            if member is None or member == {} or member == []:
+                out[key] = "n/a"
+            else:
+                out[key] = _neutralize_normalization_divergence(member)
+        return out
+    if isinstance(value, list):
+        return [_neutralize_normalization_divergence(member) for member in value]
+    return value
+
+
 def _exercise_diverge(
     v: dict,
     vid: str,
@@ -1502,12 +1529,7 @@ def _exercise_diverge(
     # Recompute the correct pinned values for both sides; now jcs.digest ==
     # jcs_n.digest, so step 9 must flip to failure.
     if _probe_mutant:
-        mutant_action = {}
-        for k, val in v["action"].items():
-            if val is None or val == {} or val == []:
-                mutant_action[k] = "n/a"
-            else:
-                mutant_action[k] = val
+        mutant_action = _neutralize_normalization_divergence(v["action"])
         mutant_plain = _jcs(mutant_action)
         mutant_plain_hex = mutant_plain.encode("utf-8").hex()
         mutant_digest = hashlib.sha256(mutant_plain.encode("utf-8")).hexdigest()
@@ -1533,6 +1555,66 @@ def _exercise_diverge(
                 f"null/empty→'n/a' mutation did not flip the inequality check to failure; "
                 f"the divergence assertion is not being tested"
             )
+
+    return (not errs), errs
+
+
+# ---------------------------------------------------------------------------
+# Leaf-representation boundary exerciser
+# ---------------------------------------------------------------------------
+
+def _exercise_leaf_construction(v: dict, vid: str) -> tuple[bool, list[str]]:
+    """Exercise the §7.1 raw-digest-vs-hex-text boundary.
+
+    This vector shape is deliberately independent of a particular VDS hash-tree
+    construction. It pins only the byte boundary CPB owns: when a VDS declares
+    ``raw``, the input is the 32 decoded digest octets, not the 64 ASCII octets
+    used to spell that digest in hexadecimal.
+    """
+    errs: list[str] = []
+    digest_hex = v.get("derived_identifier_bare_hex")
+    correct = v.get("correct_leaf_input")
+    contrast = v.get("wrong_ascii_hex_leaf_input")
+
+    if v.get("declared_leaf_representation") != "raw":
+        errs.append("leaf vector must declare the raw representation under test")
+    if not isinstance(digest_hex, str) or not _BARE_HEX_64_RE.fullmatch(digest_hex):
+        errs.append("derived_identifier_bare_hex is not exactly 64 lowercase hex characters")
+        return False, errs
+    if not isinstance(correct, dict) or not isinstance(contrast, dict):
+        errs.append("leaf vector missing correct_leaf_input/wrong_ascii_hex_leaf_input objects")
+        return False, errs
+
+    raw = bytes.fromhex(digest_hex)
+    ascii_hex = digest_hex.encode("ascii")
+    expected_sides = (
+        ("correct_leaf_input", correct, raw, 32),
+        ("wrong_ascii_hex_leaf_input", contrast, ascii_hex, 64),
+    )
+    for label, pinned, actual, expected_length in expected_sides:
+        if pinned.get("length_octets") != expected_length:
+            errs.append(
+                f"{label}.length_octets != {expected_length}: "
+                f"{pinned.get('length_octets')!r}"
+            )
+        if pinned.get("bytes_hex") != actual.hex():
+            errs.append(
+                f"{label}.bytes_hex mismatch\n"
+                f"  expected: {actual.hex()}\n"
+                f"  pinned:   {pinned.get('bytes_hex')!r}"
+            )
+        actual_hash = hashlib.sha256(actual).hexdigest()
+        if pinned.get("sha256") != actual_hash:
+            errs.append(
+                f"{label}.sha256 mismatch\n"
+                f"  expected: {actual_hash}\n"
+                f"  pinned:   {pinned.get('sha256')!r}"
+            )
+
+    if raw == ascii_hex:
+        errs.append("raw and ASCII-hex leaf inputs are equal — no boundary is demonstrated")
+    if hashlib.sha256(raw).digest() == hashlib.sha256(ascii_hex).digest():
+        errs.append("raw and ASCII-hex leaf hashes are equal — no contrast is demonstrated")
 
     return (not errs), errs
 
@@ -2062,6 +2144,18 @@ def check_vectors(root: Path) -> int:
         if registered_name:
             counts = coverage.setdefault(registered_name, {"positive": 0, "must_fail": 0})
             counts["must_fail" if v.get("must_fail") else "positive"] += 1
+
+        if v.get("leaf_construction"):
+            ok, vec_errors = _exercise_leaf_construction(v, vid)
+            if ok:
+                passed += 1
+            else:
+                errors.append(
+                    f"FAIL {vid} (leaf construction):\n"
+                    + "\n".join(f"  {e}" for e in vec_errors)
+                )
+                failed += 1
+            continue
 
         if v.get("diverge"):
             ok, vec_errors = _exercise_diverge(v, vid)

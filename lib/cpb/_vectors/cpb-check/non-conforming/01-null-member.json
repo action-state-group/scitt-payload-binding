@@ -1,0 +1,15 @@
+{
+  "id": "cpb-check-nonconforming-01",
+  "description": "P violation: null member. A dict member with value null is not in normal form.",
+  "expected_verdict": "non-conforming",
+  "expected_violations": [
+    {"path": "$[\"payload\"][\"optional_field\"]", "rule": "P"}
+  ],
+  "record": {
+    "type": "action",
+    "payload": {
+      "action": "approve",
+      "optional_field": null
+    }
+  }
+}

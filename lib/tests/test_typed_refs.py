@@ -16,6 +16,7 @@ from cpb import (
     verify_typed_ref,
 )
 from cpb.canonicalize import canonical_digest
+
 from .conftest import load_vectors
 
 
@@ -352,6 +353,46 @@ def test_typed_ref_raw_representation_boundary():
     # Explicit conversions round-trip.
     assert hex_to_raw(raw_to_hex(digest_raw)) == digest_raw
     assert raw_to_hex(hex_to_raw(digest_hex)) == digest_hex
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        "0" * 63,
+        "0" * 65,
+        "A" + "0" * 63,
+        " " + "0" * 63,
+        b"0" * 64,
+    ],
+)
+def test_hex_to_raw_rejects_noncanonical_text(invalid):
+    """The explicit conversion accepts the declared representation only.
+
+    ``bytes.fromhex`` itself accepts whitespace and uppercase, so delegating
+    validation to it silently widens the normative 64-lowercase-ASCII form.
+    """
+    with pytest.raises(ValueError, match="64 lowercase hexadecimal"):
+        hex_to_raw(invalid)
+
+
+@pytest.mark.parametrize("invalid", [b"\x00" * 31, b"\x00" * 33, "0" * 32])
+def test_raw_to_hex_requires_exactly_32_octets(invalid):
+    with pytest.raises(ValueError, match="32 raw octets"):
+        raw_to_hex(invalid)
+
+
+def test_prefixed_representation_validates_the_hex_payload_grammar():
+    payload = {"value": "x"}
+    entry = ArtifactTypeRegistryEntry(
+        name="example", representation="prefixed"
+    )
+    ref = TypedRef(
+        type="example",
+        digest_alg="SHA-256",
+        digest="sha256:" + "z" * 64,
+    )
+    with pytest.raises(RepresentationMismatchError):
+        verify_typed_ref(ref, payload, entry)
 
 
 def test_digest_alg_comparison_is_byte_exact():
