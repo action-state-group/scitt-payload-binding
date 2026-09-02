@@ -1,0 +1,229 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# CPB REGISTRY ENTRY — FILL-IN TEMPLATE
+#
+# Copy this file to registry/entries/<name>.yaml (the same <name> you put in the
+# `name:` field below) and fill in every field. Delete these header comments and
+# the inline `#` guidance comments once you're done — they're here to fill the
+# template in, not to ship with the entry.
+#
+# What happens next: open a PR adding your file (plus any vectors you commit
+# under vectors/<name>/). CI (.github/workflows/registry-entries.yml) runs
+# .github/validate_registry_entries.py, which:
+#   1. Validates this file against registry/entry.schema.json.
+#   2. If you set fixtures.vectors_dir, runs .github/check_vectors.py against
+#      it and REJECTS the entry if any vector fails to execute, or if the set
+#      isn't two-sided (a positive vector with no MUST-FAIL counterpart, or
+#      vice versa) — unless you're citing an owner's external vector set
+#      instead (fixtures.external_vector_set), which is exempt from local
+#      execution for the obvious reason that this repo can't run another
+#      repo's test suite.
+# That gets you to `provisional` status without anyone in this repo having to
+# read and reproduce the ~800 lines of prose convention in REGISTRY.md by
+# hand. Promotion past `provisional` still goes through Designated Expert
+# review (REGISTRY.md's Registration Ladder and Admission Checklist) — this
+# template does not shortcut that, only the mechanical parts before it.
+#
+# THE SEVEN QUESTIONS this template exists to force an answer to, verbatim as
+# they were put to registrants (Manu Sheel Gupta / libp2p VTO thread,
+# 2026-08-05 — see action-state-strategy/docs/outbound/manu-libp2p-followup-
+# 2026-08-05.md for the original context): construction as data — (1) what
+# are the digest-input bytes, (2) what is excluded, (3) what canonicalization
+# profile applies, (4) what hash function, (5) what representation; (6) is
+# this composite or not — composites are NEVER inlined, only carried by
+# reference inside a signed record; (7) cross-language parity — proven by
+# vectors, never by code review. Each `seven_questions` field below is one of
+# these, in order. `fixtures` below is the positive/boundary/negative vector
+# requirement question (7) makes concrete.
+#
+# CPB editors MUST NOT fill in any of your answers on your behalf (REGISTRY.md).
+# If you don't know an answer yet, write literally "TBD — <why>" — do not
+# guess, and do not leave the field blank.
+
+# ---------------------------------------------------------------------------
+# Identity
+# ---------------------------------------------------------------------------
+
+# The controlled identifier this entry registers (lowercase, hyphen-separated).
+# This becomes the `type` value (Artifact Type Registry) or the algorithm id
+# (Payload Canonicalization Algorithm Registry).
+name: your-artifact-type-or-algorithm-name
+
+# One of: artifact_types | canonicalization_algorithms
+target_registry: artifact_types
+
+# One of: owner_authored | third_party_documented | provisional | reserved
+#   owner_authored          — you are the owner/author of the construction; you
+#                              supply every field directly. -> status owner-confirmed.
+#   third_party_documented  — you are registering someone else's public
+#                              construction from published artifacts. You MUST
+#                              satisfy REGISTRY.md's Third-Party Registration
+#                              Rules (pin sources, name yourself as registrant,
+#                              make no endorsement claim, cite only the owner's
+#                              published vectors, accept the standing removal
+#                              policy). -> status third-party-documented.
+#   provisional              — the reference exists but your vector set is
+#                              incomplete or the spec isn't pinned enough yet
+#                              for a complete digest-context description.
+#                              -> status provisional. This is the expected
+#                              rung for a first filing on a construction still
+#                              settling with its own community.
+#   reserved                 — you want to hold a name ahead of a full filing.
+#                              No seven_questions/fixtures/digest_contexts
+#                              required at this rung; just point at where the
+#                              real entry will come from.
+rung: provisional
+
+# Must match rung — see registry/entry.schema.json for the exact mapping.
+status: provisional
+
+# Publicly available specification: an Internet-Draft, an RFC, or a repository
+# reference. A repository reference MUST carry a commit hash — a branch or tag
+# alone is not a pin, since both can move after the fact.
+reference: "owner-org/owner-repo @ <full-commit-hash> — path/to/spec.md §n.n"
+
+owner:
+  name: "Owner or organization name"
+  affiliation: "Owner's organization"
+  github: "owner-github-handle"          # optional
+
+# Required ONLY when rung is third_party_documented — delete this block otherwise.
+# registrant:
+#   name: "Your name"
+#   affiliation: "Your organization"
+#   self_attestation: >
+#     Registered by <you> from <spec revision> / commit <hash>.
+
+# Required prose ONLY if you (the owner/confirmer) also hold a CPB editor or
+# CPB draft co-author role — see REGISTRY.md's Required Fields table for why.
+# Omit entirely if it doesn't apply to you.
+# disclosure: >
+#   Disclosure: the owner is a co-author of the CPB draft and a co-editor of
+#   this registry; this entry is owner-authored and is not independent or
+#   third-party validation.
+
+# Designated Expert assigned to review this entry toward promotion, or the
+# literal string "TBD" with a one-line reason.
+de_reviewer: "TBD — designated expert not yet assigned"
+
+# Every unresolved question a DE or the owner still needs to settle before this
+# entry can promote past its current rung. Use an empty list only when there
+# truly are none (i.e., you believe this is ready for owner-confirmed today).
+open_questions:
+  - "TBD — example: which registered canonicalization token (if any) applies"
+
+# ---------------------------------------------------------------------------
+# The seven questions (construction as data, composite-or-not, cross-language
+# parity) — required for every rung except `reserved`.
+# ---------------------------------------------------------------------------
+seven_questions:
+  # Q1 — construction as data, part 1: What exact bytes is the digest computed
+  # over? Name the field set (or, under as-transmitted, the cited named
+  # production / byte-boundary selector) — not just "the message."
+  digest_input_bytes: "TBD"
+
+  # Q2 — construction as data, part 2: Which fields (if any) are excluded from
+  # that byte sequence before digesting? Write "none" explicitly — blank and
+  # "none" are not the same claim.
+  exclusion_set: "TBD"
+
+  # Q3 — construction as data, part 3: Which canonicalization profile applies?
+  # Name a token ALREADY in the Payload Canonicalization Algorithm Registry
+  # (see REGISTRY.md / registry.json), e.g. "jcs" or "as-transmitted". If none
+  # fits, say so explicitly: "TBD — new algorithm token proposed: <name>" or
+  # "TBD — Designated Expert must choose between <options>". Naming a family
+  # ("CBOR", "JSON") is not an answer.
+  canonicalization_profile: "TBD"
+
+  # Q4 — construction as data, part 4: What hash function? Usually pinned by
+  # the canonicalization-profile token itself (every currently registered
+  # token is SHA-256) — state it anyway so this entry is self-contained.
+  hash_algorithm: "SHA-256"
+
+  # Q5 — construction as data, part 5: How is the digest OUTPUT represented?
+  # e.g. "64-char lowercase hex", "sha256: + 64-char lowercase hex", "raw 32
+  # octets". Two representations of the same bytes are not interchangeable.
+  representation: "TBD"
+
+  # Q6 — composite or not. Composite payloads are NEVER inlined verbatim
+  # inside a signed record — a composite member is carried as a typed digest
+  # REFERENCE ({type, digest_alg, digest}), never a copy of the referenced
+  # bytes.
+  composite_or_not:
+    is_composite: false
+    statement: >
+      TBD — if is_composite is true, name the field(s) that carry the
+      reference and confirm no member field embeds another artifact's payload
+      bytes directly. If false, a one-line confirmation that this type
+      carries no other registered artifact type by reference or by value.
+
+  # Q7 — cross-language parity. Proven by VECTORS producing byte-identical
+  # pre-images and digests across independent implementations — never by one
+  # implementer reading another's source code.
+  cross_language_parity:
+    statement: >
+      TBD — how many independent implementations have your vectors been run
+      against? If only one exists so far, say so: "not yet demonstrated —
+      N/A, single implementation to date."
+    implementations: []
+    #   - name: "reference implementation"
+    #     language: "python"
+    #     reference: "owner-org/owner-repo @ <commit>"
+
+# ---------------------------------------------------------------------------
+# Optional: multi-digest-context breakdown. Use this instead of / in addition
+# to seven_questions when your construction has more than one digest context
+# (e.g. a signing-layer digest AND a separate anchoring-layer digest — see the
+# machine-mandate and TRACE trust-record entries in REGISTRY.md /
+# spec/cpb-provisional-registry.md for worked examples). Delete if you have
+# exactly one context and seven_questions above already says it all.
+# ---------------------------------------------------------------------------
+# digest_contexts:
+#   - purpose: identifier
+#     profile_version: "N/A"
+#     algorithm: "TBD"
+#     field_set: "TBD"
+#     exclusion_set: "TBD"
+#     domain_separation: "none"
+#     pre_image_encoding: "TBD"
+#     representation: "TBD"
+
+# ---------------------------------------------------------------------------
+# Fixtures — the conformance vector set. Required for owner_authored and
+# third_party_documented rungs (Registration Rule 2: positive AND negative,
+# both directions). A provisional entry MAY leave this out entirely — that
+# incompleteness is exactly what a provisional filing is for — but if you DO
+# set vectors_dir, CI runs it and holds it to the same bar.
+# ---------------------------------------------------------------------------
+fixtures:
+  # Path under vectors/ IN THIS REPO. If set, CI executes every vector here via
+  # .github/check_vectors.py and rejects this entry if any fails, or if the
+  # set is not two-sided.
+  vectors_dir: null
+
+  positive: []
+  boundary: []
+  negative: []
+
+  # Use this INSTEAD of vectors_dir when you're a third-party registrant citing
+  # the owner's own published, commit-pinned vector set rather than fabricating
+  # one (Third-Party Registration Rule 4). Exempt from local execution — this
+  # repo cannot run another repository's test suite — but the citation must be
+  # a real commit pin.
+  # external_vector_set:
+  #   repository: "owner-org/owner-repo"
+  #   commit: "<full-commit-hash>"
+  #   path: "path/to/vectors"
+
+# Gate A (REGISTRY.md Designated Expert Admission Checklist): a conformance
+# case that distinguishes this entry from every other currently registered
+# entry in the same registry table, in both directions.
+discriminating_vector: "TBD"
+
+# Gate B: at least one spec-revision-pinned reference to a specification or
+# deployment that uses this registered name in a normatively stated way. This
+# entry's own specification does not count.
+consuming_profile: "TBD"
+
+# Non-normative notes for the CPB editor / Designated Expert.
+notes: ""

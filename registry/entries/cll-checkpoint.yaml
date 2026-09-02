@@ -1,0 +1,111 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# NEW provisional filing. Carries forward, in this template's shape, the
+# `mmr-checkpoint` proposal already under discussion in
+# spec/cpb-provisional-registry.md ("Proposed: mmr-checkpoint") — same
+# construction, same open Designated Expert question, renamed per the CLL
+# (Checkpointed Local Log) naming used elsewhere in this workspace
+# (checkpointed-local-log spec+lib+vectors repo). The rename itself is
+# flagged below as something Anton should confirm, not decided here.
+name: cll-checkpoint
+target_registry: artifact_types
+rung: provisional
+status: provisional
+reference: "action-state-group/checkpointed-local-log — cll/checkpoint/core.py, cll/checkpoint/index.py (published as checkpointed-local-log 0.1.0 on PyPI)"
+owner:
+  name: Action State Group
+  affiliation: Action State Group, Inc.
+
+disclosure: >
+  The proposer is a co-editor of this registry; this entry is
+  owner-authored and is not independent or third-party validation.
+
+de_reviewer: "Anton Sokolov (Tyche Institute) — entry promotes only on his confirmation of the open items below"
+
+open_questions:
+  - >
+    NAME — this filing uses `cll-checkpoint`, aligned to the CLL
+    (Checkpointed Local Log) naming convention now used for the
+    spec+lib+vectors repo (lanes.yml, 2026-09-01). The existing provisional
+    prose filing in spec/cpb-provisional-registry.md still calls this
+    `mmr-checkpoint`. TBD — if the rename is contested, this name reverts
+    to `mmr-checkpoint`; either way this is Anton's / Steven's call, not
+    decided by this filing.
+  - >
+    ALGORITHM TOKEN — `root`'s construction (core.root_from_peaks(), an MMR
+    peak-bagging accumulator) fits neither `jcs`/`jcs-n` (no JSON object;
+    the pre-image is raw concatenated binary hashes) nor cleanly
+    `as-transmitted` (the bytes are newly computed by iterative re-hashing,
+    not selected from an existing wire production). TBD — the DE must pick
+    one of: (a) treat the published MMR peak-bagging construction itself as
+    a sufficiently "named production" to qualify under `as-transmitted`
+    with the fold procedure stated in place of a byte-boundary selector, or
+    (b) register a new Payload Canonicalization Algorithm Registry entry
+    (e.g. `mmr-bagged-peaks`) naming the fold order, the
+    no-domain-separator property, and the empty-MMR convention (32 zero
+    bytes) as its normative content. Not proposed here — CPB editors MUST
+    NOT fill in an owner's digest-context parameters on the owner's behalf,
+    and here the algorithm-registry decision is a DE call regardless of
+    who owns the artifact.
+
+seven_questions:
+  digest_input_bytes: >
+    Not a JSON field set — the pre-image is the ORDERED LIST of MMR peak
+    node hashes at `mmr_size` (core.peaks(), tallest-to-smallest), fed
+    through iterative sha256(right || left) folding
+    (core.root_from_peaks(), core.py:141-168) until one hash remains. See
+    open_questions: algorithm token — this construction is not yet a
+    registered algorithm.
+  exclusion_set: "None — every live peak at mmr_size participates."
+  canonicalization_profile: "TBD — see open_questions: algorithm token."
+  hash_algorithm: SHA-256
+  representation: bare 64-char lowercase hex
+  composite_or_not:
+    is_composite: false
+    statement: >
+      A CheckpointRecord's `root` commits to the peak set by hash only; it
+      does not embed another registered artifact type's payload bytes.
+      `prev_root` references the prior checkpoint's commitment by digest,
+      never by copying the prior record.
+  cross_language_parity:
+    statement: >
+      Not yet demonstrated across independent implementations — the
+      construction is validated today by property tests
+      (tests/test_checkpoint.py's rollback/tamper-detection cases) against
+      datatrails/go-datatrails-merklelog's hashPeaksRHS as a reference
+      construction, not by a published literal root value the way the
+      leaf/interior hashes are KAT-pinned. N/A pending the algorithm-token
+      decision above — a cross-language vector set requires a registered
+      construction to vector against.
+    implementations: []
+
+fixtures: {}
+  # No committed CPB-shaped vectors yet — Rung 3 (provisional) does not
+  # require one. The rollback-detection case already exercised in
+  # tests/test_checkpoint.py's TestVerifyCheckpointConsistency
+  # (test_rollback_detected, test_mmr_rollback_simulation) is the natural
+  # Gate-A discriminating-vector candidate once the algorithm token above is
+  # settled and this promotes.
+
+discriminating_vector: >
+  Candidate, not yet committed in CPB vector format: a checkpoint whose
+  prev_root does not match the actual MMR root recomputed at prev_size
+  verifies as failed under verify_checkpoint_consistency (rollback/tamper
+  detection) and would pass under a naive verifier that checks only the
+  HMAC signature. Already exercised in tests/test_checkpoint.py.
+
+consuming_profile: >
+  checkpointed-local-log's own checkpoint emit/verify path (self-consuming,
+  published as checkpointed-local-log 0.1.0). A mesh-llm "checkpoint capsule"
+  wrapper is a future candidate
+  once it names this registered type rather than inventing its own
+  mmr_root digest context.
+
+notes: >
+  Second entry filed alongside mesh-inference-exchange, per the same
+  provisional-track pattern. See
+  spec/cpb-provisional-registry.md#proposed-mmr-checkpoint for the fuller
+  prose history (shape-correction note on the nine-field signing_body(),
+  the capsule-ledger PR #71 single-commitment fix this entry assumes is
+  landed at the pinned commit, etc.) — not repeated here to avoid the two
+  documents drifting apart on facts that don't need restating.
