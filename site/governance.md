@@ -51,6 +51,6 @@ reason.
 CPB is not, and will never be, branded to any single registrant's product.
 Agent Action Capsule is one registered artifact type among peers — the same
 standing as `machine-mandate`, `mesh-inference-exchange`, `cll-checkpoint`,
-or a future `vto` and `trace-trust-record` entry. Nothing in CPB's
+the provisional `trace-trust-record`, or the reserved `vto` name. Nothing in CPB's
 specification text, registries, or this site favors one registrant's
 vocabulary, commercial terms, or governance over another's.

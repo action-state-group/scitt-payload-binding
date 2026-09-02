@@ -25,6 +25,12 @@ evidence — nothing here is specific to any one registrant's product.
 | Steven Mih | Action State Group |
 | Anton Sokolov | TalTech / Tyche Institute |
 
+## Registry contact
+
+Registration requests and Designated-Expert review are handled in the open:
+open an issue or pull request at
+[github.com/action-state-group/scitt-payload-binding](https://github.com/action-state-group/scitt-payload-binding/issues).
+
 ## On this site
 
 - **[Registries](registry.md)** — the Payload Canonicalization Algorithm

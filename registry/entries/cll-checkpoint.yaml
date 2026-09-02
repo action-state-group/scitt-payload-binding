@@ -11,7 +11,7 @@ name: cll-checkpoint
 target_registry: artifact_types
 rung: provisional
 status: provisional
-reference: "action-state-group/capsule-ledger @ 0fef1b2 — capsule_ledger/mmr/checkpoint.py, capsule_ledger/mmr/core.py"
+reference: "action-state-group/checkpointed-local-log — cll/checkpoint/core.py, cll/checkpoint/index.py (published as checkpointed-local-log 0.1.0 on PyPI)"
 owner:
   name: Action State Group
   affiliation: Action State Group, Inc.
@@ -95,8 +95,9 @@ discriminating_vector: >
   HMAC signature. Already exercised in tests/test_checkpoint.py.
 
 consuming_profile: >
-  capsule-ledger's own checkpoint emit/verify path (self-consuming, ships
-  today). A mesh-llm "checkpoint capsule" wrapper is a future candidate
+  checkpointed-local-log's own checkpoint emit/verify path (self-consuming,
+  published as checkpointed-local-log 0.1.0). A mesh-llm "checkpoint capsule"
+  wrapper is a future candidate
   once it names this registered type rather than inventing its own
   mmr_root digest context.
 

@@ -1,10 +1,7 @@
 # Implementations & registrants
 
-**Ordering note.** This list puts registrants other than Action State
-Group's own capsule family first. CPB is a neutral, cross-organization
-registry — Agent Action Capsule is one registrant among peers, not the
-registry's owner, and the public-facing list should read that way rather
-than defaulting to whichever registrant happens to also edit the registry.
+**Ordering note.** Independent registrants are listed first; Agent Action
+Capsule is one registrant among peers.
 
 ## Independent registrants
 
@@ -55,7 +52,7 @@ serialization is not yet a registered algorithm, and the one committed
 real-traffic example set predates the current record shape.
 
 ### `cll-checkpoint`
-**Status:** provisional (`capsule-ledger`) — a Checkpointed Local Log
+**Status:** provisional (`checkpointed-local-log`) — a Checkpointed Local Log
 checkpoint record (an MMR peak-set commitment). Gated on a Designated Expert
 choice of algorithm-registry treatment for the MMR peak-bagging
 construction, which fits neither of CPB's two currently registered
