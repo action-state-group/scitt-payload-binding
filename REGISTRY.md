@@ -46,6 +46,17 @@ behalf. Proposed entries under discussion with their owners are tracked
 separately in [`spec/cpb-provisional-registry.md`](spec/cpb-provisional-registry.md)
 until confirmed; they enter the tables here on merge.
 
+**Mechanical only — semantic content routes elsewhere on promotion.** This
+registry records algorithms, digest contexts, and canonicalization profiles
+only — never field-value semantics, action-type/outcome conventions, or
+composition-level meaning. An entry in `spec/cpb-provisional-registry.md`
+may carry both a Digest Context table and semantic content (vocabulary,
+producer invariants) in the same entry while provisional; on that entry's
+own promotion ruling, the Digest Context table stays here and the semantic
+content routes to
+[`capsule-registry`](https://github.com/action-state-group/capsule-registry),
+the composition/semantics registry (Home-2). This registry is Home-1.
+
 **Registration rules for new entries.** Two requirements apply to every entry
 regardless of registration type:
 
