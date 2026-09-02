@@ -146,8 +146,20 @@ def run_check_vectors(vectors_dir: Path) -> tuple[int, str]:
     return result.returncode, (result.stdout + result.stderr)
 
 
-def validate_fixtures(entry: dict, path: Path) -> list[str]:
-    """Returns non-fatal warnings; raises EntryError on a hard failure."""
+def validate_fixtures(entry: dict, path: Path, data_root: Path | None = None) -> list[str]:
+    """Returns non-fatal warnings; raises EntryError on a hard failure.
+
+    ``data_root`` is where ``fixtures.vectors_dir`` is resolved against. It is
+    NOT always REPO_ROOT: under the fork-safe CI pattern (see
+    registry-entries.yml), the trusted base branch supplies this script,
+    entry.schema.json, and check_vectors.py, but the entry/vector DATA being
+    graded is the untrusted PR head, checked out to a separate path. Passing
+    that path as data_root lets one trusted checker grade data living
+    somewhere other than its own checkout without ever executing anything
+    from that other tree.
+    """
+    if data_root is None:
+        data_root = REPO_ROOT
     warnings: list[str] = []
     rung = entry["rung"]
     fixtures = entry.get("fixtures") or {}
@@ -164,7 +176,7 @@ def validate_fixtures(entry: dict, path: Path) -> list[str]:
         return warnings  # provisional / reserved may file with no vectors yet
 
     if vectors_dir_field:
-        vectors_dir = REPO_ROOT / vectors_dir_field
+        vectors_dir = data_root / vectors_dir_field
         if not vectors_dir.is_dir():
             raise EntryError(
                 f"{path.name}: fixtures.vectors_dir {vectors_dir_field!r} "
@@ -209,7 +221,7 @@ def validate_fixtures(entry: dict, path: Path) -> list[str]:
     return warnings
 
 
-def validate_entry_file(path: Path, schema: dict) -> list[str]:
+def validate_entry_file(path: Path, schema: dict, data_root: Path | None = None) -> list[str]:
     """Returns warnings for one entry file. Raises EntryError on hard failure."""
     try:
         entry = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -220,12 +232,17 @@ def validate_entry_file(path: Path, schema: dict) -> list[str]:
         raise EntryError(f"{path.name}: top-level document must be a mapping")
 
     validate_schema(entry, path, schema)
-    return validate_fixtures(entry, path)
+    return validate_fixtures(entry, path, data_root)
 
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     entries_dir = Path(argv[0]) if argv else DEFAULT_ENTRIES_DIR
+    # registry/entries -> two levels up is the data root that fixtures.vectors_dir
+    # resolves against — REPO_ROOT by default, or an untrusted PR-head checkout
+    # (e.g. ./pr) passed explicitly for the fork-safe CI path. See
+    # validate_fixtures's docstring.
+    data_root = entries_dir.parent.parent if argv else REPO_ROOT
 
     if not entries_dir.is_dir():
         print(f"error: {entries_dir} is not a directory", file=sys.stderr)
@@ -240,7 +257,7 @@ def main(argv: list[str] | None = None) -> int:
     problems: list[str] = []
     for path in entry_files:
         try:
-            warnings = validate_entry_file(path, schema)
+            warnings = validate_entry_file(path, schema, data_root)
         except EntryError as exc:
             problems.append(str(exc))
             continue
