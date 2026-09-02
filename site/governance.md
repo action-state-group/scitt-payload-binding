@@ -48,9 +48,12 @@ reason.
 
 ## Neutrality
 
-CPB is not, and will never be, branded to any single registrant's product.
-Agent Action Capsule is one registered artifact type among peers — the same
+The draft registry policy proposes a firm neutrality commitment: that CPB
+never be branded to any single registrant's product, and that Agent Action
+Capsule stand as one registered artifact type among peers — the same
 standing as `machine-mandate`, `mesh-inference-exchange`, `cll-checkpoint`,
-the provisional `trace-trust-record`, or the reserved `vto` name. Nothing in CPB's
-specification text, registries, or this site favors one registrant's
-vocabulary, commercial terms, or governance over another's.
+the provisional `trace-trust-record`, or the reserved `vto` name. As
+proposed, nothing in CPB's specification text, registries, or this site
+would favor one registrant's vocabulary, commercial terms, or governance
+over another's. This is the intended posture; the policy that fixes it is
+**currently a DRAFT pending both co-authors' sign-off** (see above).
