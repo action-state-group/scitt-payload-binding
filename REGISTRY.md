@@ -348,7 +348,7 @@ pattern-matches (PR #4 thread, 2026-08-11).
 
 ### `evidence-record`
 
-**Owner:** Empire Labs (`narko4u`)
+**Owner:** Empire Labs Pty Ltd (`narko4u`)
 **Reference:** `narko4u/evidence-record-spec` @ `6baa0fe558839263f1c56fb1c8a293f45e359baf`
 **Status:** `owner-confirmed`
 **Provenance:** confirmed by the owner in this PR thread; the third Artifact Type Registry entry. The owner holds no CPB draft co-author or registry-editor role, so this is an external owner-authored entry rather than an editor's self-confirmation; no Disclosure is required.
@@ -369,7 +369,7 @@ hex over the JCS canonical form of the full record). Same specification family a
 entry, which is why this field is stated this way rather than asserted: whether a
 same-family artifact type satisfies Gate B as a distinct consuming profile is the
 Designated Expert's call. Owner and consuming-profile maintainer are the same party
-(Empire Labs / `narko4u`), so no separate consuming-profile ACK is required under Gate C.
+(Empire Labs Pty Ltd / `narko4u`), so no separate consuming-profile ACK is required under Gate C.
 **Vectors:** the conformance-vector set pinned below.
 
 | Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
@@ -397,7 +397,7 @@ not committed into this tree.
 
 ### `evidence-appraisal`
 
-**Owner:** Empire Labs (`narko4u`)
+**Owner:** Empire Labs Pty Ltd (`narko4u`)
 **Reference:** `narko4u/evidence-record-spec` @ `6baa0fe558839263f1c56fb1c8a293f45e359baf`
 **Status:** `owner-confirmed`
 **Provenance:** confirmed by the owner in this PR thread; the fourth Artifact Type Registry entry. The owner holds no CPB draft co-author or registry-editor role, so this is an external owner-authored entry rather than an editor's self-confirmation; no Disclosure is required.
@@ -412,7 +412,7 @@ under Conformance vectors below.
 **Consuming-profile:** this artifact type is the consumer named by `evidence-record`
 above: its `subject_record` field is a typed digest reference binding the appraisal to
 the exact record version appraised. As with that entry, owner and consuming-profile
-maintainer are the same party (Empire Labs / `narko4u`), so no separate consuming-profile
+maintainer are the same party (Empire Labs Pty Ltd / `narko4u`), so no separate consuming-profile
 ACK is required under Gate C.
 **Vectors:** the conformance-vector set pinned below.
 
