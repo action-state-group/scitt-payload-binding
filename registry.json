@@ -76,7 +76,43 @@
       ],
       "discriminating_vector": "mm-fail-04-representation-confusion \u2014 pins that this type's two representations are not interchangeable (the derived identifier is bare hex; the in-document action_hash carries the sha256: prefix). agent-action-capsule, the only other registered artifact type, declares a single context in bare hex, so a verifier that accepted either form for either context would pass its cases and fail these. Cited at the commit-pinned URL below, not committed here \u2014 this entry's vectors are the owner's own published set.",
       "consuming_profile": "action-state-group/scitt-cose @ 04cf97a8d143459b7dd4193ba4d8c065c3783071 \u2014 the hosted verification surface at verify.agentactioncapsule.org. It parses and renders this type under the name machine-mandate (hosted_profiles/machine_mandate.py, PROFILE_PARSERS[\"machine-mandate\"]), against fixtures copied byte-verbatim from tyche-institute/machine-mandate@524e6a3 \u2014 the same commit this entry's Reference pins. What it does not do, stated plainly so the Designated Expert can weigh it: it detects the profile by the owner-controlled VCT URI and by pinned fixture digests, not by resolving the type through this registry, and its own module text disclaims endorsement. Whether a deployment that consumes the vocabulary without resolving the artifact type satisfies Gate B is the DE's call, not the registrant's \u2014 and the registrant is the owner, which is why it is put this way rather than asserted."
+    },
+    "evidence-record": {
+      "reference": "narko4u/evidence-record-spec @ 6baa0fe558839263f1c56fb1c8a293f45e359baf",
+      "status": "owner-confirmed",
+      "digest_contexts": [
+        {
+          "purpose": "identifier",
+          "profile_version": "0.1 (schema 0.1.0)",
+          "algorithm": "jcs",
+          "field_set": "every member of evidence-record-0.1.schema.json (14 members), closed \u2014 schema-validated before digest; an unrecognised member or enum value is rejected, never digested",
+          "exclusion_set": "none",
+          "domain_separation": "none",
+          "pre_image_encoding": "JCS UTF-8 octets (per jcs)",
+          "representation": "bare 64-char lowercase hex"
+        }
+      ],
+      "discriminating_vector": "er-fail-02-unregistered-reconciliation-state \u2014 pins that this type's reconciliation vocabulary is CLOSED: reconciliation.state is exactly agreement | contradiction | no_independent_evidence, and an unrecognised value MUST be rejected rather than treated as informational. This deliberately inverts the never-reject invariant of the Capsule (draft-mih-scitt-agent-action-capsule, section 4: verifiers MUST treat unregistered values as informational) at the layer where our type lives: an unrecognised value is a failure, not a new rung, so a typo cannot silently raise a record's strength. Neither registered neighbour (agent-action-capsule, machine-mandate) declares a closed reconciliation vocabulary, so a verifier that accepted unknown values would pass their cases and fail ours. Full two-sided vector set pinned under Conformance vectors below.",
+      "consuming_profile": "evidence-appraisal, registered below \u2014 the verifier artifact that cites its subject by typed digest (subject_record.digest, bare 64-char lowercase hex over the JCS canonical form of the full record). Same specification family as this entry, which is why this field is stated this way rather than asserted: whether a same-family artifact type satisfies Gate B as a distinct consuming profile is the Designated Expert's call. Owner and consuming-profile maintainer are the same party (Empire Labs / narko4u), so no separate consuming-profile ACK is required under Gate C."
+    },
+    "evidence-appraisal": {
+      "reference": "narko4u/evidence-record-spec @ 6baa0fe558839263f1c56fb1c8a293f45e359baf",
+      "status": "owner-confirmed",
+      "digest_contexts": [
+        {
+          "purpose": "identifier",
+          "profile_version": "0.1 (schema 0.1.0)",
+          "algorithm": "jcs",
+          "field_set": "every member of evidence-appraisal-0.1.schema.json (9 members), closed \u2014 schema-validated before digest; e_grade, claim_type, and reconciliation_state are closed enums",
+          "exclusion_set": "none",
+          "domain_separation": "none",
+          "pre_image_encoding": "JCS UTF-8 octets (per jcs)",
+          "representation": "bare 64-char lowercase hex"
+        }
+      ],
+      "discriminating_vector": "ea-fail-01-grade-in-producer-record \u2014 pins the grade-location rule: an appraisal artifact cites its subject by typed digest and carries the verified grade in e_grade; a producer record that stamps its own appraisal grade inside its digest-committed payload is a category error. This is the RATS split (evidence in, appraisal policy is the bridge, attestation results out) that neither registered neighbour expresses, and it is what makes an appraisal's grade checkable against a specific record version rather than a floating claim. Full two-sided vector set pinned under Conformance vectors below.",
+      "consuming_profile": "this artifact type is the consumer named by evidence-record above: its subject_record field is a typed digest reference binding the appraisal to the exact record version appraised. As with that entry, owner and consuming-profile maintainer are the same party (Empire Labs / narko4u), so no separate consuming-profile ACK is required under Gate C."
     }
   },
-  "snapshot_sha256": "e1daaceee20650a712007029d445fd3b2c1368c3e5042eb44bb021de7f09b7f2"
+  "snapshot_sha256": "bebb2477984fe413467e61b4bcde6cec3d7229c3e2d2d6602185beb041fef7cd"
 }
