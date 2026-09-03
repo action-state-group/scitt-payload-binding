@@ -103,7 +103,7 @@
           "purpose": "identifier",
           "profile_version": "0.1 (schema 0.1.0)",
           "algorithm": "jcs",
-          "field_set": "every member of evidence-appraisal-0.1.schema.json (9 members), closed \u2014 schema-validated before digest; e_grade, claim_type, and reconciliation_state are closed enums",
+          "field_set": "every member of evidence-appraisal-0.1.schema.json (9 members), closed \u2014 schema-validated before digest; e_grade is a closed enum over the five-rung evidence-strength ladder E0 Declared, E1 Observed, E2 Enforced, E3 Corroborated, E4 Anchored; claim_type and reconciliation_state are likewise closed enums",
           "exclusion_set": "none",
           "domain_separation": "none",
           "pre_image_encoding": "JCS UTF-8 octets (per jcs)",
@@ -114,5 +114,5 @@
       "consuming_profile": "this artifact type is the consumer named by evidence-record above: its subject_record field is a typed digest reference binding the appraisal to the exact record version appraised. As with that entry, owner and consuming-profile maintainer are the same party (Empire Labs Pty Ltd / narko4u), so no separate consuming-profile ACK is required under Gate C."
     }
   },
-  "snapshot_sha256": "e61af5cabccd4e7c425a322365c6a609daacafb65f7441499b72edd68bc822cc"
+  "snapshot_sha256": "f70b52a2acf5933f8b42e4f089d22d7aeafdec2af8574c6f6c38287972b52f03"
 }
