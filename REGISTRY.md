@@ -346,6 +346,114 @@ Independently reproduced byte-for-byte, including condition-removed
 mutants confirming each of the five negatives discriminates rather than
 pattern-matches (PR #4 thread, 2026-08-11).
 
+### `evidence-record`
+
+**Owner:** Empire Labs Pty Ltd (`narko4u`)
+**Reference:** `narko4u/evidence-record-spec` @ `6baa0fe558839263f1c56fb1c8a293f45e359baf`
+**Status:** `owner-confirmed`
+**Provenance:** confirmed by the owner in this PR thread; the third Artifact Type Registry entry. The owner holds no CPB draft co-author or registry-editor role, so this is an external owner-authored entry rather than an editor's self-confirmation; no Disclosure is required.
+**Discriminating-vector:** `er-fail-02-unregistered-reconciliation-state` — pins that
+this type's reconciliation vocabulary is CLOSED: `reconciliation.state` is exactly
+`agreement | contradiction | no_independent_evidence`, and an unrecognised value MUST
+be rejected rather than treated as informational. This deliberately inverts the
+never-reject invariant of the Capsule (draft-mih-scitt-agent-action-capsule, section 4:
+verifiers MUST treat unregistered values as informational) at the layer where our type
+lives: an unrecognised value is a failure, not a new rung, so a typo cannot silently
+raise a record's strength. Neither registered neighbour (`agent-action-capsule`,
+`machine-mandate`) declares a closed reconciliation vocabulary, so a verifier that
+accepted unknown values would pass their cases and fail ours. Full two-sided vector set
+pinned under Conformance vectors below.
+**Consuming-profile:** `evidence-appraisal`, registered below — the verifier artifact
+that cites its subject by typed digest (`subject_record.digest`, bare 64-char lowercase
+hex over the JCS canonical form of the full record). Same specification family as this
+entry, which is why this field is stated this way rather than asserted: whether a
+same-family artifact type satisfies Gate B as a distinct consuming profile is the
+Designated Expert's call. Owner and consuming-profile maintainer are the same party
+(Empire Labs Pty Ltd / `narko4u`), so no separate consuming-profile ACK is required under Gate C.
+**Vectors:** the conformance-vector set pinned below.
+
+| Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
+|---|---|---|---|---|---|---|---|
+| `identifier` | 0.1 (schema 0.1.0) | `jcs` | every member of `evidence-record-0.1.schema.json` (14 members), closed — schema-validated before digest; an unrecognised member or enum value is rejected, never digested | none | none | JCS UTF-8 octets (per `jcs`) | bare 64-char lowercase hex |
+
+**What this entry does not do, stated plainly so the Designated Expert can weigh it:**
+this registry row registers the artifact type's derived-identifier context and its closed
+vocabulary. It does not register the E0-E4 strength ladder or the appraisal semantics
+that consume it — those live in the referenced specification, whose field set above is
+the closed member list, and in the `evidence-appraisal` entry below. The E-grade is an
+output of appraisal, never a field the producer stamps; the schema records presence
+(signed, chained, timestamped), not mechanism.
+
+**Conformance vectors:** `narko4u/evidence-record-spec`, commit
+`6baa0fe558839263f1c56fb1c8a293f45e359baf`,
+`vectors/cpb-registry/evidence-record-vectors-v0.1.json`, file SHA-256
+`b8e54a9b38d7caca9d4dc4cd74f8b2f6097ec5622badefa7ff58dd45b0096c87`.
+Independently reproducible byte-for-byte: each positive KAT pins the canonical bytes
+hex and expected digest; negatives pin REJECT semantics (unregistered grade,
+unregistered reconciliation state, unregistered observation relationship, float member
+under the closed number-free field set, representation confusion, uppercase hex) plus
+mutation probes. Vectors are cited from the owner's own repository at the pinned commit,
+not committed into this tree.
+
+### `evidence-appraisal`
+
+**Owner:** Empire Labs Pty Ltd (`narko4u`)
+**Reference:** `narko4u/evidence-record-spec` @ `6baa0fe558839263f1c56fb1c8a293f45e359baf`
+**Status:** `owner-confirmed`
+**Provenance:** confirmed by the owner in this PR thread; the fourth Artifact Type Registry entry. The owner holds no CPB draft co-author or registry-editor role, so this is an external owner-authored entry rather than an editor's self-confirmation; no Disclosure is required.
+**Discriminating-vector:** `ea-fail-01-grade-in-producer-record` — pins the grade-location
+rule: an appraisal artifact cites its subject by typed digest and carries the verified
+grade in `e_grade`; a producer record that stamps its own appraisal grade inside its
+digest-committed payload is a category error. This is the RATS split (evidence in,
+appraisal policy is the bridge, attestation results out) that neither registered
+neighbour expresses, and it is what makes an appraisal's grade checkable against a
+specific record version rather than a floating claim. Full two-sided vector set pinned
+under Conformance vectors below.
+**Consuming-profile:** this artifact type is the consumer named by `evidence-record`
+above: its `subject_record` field is a typed digest reference binding the appraisal to
+the exact record version appraised. As with that entry, owner and consuming-profile
+maintainer are the same party (Empire Labs Pty Ltd / `narko4u`), so no separate consuming-profile
+ACK is required under Gate C.
+**Vectors:** the conformance-vector set pinned below.
+
+| Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
+|---|---|---|---|---|---|---|---|
+| `identifier` | 0.1 (schema 0.1.0) | `jcs` | every member of `evidence-appraisal-0.1.schema.json` (9 members), closed — schema-validated before digest; `e_grade` is a closed enum over the five-rung evidence-strength ladder E0 Declared, E1 Observed, E2 Enforced, E3 Corroborated, E4 Anchored; `claim_type` and `reconciliation_state` are likewise closed enums | none | none | JCS UTF-8 octets (per `jcs`) | bare 64-char lowercase hex |
+
+**Registered `e_grade` vocabulary (the E0-E4 evidence-strength ladder):** this row
+registers the five-rung ladder as the closed, ordered `e_grade` vocabulary of the
+verifier artifact: E0 **Declared** (agent self-report, no independent verification),
+E1 **Observed** (behavior observed by framework/gateway), E2 **Enforced** (policy
+enforced at the boundary, denied actions recorded), E3 **Corroborated** (multiple
+independent sources agree), E4 **Anchored** (external timestamping, chain-linking,
+independent verifiability). The vocabulary is closed and ordered at E4: vector
+`ea-fail-02-unregistered-grade` pins that an unrecognised grade (e.g. E5) is a REJECT,
+never a new rung, so no unregistered token can extend the ladder and a typo cannot
+silently raise an appraisal's conclusion. Rung semantics are pinned by the referenced
+specification at the Reference commit; this row registers the vocabulary, not the
+mechanism by which any rung is produced (mechanism is out of scope for the referenced
+spec by design).
+
+**What this entry does not do, stated plainly so the Designated Expert can weigh it:**
+this row registers the appraisal artifact's derived-identifier context and its closed
+fields. It does not claim that any deployment currently renders appraisals through this
+registry; the consuming relationship between the two artifact types registered here is
+normative in the referenced specification, and whether that clears Gate B is the DE's
+call, not the registrant's. The grade semantics (`E0`-`E4`) and the three-state
+reconciliation vocabulary (`agreement | contradiction | no_independent_evidence`) are
+carried in the closed field sets above, never as open tokens a third party could
+redefine.
+
+**Conformance vectors:** `narko4u/evidence-record-spec`, commit
+`6baa0fe558839263f1c56fb1c8a293f45e359baf`,
+`vectors/cpb-registry/evidence-appraisal-vectors-v0.1.json`, file SHA-256
+`d565be154b3b241b33e00cf0f04a6758ae07cec604966017c322683701238e88`.
+Positive KATs pin the canonical bytes hex and expected digest for three appraisals
+(agreement, no-independent-evidence, contradiction); negatives pin REJECT semantics
+(unregistered grade, unregistered claim type, subject digest not bare hex) plus a
+mutation probe. Vectors are cited from the owner's own repository at the pinned commit,
+not committed into this tree.
+
 Proposed Artifact Type entries awaiting their owners' confirmation are listed in
 [`spec/cpb-provisional-registry.md`](spec/cpb-provisional-registry.md).
 
