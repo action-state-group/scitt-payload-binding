@@ -418,7 +418,21 @@ ACK is required under Gate C.
 
 | Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
 |---|---|---|---|---|---|---|---|
-| `identifier` | 0.1 (schema 0.1.0) | `jcs` | every member of `evidence-appraisal-0.1.schema.json` (9 members), closed — schema-validated before digest; `e_grade`, `claim_type`, and `reconciliation_state` are closed enums | none | none | JCS UTF-8 octets (per `jcs`) | bare 64-char lowercase hex |
+| `identifier` | 0.1 (schema 0.1.0) | `jcs` | every member of `evidence-appraisal-0.1.schema.json` (9 members), closed — schema-validated before digest; `e_grade` is a closed enum over the five-rung evidence-strength ladder E0 Declared, E1 Observed, E2 Enforced, E3 Corroborated, E4 Anchored; `claim_type` and `reconciliation_state` are likewise closed enums | none | none | JCS UTF-8 octets (per `jcs`) | bare 64-char lowercase hex |
+
+**Registered `e_grade` vocabulary (the E0-E4 evidence-strength ladder):** this row
+registers the five-rung ladder as the closed, ordered `e_grade` vocabulary of the
+verifier artifact: E0 **Declared** (agent self-report, no independent verification),
+E1 **Observed** (behavior observed by framework/gateway), E2 **Enforced** (policy
+enforced at the boundary, denied actions recorded), E3 **Corroborated** (multiple
+independent sources agree), E4 **Anchored** (external timestamping, chain-linking,
+independent verifiability). The vocabulary is closed and ordered at E4: vector
+`ea-fail-02-unregistered-grade` pins that an unrecognised grade (e.g. E5) is a REJECT,
+never a new rung, so no unregistered token can extend the ladder and a typo cannot
+silently raise an appraisal's conclusion. Rung semantics are pinned by the referenced
+specification at the Reference commit; this row registers the vocabulary, not the
+mechanism by which any rung is produced (mechanism is out of scope for the referenced
+spec by design).
 
 **What this entry does not do, stated plainly so the Designated Expert can weigh it:**
 this row registers the appraisal artifact's derived-identifier context and its closed
