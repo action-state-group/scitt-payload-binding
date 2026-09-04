@@ -1,0 +1,40 @@
+{
+  "id": "typed-ref-pass-03",
+  "description": "PASS: the same typed digest reference as typed-ref-pass-01, carried as an entry in the `cpb-refs` COSE protected header parameter instead of the payload. Verification proceeds identically -- the algorithm operates on the reference's four members, not on which carriage mechanism transported them -- and produces the byte-identical recomputed digest.",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-03 §8.2 (Envelope Carriage)",
+  "must_fail": false,
+  "carriage": "envelope-header",
+  "header_parameter": "cpb-refs",
+  "cbor_map_entry": {
+    "1": "authorization-doc",
+    "3": "SHA-256",
+    "4": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+  },
+  "cited_artifact": {
+    "payload_class": "authorization-doc",
+    "artifact_type_registry_entry": {
+      "name": "authorization-doc",
+      "digest_context": "jcs-n; exclusion set {doc_id}; 64-char lowercase hex",
+      "algorithm": "jcs-n",
+      "exclusion_set": ["doc_id"]
+    },
+    "payload": {
+      "doc_id": null,
+      "subject": "WS-42",
+      "scope": "temperature-write",
+      "issued_at": "2026-07-24T00:00:00Z"
+    },
+    "derived_id": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+  },
+  "typed_reference": {
+    "type": "authorization-doc",
+    "digest_alg": "SHA-256",
+    "digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+  },
+  "verification": {
+    "note": "Byte-identical to typed-ref-pass-01: the reference's four members and the cited artifact are unchanged; only the transport (COSE protected header vs. payload) differs. §8.1/§8.4 apply without modification.",
+    "result": "PASS",
+    "recomputed_digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+  },
+  "provenance": "Derived from typed-ref-pass-01 (same cited_artifact and typed_reference) to demonstrate carriage-independence of verification, authored for the cpb-03-typed-refs-envelope revision. Not a fold of any external vector file."
+}
