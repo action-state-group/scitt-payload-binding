@@ -1,8 +1,8 @@
 ---
 title: "Canonical Payload Binding: A Signed Statement Construction Profile"
 abbrev: "Canonical Payload Binding"
-docname: draft-mih-sokolov-scitt-payload-binding-02
-date: 2026-08-24
+docname: draft-mih-sokolov-scitt-payload-binding-03
+date: 2026-09-04
 category: std
 submissiontype: IETF
 ipr: trust200902
@@ -121,7 +121,10 @@ algorithms; entries are immutable. This document defines no payload content
 formats and registers no artifact types; the artifact types that a typed
 reference may cite, and their meaning, are registered in a single shared
 Artifact Type Registry, governed separately from this document, that
-payload profiles register into.
+payload profiles register into. A typed digest reference is defined as an
+abstract information model, carried either as a COSE protected header
+parameter or within a payload class's own serialization; this document
+fixes neither serialization as a requirement.
 
 --- note_Note_to_Readers
 
@@ -207,127 +210,56 @@ This document does not define:
 * Transports — how registration requests or retrieval queries travel between
   producers, Transparency Services, or verifiers.
 
-# Changes from -01 {#changes-01}
+# Changes from -02 {#changes-02}
 
-The most consequential correction since -01 is registry-level: the registry
-was re-derived from what the field actually built, not from what -01
-originally specified. `jcs-n`, live and Registered in -01, is withdrawn;
-`jcs` — the construction every independent implementation actually
-converged on — is registered in its place. The rest of this revision
-consolidates registry, canonicalization, and conformance-checker work
-landed since -01 was posted, and rescopes the document to its charter.
+This revision responds to a SCITT-chair charter-fit read of -02 (Henk
+Birkholz): everything in -02 is in-charter except {{typed-refs}}, which
+defined a normative JSON object carried inside payload bytes — reading as
+"a data format for payload content," SCITT charter non-goal 4. The fix
+moves the typed reference out of the payload and into the envelope; this
+revision makes that move and nothing else.
 
-**Charter rescope.** This document no longer normatively defines the
-Artifact Type Registry or any artifact-type-specific payload-shape rule.
-What changes is governance ownership, not location: `REGISTRY.md` does not
-move, and stays in this repository as the shared home for both registries
-this document's ecosystem uses. The Canonicalization Algorithm Registry
-({{iana-alg}}) remains CPB-normative. The Artifact Type Registry — its
-registration template, the purpose-label vocabulary, and both live entries
-(`agent-action-capsule`, `machine-mandate`) — is governed separately, by
-its own Designated Expert checklist and registration rungs already stated
-in `REGISTRY.md`, and this document references that registry rather than
-defining it. It is a single shared registry, not a per-profile one:
-{{I-D.mih-scitt-agent-action-capsule}} registers artifact types there
-alongside any other payload profile that wants to, each citing a CPB
-algorithm for its canonicalization; no one profile owns the registry. The worked walkthrough
-of Artifact-Type-Registry governance (Specification Required / Designated
-Expert / third-party registration) that -01 carried as an appendix is
-removed from this document, not moved — it belongs beside the registry it
-documents, in `REGISTRY.md`, where it already lives. This document now
-anchors {{RFC9995}} and keeps only the canonicalization algorithm(s), the
-derived identifier, Signed-Statement and Receipt binding, and the typed
-digest-reference container; the Abstract's former claim that this document
-governs "the artifact types" is corrected.
+* **§8 loses its payload-format normativity.** {{typed-refs}} is now an
+  information model: the four members (`type`, `purpose`, `digest_alg`,
+  `digest`), their requiredness, and the verification algorithm
+  ({{comparability}}, {{verification-scope}}) are unchanged, but the
+  document no longer states that a typed digest reference "is a JSON
+  object" or fixes any serialization of it inside a payload. That was the
+  charter-non-goal-4 exposure; removing it is the entire point of this
+  revision.
+* **Typed references gain envelope carriage.** New {{envelope-carriage}}
+  defines a COSE protected header parameter, `cpb-refs`, that carries
+  typed digest references as a CBOR array of maps, signature-covered by
+  the issuer but outside the payload. This is the concrete first carrier
+  for the SCITT "semantic middle layer" Henk Birkholz proposed at the
+  chair review: a citation a SCITT-generic party — a Transparency Service
+  building a citation index, a profile-unaware verifier — can act on
+  without parsing or understanding the payload class. {{envelope}}
+  already permitted payload-class-specific protected-header fields
+  defined by the payload class specification; `cpb-refs` is CPB's own
+  such field, not an exception to that rule.
+* **JSON payload carriage is retained, informative.** New
+  {{payload-carriage}} states that a payload profile MAY carry typed
+  references in its own serialization instead of, or alongside, envelope
+  carriage; CPB does not define that serialization. The JSON table and
+  worked example that -02 stated normatively as part of {{typed-refs}}
+  move, unchanged in substance, to {{appendix-d}} as one profile's
+  mapping — {{I-D.mih-scitt-agent-action-capsule}}'s `references[]` — now
+  presented as an example rather than as this document's own wire format.
 
-**Registry.**
+Both carriage mechanisms verify identically: {{comparability}} and
+{{verification-scope}} apply to a typed digest reference regardless of
+where it is carried, because the algorithm operates on the four members,
+not on their container. A reference committed under the derived
+identifier (because a profile needs its citations covered by the payload
+digest) uses payload carriage; a reference that needs to be visible to a
+payload-blind party uses envelope carriage. Neither is required; a
+profile MAY use both for the same citation.
 
-* A machine-readable `registry.json` is now generated by CI from
-  `REGISTRY.md`; releases pin a snapshot. A lookup against an identifier
-  absent from the pinned snapshot but potentially valid in a later snapshot
-  now returns a distinct verdict, `id-unknown-to-snapshot`, rather than
-  being indistinguishable from a genuinely unknown identifier.
-* `REGISTRY.md` gained an onboarding ladder and a controlled entry-status
-  vocabulary (`owner-confirmed`, `third-party-documented`, `provisional`,
-  `standards-referenced`), a three-rung registration path (owner-authored /
-  third-party-documented / provisional) with a template, lifecycle, and
-  removal/correction path, and Designated Expert review stated explicitly
-  as a precondition of merging an entry rather than a status a merged entry
-  can still assert. This infrastructure is shared by every registry this
-  file hosts, including the shared Artifact Type Registry, which
-  {{I-D.mih-scitt-agent-action-capsule}} registers into alongside every
-  other payload profile that does — no single profile owns it.
-* The registry generator and validator now source legal status values from
-  `REGISTRY.md` itself instead of a hardcoded list, and reject a malformed
-  table row (mismatched cell/header count) closed instead of silently
-  mis-assigning columns; a small number of rows that predate the controlled
-  vocabulary are named explicitly as the only ones permitted a legacy
-  status spelling.
-* A `Reserved` placeholder token no longer reads as `Verified`: registry
-  lookups previously returned a "verified" verdict on entry presence alone;
-  a distinct `VERDICT_RESERVED` verdict now applies to any entry present
-  but not in `Registered` status.
-* The required-fields table, the "immutable" language, and the
-  upgrade-acknowledgment gate were corrected: the required-fields table is
-  scoped to new entries; "immutable" is stated consistently as "immutable
-  in behavior"; and the acknowledgment gate now requires the same
-  consuming-profile acknowledgment for an upgrade to `owner-confirmed` that
-  it already required for initial admission, closing a path where an owner
-  could file without an acknowledgment and self-acknowledge afterward.
-
-**Canonicalization algorithms.** `jcs` — plain RFC 8785 JCS, no
-normalization pass — is registered ({{algo-jcs}}), with a named consuming
-profile and a discriminating vector against `jcs-n`: one payload carrying a
-null member and an empty array (`jcs` preserves both, `jcs-n` stripped
-them) plus a float member (`jcs` admits it, `jcs-n` rejected it), failing
-loudly in both directions. `jcs-n` is withdrawn ({{algo-jcs-n}}) — the same
-terminal-marking disposition `cde-n` already carried in -01 — following an
-implementer census (the reference implementation was the only implementer
-of the normalization step it added), a byte audit showing 191 of 203
-evaluated records were byte-identical under plain `jcs` without that step,
-the 12 divergent records being proof-of-concept artefacts retained by
-vintage, and the admission bar this revision applies to every entry: a
-named consuming profile. Separately,
-a cross-language conformance harness (`vectors/CANONICALIZATION_DECLARATION.md`)
-versions `jcs-n`'s construction precisely enough for an independent
-implementation to conform against without reading the reference library;
-it stands as part of the permanent historical record for the now-withdrawn
-algorithm. The lowercase-`\u` string-escaping rule and the corresponding
-control-character sort order — properties of RFC 8785 JCS itself, and
-therefore shared by `jcs` and the withdrawn `jcs-n` alike — are now stated
-in prose and cross-linked from `REGISTRY.md`. The shared JCS serialization
-helper also now rejects non-finite numeric values (`Infinity`, `-Infinity`,
-`NaN`) before serialization, consistent with RFC 8785 Section 3.2.2.3
-admitting finite values only.
-
-**Digest determinism and typed references.** Two paragraphs now state
-explicitly what -01 only implied: each algorithm entry and each artifact
-type's digest-context declaration names exactly one hash algorithm, so
-`digest_alg` is fully determined by `type` (together with `purpose` where
-needed) for any registered reference, and a verifier encountering a
-`digest_alg` inconsistent with the resolved context MUST treat it as a
-failure and MUST NOT attempt to reconcile it ({{comparability}}). A
-MUST-FAIL/PASS vector pair pins that an assembled pre-image — one built
-from selected source fields rather than the payload minus an exclusion
-set — is under-determined by algorithm and field set alone; producer-chosen
-member naming and nesting are part of the bytes. Two conformance-checker
-categories exercise this: recomputing both pinned pre-images and asserting
-they diverge for exactly the demonstrated reason, and applying a declared
-`member_mapping` to assert it reproduces the vector's own input. Contributed
-by Rul1an as an external submission, reproduced independently against the
-reference canonicalizer.
-
-**Conformance checker.** A grammar/wire-layer conformance checker
-(`cpb-check`) validates a record against its declared profile grammar — a
-presence-and-number-form walk and duplicate-key rejection — built around a
-duplicate-preserving raw-bytes lexer, since a standard JSON parser silently
-drops duplicate keys before any rule can see them; digest recomputation and
-`canonicalization_id` resolution remain out of scope pending a later gate.
-Vector-harness fixes landed alongside it: the lexer now rejects trailing
-bytes after a JSON document ends and NFC-normalizes before duplicate-key
-detection, and an inverted must-fail assertion and a `-0`/duplicate-key gap
-that could previously let the harness certify a vector as passing for the
-wrong reason are both closed.
+The -01-to-02 registry correction (`jcs-n` withdrawn, `jcs` registered),
+and the rest of -02's consolidation of registry, canonicalization, and
+conformance-checker work, are unaffected by this revision; see the -02
+document text (this repository's git history) for that record.
 
 # Conventions and Definitions {#conventions}
 
@@ -687,24 +619,38 @@ rule. Failure to distinguish the byte sequence from its hex encoding produces
 a silently wrong leaf hash that fails inclusion verification against any
 correct log.
 
-# Typed Digest References {#typed-refs}
+# Typed Digest References (Information Model) {#typed-refs}
 
 A typed digest reference is the mechanism by which one record cites an
 external artifact — another record, an authorization document, a
 configuration object, or any other verifiable item — by its content-address
 without embedding it.
 
-A typed digest reference is a JSON object with the following fields:
+This section defines a typed digest reference as an abstract information
+model: four members, their meaning, and their requiredness. It does not
+fix a serialization or a container. A typed digest reference is carried
+either in the envelope ({{envelope-carriage}}) or in the payload
+({{payload-carriage}}); this document defines the reference itself and its
+verification algorithm ({{comparability}}, {{verification-scope}})
+identically for both, and does not require either carriage over the other.
 
-| Field | Type | Req | Meaning |
+A typed digest reference has the following members:
+
+| Member | Type | Req | Meaning |
 |---|---|---|---|
-| type | string | REQUIRED | The artifact type identifier. This document defines the reference container and its verification algorithm; it does not itself register artifact types or resolve `type` values to digest contexts. That resolution is provided by the shared Artifact Type Registry, into which the payload profile that declares the cited artifact type registers it (see {{I-D.mih-scitt-agent-action-capsule}} for an example). |
+| type | string | REQUIRED | The artifact type identifier. This document defines the reference and its verification algorithm; it does not itself register artifact types or resolve `type` values to digest contexts. That resolution is provided by the shared Artifact Type Registry, into which the payload profile that declares the cited artifact type registers it (see {{I-D.mih-scitt-agent-action-capsule}} for an example). |
 | purpose | string | CONDITIONAL | The purpose label selecting which of the artifact type's digest contexts this reference targets, drawn from the vocabulary the type's entry in the shared Artifact Type Registry defines. REQUIRED whenever the resolved artifact type declares more than one digest context. MAY be omitted only when the resolved artifact type declares exactly one digest context, in which case that single context applies; a verifier MUST NOT infer a default when more than one context is declared. |
 | digest_alg | string | REQUIRED | The hash algorithm of the digest value (e.g., "SHA-256"). The canonicalization context of the cited artifact is resolved from the digest context selected by `type` and `purpose`, not from this field. |
 | digest | string | REQUIRED | The digest of the cited artifact, in the representation declared by the selected digest context. |
 
-Additional fields MAY be present and MUST be ignored by verifiers that do
-not understand them.
+A carriage mechanism MAY admit additional members beyond these four; a
+verifier that does not understand an additional member MUST ignore it
+rather than fail. Each carriage mechanism states its own rule for
+additional members in its own wire terms ({{envelope-carriage}},
+{{payload-carriage}}), because "ignore" means something different in a
+CBOR map than in a JSON object; this section states only that the
+underlying requirement — an unrecognized member is not an error — is a
+property of the reference, not of one carriage mechanism.
 
 ## Cross-Profile Comparability {#comparability}
 
@@ -801,6 +747,79 @@ different computations.
 
 The two values actually being compared must share an established comparison
 context. Bare hexadecimal equality alone is not a join.
+
+## Envelope Carriage {#envelope-carriage}
+
+A CPB-bound Signed Statement MAY carry its typed digest references as a
+COSE protected header parameter, `cpb-refs`, registered in {{iana-header}}.
+The parameter's value is a CBOR array; each array element is a CBOR map
+representing one typed digest reference, with its members carried under
+the following integer keys:
+
+| Key | Member | CBOR type |
+|---|---|---|
+| 1 | type | text string |
+| 2 | purpose | text string |
+| 3 | digest_alg | text string |
+| 4 | digest | text string or byte string, per the representation the referenced artifact type's digest context declares ({{representation}}) |
+
+Key 2 (`purpose`) follows the same requiredness as the information model
+({{typed-refs}}): present when the resolved artifact type declares more
+than one digest context, and MAY be absent otherwise. A map key other than
+1&ndash;4 MAY be present and MUST be ignored by a verifier that does not
+understand it; this is the CBOR-map form of the ignore-unknown-members
+rule ({{typed-refs}}).
+
+{{envelope}} requires that a protected-header field be defined by the
+payload class specification rather than added ad-hoc by producers.
+`cpb-refs` is CPB's own such field: it is exactly the case {{envelope}}
+already anticipates — a field a SCITT-generic party (a Transparency
+Service building a citation index, or a profile-unaware verifier) can act
+on without parsing or understanding the payload class. A party that
+implements COSE and this document's typed-reference verification
+algorithm can enumerate and verify a record's citations from the
+protected header alone, with no dependency on the payload class's own
+serialization.
+
+Verification of a `cpb-refs` entry proceeds exactly as {{comparability}}
+and {{verification-scope}} state; carriage in the protected header changes
+nothing about the algorithm, only where the reference's bytes are read
+from.
+
+`cpb-refs` is signature-covered: it is protected-header content, so an
+issuer's signature covers it and any modification invalidates the
+Signed Statement. It is NOT covered by the payload's derived identifier
+({{derived-id}}) — the derived identifier is computed over the payload
+alone, and a header parameter is not payload. A profile whose citations
+must be committed under the derived identifier itself (for example, so
+that the citation set is fixed the moment the derived identifier is)
+uses payload carriage ({{payload-carriage}}) for that citation instead of,
+or in addition to, envelope carriage.
+
+## Payload Carriage {#payload-carriage}
+
+This section is informative.
+
+A payload profile MAY carry typed digest references in its own
+serialization — JSON, CBOR, or any other format the payload class
+defines — as part of the payload bytes that the derived identifier is
+computed over. This document does not define that serialization: a
+payload profile that carries references this way states its own field
+names, container structure, and any profile-specific requiredness beyond
+{{typed-refs}}'s information model, and remains responsible for its own
+conformance to that model. {{appendix-d}} shows a worked example of one
+profile's JSON mapping, informative only.
+
+Payload carriage and envelope carriage ({{envelope-carriage}}) are
+siblings in the same sense {{discovery}} already establishes for the
+discovery mirror: {{discovery}}'s mirror is an unprotected-header,
+advisory-only identifier with no binding guarantee, while a typed digest
+reference — in either carriage — is always a verified citation, whether
+signature-covered only ({{envelope-carriage}}) or additionally covered by
+the derived identifier (payload carriage). A profile MAY use both
+carriage mechanisms for the same citation; neither is required over the
+other, and this document takes no position on which a given profile
+should choose.
 
 ## Verification Scope {#verification-scope}
 
@@ -978,7 +997,9 @@ intended to be anchored.
 
 This document requests the creation of one new IANA registry, the
 Canonicalization Algorithm Registry ({{iana-alg}}), under a "Canonical
-Payload Binding" heading. The registry uses the Specification Required
+Payload Binding" heading, and one registration in an existing IANA
+registry, the `cpb-refs` COSE Header Parameter ({{iana-header}}). The
+Canonicalization Algorithm Registry uses the Specification Required
 policy ({{RFC8126}}, Section 4.6); a Designated Expert is required for each
 registration. This document does not define an Artifact Type registry:
 artifact types are registered in the shared Artifact Type Registry in
@@ -988,7 +1009,7 @@ references that registry (see {{outofscope}}) but does not define it. This
 revision's Canonicalization Algorithm Registry entries reflect a deliberate
 correction over -01's: the registry was re-derived from what the field
 actually built, rather than restated from what -01 originally specified
-({{changes-01}}).
+({{changes-02}}).
 
 Registry entries are immutable. A registered entry defines a specific
 algorithm. If a behavior change is needed, a new entry MUST be registered;
@@ -1043,6 +1064,21 @@ selector that cites a named production in the container specification
 ({{algo-as-transmitted}}). Without that selector, an `as-transmitted`
 declaration states nothing: there is no field set, no exclusion set, and no
 canonicalization to fall back on for the pre-image construction.
+
+## COSE Header Parameters Registration {#iana-header}
+
+This document requests registration of the following entry in the "COSE
+Header Parameters" registry {{RFC9052}}, Section 11.1:
+
+| Name | Label | Value Type | Value Registry | Description | Reference |
+|---|---|---|---|---|---|
+| cpb-refs | TBD (Specification Required) | array | | A list of typed digest references ({{typed-refs}}), each an entry per {{envelope-carriage}} | This document |
+
+The registry uses the Specification Required policy ({{RFC8126}}, Section
+4.6). `cpb-refs` MAY appear in the protected header only; a producer MUST
+NOT place it in the unprotected header, since an unprotected-header value
+carries no binding guarantee ({{discovery}}) and a typed digest reference
+is, by definition, a verified citation, not an advisory one.
 
 # Related Work {#related}
 
@@ -1316,6 +1352,40 @@ cross-verifications complete.
 The PermitReceipt × MachineMandate composition is excluded from this appendix.
 It is recorded in the AAC interop registry (INTEROP.md).
 
+# Example Payload Carriage (JSON) {#appendix-d}
+
+This appendix is informative. It illustrates one way a payload profile can
+carry a typed digest reference in its own serialization ({{payload-carriage}}),
+using a JSON object with the information model's four members as JSON
+fields. This is an example, not a normative wire format: this document
+does not define how a payload profile serializes a typed digest reference,
+and a profile MAY choose a different container, member naming, or
+serialization (CBOR, for instance) entirely.
+
+| Field | Type | Req | Meaning |
+|---|---|---|---|
+| type | string | REQUIRED | The artifact type identifier ({{typed-refs}}). |
+| purpose | string | CONDITIONAL | The purpose label, present when the resolved artifact type declares more than one digest context ({{typed-refs}}). |
+| digest_alg | string | REQUIRED | The hash algorithm of the digest value (e.g., "SHA-256"). |
+| digest | string | REQUIRED | The digest of the cited artifact, in the representation declared by the selected digest context. |
+
+A JSON object carrying these four fields, with additional fields present
+and ignored by a verifier that does not understand them, is one
+conforming rendering:
+
+~~~json
+{
+  "type": "authorization-doc",
+  "digest_alg": "SHA-256",
+  "digest": "0c837d01faa4106c63367f199af9bfa729d1917..."
+}
+~~~
+
+{{I-D.mih-scitt-agent-action-capsule}} carries typed digest references this
+way, as entries of a payload-level `references[]` array; each entry maps
+the four members onto the same field names shown above. That mapping is
+one profile's choice, cited here as an example, not restated as a
+requirement of this document.
 
 # Acknowledgments {#acknowledgments}
 {:numbered="false"}
@@ -1323,6 +1393,14 @@ It is recorded in the AAC interop registry (INTEROP.md).
 The following individuals contributed findings from the IETF 126 hackathon in
 Vienna that directly shaped the rules in this document. All attributions
 cite public artifacts.
+
+Henk Birkholz (SCITT chair, Fraunhofer Institute for Secure Information
+Technology) reviewed -02 for SCITT charter fit and identified that
+{{typed-refs}}'s payload-format normativity fell under charter non-goal 4;
+this revision's split of the typed digest reference into an information
+model plus {{envelope-carriage}} and {{payload-carriage}} responds directly
+to that review, and {{envelope-carriage}} is the first concrete carrier for
+the SCITT "semantic middle layer" Birkholz proposed during the same review.
 
 **Contributors** \[all named attributions and contributor acknowledgments
 individually confirmed: Anton Sokolov (confirmed 2026-07-24), Iman Schrock

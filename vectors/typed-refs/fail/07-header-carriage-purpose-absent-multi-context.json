@@ -1,0 +1,31 @@
+{
+  "id": "typed-ref-fail-07",
+  "description": "MUST-FAIL: a typed digest reference carried in the `cpb-refs` COSE protected header parameter cites an artifact type that declares more than one digest context, but omits `purpose`. §8.1 requires purpose to select exactly one context whenever more than one is declared; when it is absent and more than one context exists, the reference is unresolvable and the verifier MUST NOT report it as verified, regardless of carriage.",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-03 §8.1 (Cross-Profile Comparability), §8.2 (Envelope Carriage)",
+  "must_fail": true,
+  "failure_reason": "purpose_absent_on_multi_context_type_envelope_carriage",
+  "carriage": "envelope-header",
+  "header_parameter": "cpb-refs",
+  "artifact_type_registry_entry": {
+    "name": "multi-context-doc",
+    "digest_contexts": {
+      "identifier": "jcs-n; exclusion set {doc_id}; 64-char lowercase hex",
+      "content": "jcs-n; exclusion set {}; 64-char lowercase hex"
+    }
+  },
+  "cbor_map_entry": {
+    "1": "multi-context-doc",
+    "3": "SHA-256",
+    "4": "8fe33457364389c8f20a8d21bdcfe88d2323aede9220fc68fd4465a1c84efe13"
+  },
+  "typed_reference": {
+    "type": "multi-context-doc",
+    "digest_alg": "SHA-256",
+    "digest": "8fe33457364389c8f20a8d21bdcfe88d2323aede9220fc68fd4465a1c84efe13"
+  },
+  "verification": {
+    "note": "multi-context-doc declares two digest contexts (identifier, content); the reference carries no purpose. §8.1: 'If type resolves to more than one digest context and purpose is absent ... the reference is unresolvable: the verifier MUST NOT guess a context and MUST NOT report the typed reference as verified.' This applies identically whether the reference is carried in the payload or, as here, in the cpb-refs header entry -- carriage does not change the resolution algorithm.",
+    "result": "NOT VERIFIED (unresolvable)"
+  },
+  "provenance": "Authored for the cpb-03-typed-refs-envelope revision to exercise §8.1's multi-context/purpose-absent rule under envelope carriage. Not a fold of any external vector file."
+}
