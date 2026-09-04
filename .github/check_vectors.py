@@ -85,6 +85,24 @@ For must_fail vectors — each MUST match at least one category (enforced):
      Letter reserved by Anton 2026-08-19: main owns A-J (through #31's diverge-vector
      category J); #16 takes K; this category takes L.
 
+  M. Purpose absent on multi-context type (draft-03 §8.1 resolution rule, cpb-refs
+     envelope carriage): 'artifact_type_registry_entry.digest_contexts' present with
+     more than one entry + failure_reason ==
+     'purpose_absent_on_multi_context_type_envelope_carriage'
+     -> apply _resolve_digest_context(purpose, digest_contexts); assert it raises
+        ValueError. REQUIRES 'typed_reference' present and carrying no 'purpose' member
+        (the vector's whole point is an ABSENT purpose against a genuinely multi-context
+        type -- a vector that does carry one, or whose digest_contexts has only one
+        entry, proves nothing and is a hard failure). The cpb library models only
+        single-digest-context registry entries (see lib/cpb/typed_ref.py's
+        PurposeMismatchError docstring), so -- like category L -- this re-derives §8.1's
+        resolution rule directly rather than calling into the library. Carriage
+        (envelope vs. payload) does not change the resolution algorithm; this vector
+        exercises it under envelope carriage (§8.2) specifically because that is the
+        carriage this revision adds.
+     Mutant: add a 'purpose' member naming one of the declared digest_contexts, making
+     the reference resolvable -- checker must flip to failure.
+
   I. Assembled pre-image, member mapping undeclared: 'implementation_a' + 'implementation_b'
      + 'declared_digest_context'
      -> REQUIRES declared_digest_context.member_mapping to be absent or null (that absence
@@ -415,6 +433,31 @@ def _apply_domain_transforms(transforms: list, source: object) -> object:
     return result
 
 
+def _resolve_digest_context(purpose: object, digest_contexts: dict) -> object:
+    """draft-03 §8.1: resolve a typed digest reference's digest context.
+
+    When 'type' resolves to more than one digest context, 'purpose' MUST select
+    exactly one of them or the reference is unresolvable (§8.1: "the verifier
+    MUST NOT guess a context and MUST NOT report the typed reference as
+    verified").  This applies identically regardless of carriage (§8.2, §8.3);
+    Category M exercises it under envelope carriage.  The cpb library models
+    only single-context registry entries, so this is re-derived directly from
+    the spec text rather than calling into the library -- the same approach
+    Category L already uses for _stream_reassemble.
+
+    Raises ValueError if unresolvable. Returns the selected context otherwise.
+    """
+    if len(digest_contexts) > 1:
+        if purpose is None or purpose not in digest_contexts:
+            raise ValueError(
+                f"unresolvable: type resolves to {len(digest_contexts)} digest "
+                f"contexts; purpose {purpose!r} does not select exactly one"
+            )
+        return digest_contexts[purpose]
+    (only_context,) = digest_contexts.values()
+    return only_context
+
+
 # ---------------------------------------------------------------------------
 # Informative-vector helpers (Category E)
 # ---------------------------------------------------------------------------
@@ -639,6 +682,20 @@ def _mutant_K(v: dict) -> dict | None:
     return m
 
 
+def _mutant_M(v: dict) -> dict | None:
+    """Add a purpose naming one of the declared digest_contexts: the reference
+    is now resolvable, so Category M's check must flip to failure.
+    """
+    m = copy.deepcopy(v)
+    reg_entry = m.get("artifact_type_registry_entry")
+    digest_contexts = reg_entry.get("digest_contexts") if isinstance(reg_entry, dict) else None
+    ref = m.get("typed_reference")
+    if not isinstance(digest_contexts, dict) or not digest_contexts or not isinstance(ref, dict):
+        return None
+    ref["purpose"] = next(iter(digest_contexts))
+    return m
+
+
 _MUTANT_GENERATORS: dict[str, object] = {
     "A": _mutant_A,
     "B": _mutant_B,
@@ -649,6 +706,7 @@ _MUTANT_GENERATORS: dict[str, object] = {
     "I": _mutant_I,
     "K": _mutant_K,
     "L": _mutant_L,
+    "M": _mutant_M,
 }
 
 
@@ -1272,6 +1330,34 @@ def _exercise_must_fail(
             )
         except ValueError:
             pass
+
+    # M. Purpose absent on multi-context type (envelope carriage, §8.1/§8.2)
+    reg_entry_m = v.get("artifact_type_registry_entry")
+    digest_contexts = reg_entry_m.get("digest_contexts") if isinstance(reg_entry_m, dict) else None
+    if (
+        isinstance(digest_contexts, dict)
+        and len(digest_contexts) > 1
+        and v.get("failure_reason") == "purpose_absent_on_multi_context_type_envelope_carriage"
+    ):
+        ran_any_check = True
+        categories_fired.append("M")
+        ref_m = v.get("typed_reference")
+        if not isinstance(ref_m, dict):
+            vec_errors.append("Category M: vector missing typed_reference")
+        elif "purpose" in ref_m:
+            vec_errors.append(
+                "Category M: typed_reference carries a purpose -- the vector's whole "
+                "point is an ABSENT purpose against a genuinely multi-context type"
+            )
+        else:
+            try:
+                _resolve_digest_context(ref_m.get("purpose"), digest_contexts)
+                vec_errors.append(
+                    "digest context resolved despite an absent purpose on a "
+                    "multi-context type -- expected ValueError (unresolvable, §8.1)"
+                )
+            except ValueError:
+                pass
 
     # Enforcement: a vector matching none of the above is a hard failure.
     if not ran_any_check:
