@@ -313,8 +313,9 @@ CANONICAL-DIGEST:
   CANONICAL-DIGEST(A, v) = ENCODE_A(RAW-DIGEST(A, v)), where ENCODE_A is
   the output encoding
   declared by A's entry in the Canonicalization Algorithm Registry
-  ({{iana-alg}}). Every entry registered by this document declares SHA-256
-  and 64-character lowercase hexadecimal; an entry registered by a later
+  ({{iana-alg}}). Every algorithm definition supplied by this document
+  declares SHA-256 and 64-character lowercase hexadecimal; an entry
+  registered by a later
   document MAY declare another digest function or encoding, and a verifier
   MUST read both from the entry rather than assuming them. A(v) is the
   octet string produced by the algorithm applied to v; the specific
@@ -561,9 +562,10 @@ id = CANONICAL-DIGEST(A, payload minus exclusion_set)
 where A is the canonicalization algorithm declared by the payload class and
 the exclusion set is the set of fields declared by the payload class as
 self-referential or chain-linkage fields. The derived identifier is a
-64-character lowercase hex string for every algorithm this document
-registers; for an algorithm registered elsewhere, its representation is the
-one that algorithm's registry entry declares.
+64-character lowercase hex string for every algorithm this document defines.
+A reserved or never-defined token has no derived-identifier representation.
+For an algorithm registered elsewhere, its representation is the one that
+algorithm's registry entry declares.
 
 The exclusion set MUST be declared by the payload class in its specification.
 Fields excluded are those that either contain the derived identifier itself
