@@ -2,7 +2,7 @@
 
 
 
-Network Working Group                                             S. Mih
+SCITT                                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
 Intended status: Standards Track                              A. Sokolov
 Expires: 9 March 2027                                    Tyche Institute
