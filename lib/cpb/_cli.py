@@ -7,11 +7,11 @@ Five-line quickstart
     cpb-check record.json        # human-readable verdict
     cpb-check record.json --json # machine-readable JSON
     cpb-check --self-test        # run the built-in vector suite
-    echo $?                      # 0 = verified, 1 = non-conforming, 2 = error
+    echo $?                      # 0 = grammar-conforming, 1 = non-conforming, 2 = error
 
 Exit codes
 ----------
-0  verified      — no P/R grammar violations found
+0  conforming     — no P/R grammar violations found; no digest was verified
 1  non-conforming — grammar violations found; see output for path and rule
 2  error          — parse failure or usage error
 """
@@ -25,7 +25,7 @@ from pathlib import Path
 
 from .check import CheckResult, check
 
-_EXIT_VERIFIED = 0
+_EXIT_CONFORMING = 0
 _EXIT_NON_CONFORMING = 1
 _EXIT_ERROR = 2
 
@@ -42,7 +42,7 @@ Options:
   --self-test  Run the built-in vector suite and exit.
   -h, --help   Show this help.
 
-Exit codes: 0=verified  1=non-conforming  2=error
+Exit codes: 0=conforming  1=non-conforming  2=error
 """
 
 
@@ -118,7 +118,7 @@ def _self_test() -> int:
 
     total = passed + failed + skipped
     print(f'\nself-test: {passed}/{total} passed, {failed} failed, {skipped} skipped')
-    return _EXIT_VERIFIED if failed == 0 else _EXIT_NON_CONFORMING
+    return _EXIT_CONFORMING if failed == 0 else _EXIT_NON_CONFORMING
 
 
 # ---------------------------------------------------------------------------
@@ -147,12 +147,12 @@ def main() -> None:
 
     if args[:1] in ([], ['-h'], ['--help']) or not args:
         # Asking for help is not an error; being handed nothing to check is.
-        # These were inverted: a bare `cpb-check` exited 0, and 0 is this tool's
-        # word for "verified" -- so a CI gate whose path variable came out empty
-        # concluded the record conformed without a record ever being read.
+        # These were inverted: a bare `cpb-check` exited 0, so a CI gate whose
+        # path variable came out empty concluded the record conformed without a
+        # record ever being read.
         if args:
             print(_USAGE)
-            sys.exit(_EXIT_VERIFIED)
+            sys.exit(_EXIT_CONFORMING)
         print(_USAGE, file=sys.stderr)
         print('cpb-check: no record given -- nothing was checked', file=sys.stderr)
         sys.exit(_EXIT_ERROR)
@@ -178,7 +178,7 @@ def main() -> None:
     else:
         _print_human(result, path_arg)
 
-    sys.exit(_EXIT_VERIFIED if result.verdict == 'verified' else _EXIT_NON_CONFORMING)
+    sys.exit(_EXIT_CONFORMING if result.verdict == 'conforming' else _EXIT_NON_CONFORMING)
 
 
 if __name__ == '__main__':

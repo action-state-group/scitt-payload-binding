@@ -81,6 +81,11 @@ def test_typed_ref_historical_vectors_evaluate():
     """
     vectors = load_vectors("typed-refs/pass")
     for v in vectors:
+        # COSE carrier fixtures are decoded from their pinned wire bytes and
+        # verified in test_cose_refs; never certify them through a parallel
+        # shadow object that could remain valid after the carrier is removed.
+        if "cose_sign1_bytes_hex" in v:
+            continue
         cited = v["cited_artifact"]
         entry = _entry_from_vector(v)
         ref = TypedRef(**_typed_ref_fields(v["typed_reference"]))

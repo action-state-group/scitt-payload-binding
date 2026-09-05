@@ -6,7 +6,7 @@ Mutant discipline (§7 QUEUE_PROTOCOL)
 Every negative check must fail its mutant — a condition-removed variant that
 the test then shows is CAUGHT by the real check.  Each section below:
 
-1. Shows the mutant ACCEPTING what it should reject (mutant verdict == 'verified').
+1. Shows the mutant ACCEPTING what it should reject (mutant verdict == 'conforming').
 2. Shows the real checker REJECTING the same input (real verdict == 'non-conforming').
 
 A check that does not have a failing mutant is not a check.
@@ -36,13 +36,13 @@ def _mutant_check_no_p(raw: str | bytes) -> CheckResult:
     r_violations = [Violation(rv.path, 'R', rv.detail) for rv in raw_violations]
     if r_violations:
         return CheckResult(verdict='non-conforming', violations=r_violations)
-    return CheckResult(verdict='verified', note='MUTANT: P check disabled')
+    return CheckResult(verdict='conforming', note='MUTANT: P check disabled')
 
 
 def _mutant_check_collapsing_parser(raw: str | bytes) -> CheckResult:
     """Mutant: uses json.loads (collapsing parser) instead of the duplicate-preserving lexer.
 
-    json.loads silently drops duplicate keys, so this mutant returns 'verified'
+    json.loads silently drops duplicate keys, so this mutant returns 'conforming'
     for any record that is otherwise grammar-clean but has duplicate keys.
     """
     if isinstance(raw, bytes):
@@ -53,7 +53,7 @@ def _mutant_check_collapsing_parser(raw: str | bytes) -> CheckResult:
     p_violations = check_p(value)
     if p_violations:
         return CheckResult(verdict='non-conforming', violations=p_violations)
-    return CheckResult(verdict='verified', note='MUTANT: collapsing parser')
+    return CheckResult(verdict='conforming', note='MUTANT: collapsing parser')
 
 
 def _mutant_check_value_based_number(raw: str | bytes) -> CheckResult:
@@ -75,7 +75,7 @@ def _mutant_check_value_based_number(raw: str | bytes) -> CheckResult:
     all_violations = violations + p_violations
     if all_violations:
         return CheckResult(verdict='non-conforming', violations=all_violations)
-    return CheckResult(verdict='verified', note='MUTANT: value-based number check')
+    return CheckResult(verdict='conforming', note='MUTANT: value-based number check')
 
 
 def _value_based_number_walk(v: Any, path: str, out: list[Violation]) -> None:
@@ -103,7 +103,7 @@ def _mutant_check_no_r_number(raw: str | bytes) -> CheckResult:
     all_violations = r_violations + p_violations
     if all_violations:
         return CheckResult(verdict='non-conforming', violations=all_violations)
-    return CheckResult(verdict='verified', note='MUTANT: number-token check disabled')
+    return CheckResult(verdict='conforming', note='MUTANT: number-token check disabled')
 
 
 def _mutant_check_no_r_duplicate(raw: str | bytes) -> CheckResult:
@@ -119,7 +119,7 @@ def _mutant_check_no_r_duplicate(raw: str | bytes) -> CheckResult:
     all_violations = r_violations + p_violations
     if all_violations:
         return CheckResult(verdict='non-conforming', violations=all_violations)
-    return CheckResult(verdict='verified', note='MUTANT: duplicate-key check disabled')
+    return CheckResult(verdict='conforming', note='MUTANT: duplicate-key check disabled')
 
 
 # =============================================================================
@@ -144,7 +144,7 @@ class TestPRule:
         """MUTANT (P check disabled) accepts the same null-bearing record."""
         raw = b'{"type":"action","payload":{"x":null}}'
         result = _mutant_check_no_p(raw)
-        assert result.verdict == 'verified', (
+        assert result.verdict == 'conforming', (
             f'mutant should accept null member but got {result.verdict}'
         )
 
@@ -160,7 +160,7 @@ class TestPRule:
     def test_empty_object_member_mutant_accepts(self) -> None:
         raw = b'{"type":"action","meta":{}}'
         result = _mutant_check_no_p(raw)
-        assert result.verdict == 'verified', (
+        assert result.verdict == 'conforming', (
             f'mutant should accept empty-object member but got {result.verdict}'
         )
 
@@ -176,7 +176,7 @@ class TestPRule:
     def test_empty_array_member_mutant_accepts(self) -> None:
         raw = b'{"type":"action","tags":[]}'
         result = _mutant_check_no_p(raw)
-        assert result.verdict == 'verified'
+        assert result.verdict == 'conforming'
 
     # --- deep null ---
 
@@ -200,7 +200,7 @@ class TestPRule:
     def test_null_in_object_inside_array_mutant_accepts(self) -> None:
         raw = b'{"items":[{"kind":"a","opt":null}]}'
         result = _mutant_check_no_p(raw)
-        assert result.verdict == 'verified'
+        assert result.verdict == 'conforming'
 
     # --- array elements exempt ---
 
@@ -208,20 +208,20 @@ class TestPRule:
         """A null that is an array *element* (not a dict member) is exempt."""
         raw = b'{"items":[null,"a",1]}'
         result = check(raw)
-        assert result.verdict == 'verified'
+        assert result.verdict == 'conforming'
 
     def test_empty_array_element_is_exempt(self) -> None:
         """An empty array that is itself an array element is exempt."""
         raw = b'{"items":[[],[1,2]]}'
         result = check(raw)
-        assert result.verdict == 'verified'
+        assert result.verdict == 'conforming'
 
     # --- conforming record ---
 
     def test_conforming_record_passes(self) -> None:
         raw = b'{"type":"action","id":"x","payload":{"action":"approve","actor":"agent-1","count":7}}'
         result = check(raw)
-        assert result.verdict == 'verified'
+        assert result.verdict == 'conforming'
 
 
 # =============================================================================
@@ -250,7 +250,7 @@ class TestRDuplicateKey:
         and no violation is reported.
         """
         result = _mutant_check_collapsing_parser(self._DUP_RAW)
-        assert result.verdict == 'verified', (
+        assert result.verdict == 'conforming', (
             f'collapsing-parser mutant should accept duplicate-key record '
             f'but got {result.verdict!r} (violations: {result.violations})'
         )
@@ -258,7 +258,7 @@ class TestRDuplicateKey:
     def test_duplicate_key_no_dup_check_mutant_accepts(self) -> None:
         """MUTANT (dup check disabled) also accepts."""
         result = _mutant_check_no_r_duplicate(self._DUP_RAW)
-        assert result.verdict == 'verified'
+        assert result.verdict == 'conforming'
 
     def test_duplicate_key_nested_rejected(self) -> None:
         """Duplicate key inside a nested object is also rejected."""
@@ -271,7 +271,7 @@ class TestRDuplicateKey:
     def test_unique_keys_pass(self) -> None:
         raw = b'{"a":1,"b":2,"c":3}'
         result = check(raw)
-        assert result.verdict == 'verified'
+        assert result.verdict == 'conforming'
 
 
 # =============================================================================
@@ -292,7 +292,7 @@ class TestRNumberTokenForm:
     def test_float_mutant_no_number_check_accepts(self) -> None:
         raw = b'{"amount":12.50}'
         result = _mutant_check_no_r_number(raw)
-        assert result.verdict == 'verified'
+        assert result.verdict == 'conforming'
 
     # --- negative zero ---
 
@@ -306,7 +306,7 @@ class TestRNumberTokenForm:
     def test_negative_zero_mutant_accepts(self) -> None:
         raw = b'{"value":-0}'
         result = _mutant_check_no_r_number(raw)
-        assert result.verdict == 'verified'
+        assert result.verdict == 'conforming'
 
     # --- exponent notation: the token-vs-value discriminator ---
 
@@ -339,7 +339,7 @@ class TestRNumberTokenForm:
             'pre-condition: json.loads must return int for -0 in CPython'
         )
         result = _mutant_check_value_based_number(raw)
-        assert result.verdict == 'verified', (
+        assert result.verdict == 'conforming', (
             f'value-based mutant should accept -0 (it becomes int 0 via json.loads) '
             f'but got {result.verdict!r}'
         )
@@ -347,7 +347,7 @@ class TestRNumberTokenForm:
     def test_exponent_notation_no_number_check_mutant_accepts(self) -> None:
         raw = b'{"count":1e2}'
         result = _mutant_check_no_r_number(raw)
-        assert result.verdict == 'verified'
+        assert result.verdict == 'conforming'
 
     # --- uppercase E ---
 
@@ -376,19 +376,19 @@ class TestRNumberTokenForm:
 
     def test_zero_accepted(self) -> None:
         result = check(b'{"n":0}')
-        assert result.verdict == 'verified'
+        assert result.verdict == 'conforming'
 
     def test_positive_integer_accepted(self) -> None:
         result = check(b'{"n":42}')
-        assert result.verdict == 'verified'
+        assert result.verdict == 'conforming'
 
     def test_negative_integer_accepted(self) -> None:
         result = check(b'{"n":-1}')
-        assert result.verdict == 'verified'
+        assert result.verdict == 'conforming'
 
     def test_large_integer_accepted(self) -> None:
         result = check(b'{"n":9007199254740991}')
-        assert result.verdict == 'verified'
+        assert result.verdict == 'conforming'
 
 
 # =============================================================================
@@ -496,7 +496,7 @@ class TestLex:
 
     def test_trailing_bytes_rejected(self) -> None:
         """A top-level value followed by extra bytes must be rejected, not
-        silently ignored (verified: {"a":1}+trailing content was previously
+        silently ignored (conforming: {"a":1}+trailing content was previously
         accepted with the trailing bytes discarded)."""
         with pytest.raises(ValueError, match='trailing bytes'):
             lex(b'{"a":1}{"a":2}')
@@ -605,7 +605,7 @@ def test_duplicate_key_written_as_a_surrogate_pair_is_caught():
 
 def test_raw_control_character_in_string_is_rejected():
     """RFC 8259 section 7 requires characters below U+0020 to be escaped.
-    stdlib rejects them; accepting them meant `verified` for bytes no other
+    stdlib rejects them; accepting them meant `conforming` for bytes no other
     parser would read at all. The escaped form stays legal."""
     with pytest.raises(ValueError, match='raw control character'):
         lex('{"k":"a\x01b"}')
@@ -644,7 +644,7 @@ def test_duplicate_key_detail_is_log_safe():
 
 def test_cli_exit_codes_do_not_fail_open(tmp_path):
     """`cpb-check` with nothing to check exited 0 -- and 0 is this tool's word
-    for 'verified'. A CI gate whose path variable came out empty concluded the
+    for 'conforming'. A CI gate whose path variable came out empty concluded the
     record conformed while no record was ever read. Asking for help, meanwhile,
     was reported as an error."""
     import subprocess
@@ -657,7 +657,7 @@ def test_cli_exit_codes_do_not_fail_open(tmp_path):
             capture_output=True, text=True, cwd=str(_LIB_ROOT), check=False,
         )
 
-    assert run().returncode == 2, 'no arguments must be an error, never verified'
+    assert run().returncode == 2, 'no arguments must be an error, never conforming'
     assert run('--help').returncode == 0, 'asking for help is not an error'
 
     good = tmp_path / 'good.json'

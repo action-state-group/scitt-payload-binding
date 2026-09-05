@@ -1,7 +1,7 @@
 {
   "id": "cpb-check-conforming-02",
   "description": "Conforming: nested objects, arrays with elements (including null array elements — exempt), unique keys throughout.",
-  "expected_verdict": "verified",
+  "expected_verdict": "conforming",
   "note": "Array elements that are null are exempt from P rule (array elements are not members). Objects nested inside arrays are subject to P rule on their own members.",
   "record": {
     "type": "compound",

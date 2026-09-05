@@ -1,0 +1,64 @@
+{
+  "id": "typed-ref-fail-07",
+  "description": "MUST-FAIL as unresolved: a cryptographically valid COSE_Sign1 carries a syntactically valid cpb-refs entry in its protected header, but key 2 (purpose) is absent and the consuming profile's stable declaration defines two digest contexts for the carried type. The verifier cannot guess which context produced the digest and MUST NOT report the reference as verified.",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-03, Digest-Context Resolution and Envelope Carriage",
+  "must_fail": true,
+  "failure_reason": "purpose_absent_on_multi_context_type_envelope_carriage",
+  "carriage": "envelope-header",
+  "header_parameter": "cpb-refs",
+  "protected_header": {
+    "bytes_hex": "a6012702813a0001000003706170706c69636174696f6e2f6a736f6e044c6370622d746573742d6b65790fa2017668747470733a2f2f6973737565722e6578616d706c6502782175726e3a6578616d706c653a73746174656d656e743a6370622d6661696c2d30373a0001000081a301716d756c74692d636f6e746578742d646f6303675348412d32353604784032303037383465616632623639616165396339323134626566306637326331626431623265623931356537363563316633363564316330376233326336346638",
+    "cpb_refs_label": -65537,
+    "entry_index": 0
+  },
+  "cose_sign1_bytes_hex": "d28458cea6012702813a0001000003706170706c69636174696f6e2f6a736f6e044c6370622d746573742d6b65790fa2017668747470733a2f2f6973737565722e6578616d706c6502782175726e3a6578616d706c653a73746174656d656e743a6370622d6661696c2d30373a0001000081a301716d756c74692d636f6e746578742d646f6303675348412d32353604784032303037383465616632623639616165396339323134626566306637326331626431623265623931356537363563316633363564316330376233326336346638a0582f7b22616374696f6e223a2263697465222c227375626a656374223a226d756c74692d636f6e746578742d646f63227d58402e324a801017cdf121ff610ce29a496b2363dbcb052ab5f990b06a8d4f4676371bc6705b4d3c2acd0656bc134ee8b099adc2bd28971c1d57559acc24e385ba02",
+  "cose_sign1_fixture_scope": "The Ed25519 signature is valid and the protected map is deterministic CBOR. Target resolution, not carrier syntax or issuer-signature validity, is the sole failure.",
+  "signature": {
+    "algorithm": "EdDSA",
+    "curve": "Ed25519",
+    "public_key_hex": "79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664",
+    "signature_structure_hex": "846a5369676e61747572653158cea6012702813a0001000003706170706c69636174696f6e2f6a736f6e044c6370622d746573742d6b65790fa2017668747470733a2f2f6973737565722e6578616d706c6502782175726e3a6578616d706c653a73746174656d656e743a6370622d6661696c2d30373a0001000081a301716d756c74692d636f6e746578742d646f6303675348412d3235360478403230303738346561663262363961616539633932313462656630663732633162643162326562393135653736356331663336356431633037623332633634663840582f7b22616374696f6e223a2263697465222c227375626a656374223a226d756c74692d636f6e746578742d646f63227d",
+    "signature_hex": "2e324a801017cdf121ff610ce29a496b2363dbcb052ab5f990b06a8d4f4676371bc6705b4d3c2acd0656bc134ee8b099adc2bd28971c1d57559acc24e385ba02"
+  },
+  "artifact_type_registry_entry": {
+    "name": "multi-context-doc",
+    "digest_contexts": [
+      {
+        "purpose": "identifier",
+        "algorithm": "jcs",
+        "exclusion_set": ["doc_id"],
+        "representation": "bare-hex"
+      },
+      {
+        "purpose": "content",
+        "algorithm": "jcs",
+        "exclusion_set": [],
+        "representation": "bare-hex"
+      }
+    ]
+  },
+  "cbor_map_entry": {
+    "1": "multi-context-doc",
+    "3": "SHA-256",
+    "4": "200784eaf2b69aae9c9214bef0f72c1bd1b2eb915e765c1f365d1c07b32c64f8"
+  },
+  "typed_reference": {
+    "type": "multi-context-doc",
+    "digest_alg": "SHA-256",
+    "digest": "200784eaf2b69aae9c9214bef0f72c1bd1b2eb915e765c1f365d1c07b32c64f8"
+  },
+  "cited_artifact": {
+    "payload": {
+      "doc_id": null,
+      "content": "example"
+    },
+    "identifier_context_digest": "200784eaf2b69aae9c9214bef0f72c1bd1b2eb915e765c1f365d1c07b32c64f8",
+    "content_context_digest": "de8dd70b7faa18399b4a82f3e4bf81f862924878987f2e92f7a51c0fbc0e72ba"
+  },
+  "verification": {
+    "carrier_result": "SIGNATURE VALID",
+    "reference_result": "UNRESOLVED",
+    "reason": "purpose is absent and two contexts match the type"
+  },
+  "provenance": "Deterministically generated from the intentionally public Ed25519 test key used by typed-ref-pass-03. The test-only cpb-refs label -65537 is in the IANA Private Use range and is not an assignment request."
+}

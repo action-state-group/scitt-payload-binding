@@ -1,7 +1,7 @@
 {
   "id": "cpb-check-conforming-03",
   "description": "Conforming: zero and negative integers are valid integer-token form.",
-  "expected_verdict": "verified",
+  "expected_verdict": "conforming",
   "record": {
     "zero": 0,
     "negative": -1,

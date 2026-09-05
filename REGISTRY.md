@@ -1,25 +1,29 @@
-# Registries of record — Canonical Payload Binding
+# Repository registry history — Canonical Payload Binding
 
-**Status.** This document is the **interim registry of record** for the two
-Canonical Payload Binding (CPB) registries, until RFC publication establishes the
-corresponding IANA registries. The registries and their normative definitions are
-in the Internet-Draft (`draft-mih-sokolov-scitt-payload-binding`, this
-repository's `spec/`), **§13 (IANA Considerations)**. Registration policy:
-**Specification Required** per [RFC 8126 §4.6]; a Designated Expert is required
-for each registration. **Entries are immutable in behavior** — if a behavior
-change is needed (a different canonicalization algorithm, field set, or
-exclusion set), a new entry MUST be registered; an entry's registered behavior
-MUST NOT be modified retroactively. This does not bar the two narrower edits
-described below, neither of which changes what the entry specifies: a factual
-correction to bibliographic detail (see [Removal and Correction](#removal-and-correction))
-or a status transition along the [Entry Lifecycle](#entry-lifecycle) (e.g.
-`third-party-documented` → `owner-confirmed`).
+**CPB-03 status — non-normative.** This file preserves repository registry
+experiments and their provenance. It is not an interim registry of record for
+CPB-03 and is not an alternative to IANA. CPB-03 requests one new IANA
+Canonicalization Algorithm Registry and one `cpb-refs` registration in the
+existing COSE Header Parameters registry. It creates no artifact-type registry.
 
-Change controller: **Action State Group, Inc.** (interim) → **IETF** on
-publication. On working-group adoption, the provisional registry **moves with the
-document** to a repository of the working group's choosing (draft §11).
+The algorithm material below is a repository working record; the current
+Internet-Draft and, after publication, IANA control the algorithm definitions
+and status. The artifact-type material is retained only as legacy or provisional
+profile-owned data. Listing a type or digest context here does not register it,
+make it acceptable to a consuming profile, or make it usable for verification.
+A verifier uses such a declaration only when a consuming profile identifies its
+stable normative source and accepts it under the resolution rules in CPB-03.
 
-**One registry home for the CPB document family.** These registries serve the
+**Supersession notice.** The remainder of this file intentionally retains the
+pre-03 workflow, terminology, and evidence record for auditability. Any statement
+below about "two CPB registries", a single registry home, repository
+registration, change control, or PR-based consent describes that historical
+repository process only; it is not a CPB-03 protocol requirement or an IANA
+allocation.
+
+## Archived pre-03 repository policy
+
+**One registry home for the CPB document family.** These registries served the
 entire CPB family — this document and its companions — and this is the single
 place any of them registers. Companion **mechanisms** stay in the companion
 documents as normative text and are never registry entries: selective
@@ -34,10 +38,12 @@ simply a new **artifact type** registers in the existing Artifact Type Registry
 (e.g. an erasure tombstone), adding no new structure. Per-companion registry
 scattering would break decomposable verification the same way per-profile
 invention of these facilities would — one registry home is the structural
-guarantee. The home moves **as a unit** through adoption: this repository today →
-the working group's repository on adoption → IANA at RFC publication.
+guarantee. Under that retired model, the home would have moved **as a unit**
+through adoption: this repository → the working group's repository → IANA at RFC
+publication.
 
-**How entries change — PR as consent.** The tables below change **only** by pull
+**Archived workflow — PR as consent.** Under the pre-03 repository policy, the
+tables below changed **only** by pull
 request with the named owner's approval. A canonicalization-algorithm or
 artifact-type entry enters the record only once its semantics are pinned in a
 publicly available specification and the owner confirms every owner-supplied
@@ -46,8 +52,8 @@ behalf. Proposed entries under discussion with their owners are tracked
 separately in [`spec/cpb-provisional-registry.md`](spec/cpb-provisional-registry.md)
 until confirmed; they enter the tables here on merge.
 
-**Registration rules for new entries.** Two requirements apply to every entry
-regardless of registration type:
+**Archived admission rules.** Two requirements applied to entries under that
+repository process, regardless of registration type:
 
 1. **A new entry MUST resolve to a specific normative reference.** Naming an
    algorithm family is not declaring a digest context: the cited text must pin the
@@ -61,7 +67,7 @@ regardless of registration type:
    positives-only cannot detect an implementation that accepts malformed inputs.
    Both sides are required to make a conformance claim.
 
-**Vector-backed means: shared core suite PLUS a mutation probe on every
+**Archived vector-backed rule: shared core suite PLUS a mutation probe on every
 profile-specific check.** A profile's own vectors REUSE the shared CPB core
 conformance suite for the binding layer — canonicalization, derived-id,
 typed-ref, and representation are profile-agnostic and are exercised by the same
@@ -77,9 +83,10 @@ what makes every future registry slot inherit the same rigor automatically — a
 registered profile cannot ship a weak or assertion-free check, because the suite
 will not certify a check family it cannot flip.
 
-**Descriptive, not generative.** This file is DESCRIPTIVE of the registries
-defined normatively in the Internet-Draft; it never generates new semantics. The
-draft (§11) is normative; this file is the living interim record.
+**Current authority.** This file does not generate protocol semantics. CPB-03
+governs CPB behavior, profile-owned specifications govern their artifact and
+digest-context declarations, and IANA will govern any registry created on RFC
+publication.
 
 [RFC 8126 §4.6]: https://www.rfc-editor.org/rfc/rfc8126#section-4.6
 
@@ -87,16 +94,20 @@ draft (§11) is normative; this file is the living interim record.
 
 ## Payload Canonicalization Algorithm Registry
 
-Records the canonicalization algorithms that may be used to compute
-CANONICAL-DIGEST values. Registration template: **Name**, **Description**,
-**Reference** (draft §13.1).
+**Non-normative CPB-03 working record.** This section preserves the repository
+history behind the proposed initial IANA contents. CPB-03, not this table,
+defines the algorithms; IANA controls their registration status after
+publication.
+
+The historical registration template was **Name**, **Description**, and
+**Reference**.
 
 | Name | Description | Reference | Status |
 |---|---|---|---|
 | `jcs-n` | Withdrawn — never carried to IANA (2026-08-18). RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; `bare-hex` — the construction this entry named. See [`docs/audits/jcsn-withdrawal-audit-2026-08-18.md`](docs/audits/jcsn-withdrawal-audit-2026-08-18.md) for the withdrawal rationale. | draft-mih-sokolov-scitt-payload-binding | `withdrawn` |
 | `jcs` | RFC 8785 JCS over a JSON object (no normalization pass; null, empty-array, and empty-object members are retained as-is); SHA-256; `bare-hex` | RFC 8785 §3 | `standards-referenced` |
 | `cde-n` | Withdrawn — the token was reserved for a deterministic CBOR canonicalization profile and never assigned a definition | draft-mih-sokolov-scitt-payload-binding | `withdrawn` |
-| `as-transmitted` | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; `bare-hex` | draft-mih-sokolov-scitt-payload-binding | Registered |
+| `as-transmitted` | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); a profile-owned artifact-type declaration using this algorithm states a byte-boundary selector in place of a field set; SHA-256; `bare-hex` | draft-mih-sokolov-scitt-payload-binding | Registered |
 
 **jcs-n — withdrawal disposition (2026-08-18).** `jcs-n` is withdrawn entirely, the
 same disposition as `cde-n`: a recorded terminal state, not a deletion. The token
@@ -220,8 +231,13 @@ exercises all four, including mutation probes, without external dependencies.
 
 ## Artifact Type Registry
 
-Records the artifact types that may appear in the `type` field of a typed digest
-reference. Registration template (draft §13.2): **Name**; **Digest Contexts** —
+**Legacy and provisional profile-owned material — not a CPB-03 registry.**
+CPB-03 does not establish this table, and a name does not become valid for a
+typed digest reference merely by appearing below. Each usable artifact-type and
+digest-context declaration is owned by its cited profile or specification and
+must be selected by a consuming profile through a stable normative reference.
+
+The retired repository registration template was **Name**; **Digest Contexts** —
 one or more, each stating a **purpose** label, a **profile version**, a
 **canonicalization algorithm** (from the Algorithm Registry above; MAY be
 `as-transmitted`), a **field set** (or, under `as-transmitted`, the
@@ -367,7 +383,8 @@ Proposed Artifact Type entries awaiting their owners' confirmation are listed in
 
 ## Entry Status Vocabulary
 
-This controlled vocabulary applies to **new entries registered going forward**.
+This controlled vocabulary applies only to the legacy repository records in
+this file. It does not define CPB-03 or IANA status values.
 Every new registry entry carries a `status` field drawn from the following terms;
 registrars MUST use them verbatim.
 

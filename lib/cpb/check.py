@@ -38,7 +38,7 @@ __all__ = [
     'check_r',
 ]
 
-Verdict = Literal['verified', 'non-conforming', 'digest-mismatch', 'unknown-id']
+Verdict = Literal['conforming', 'non-conforming', 'digest-mismatch', 'unknown-id']
 
 
 @dataclass(frozen=True)
@@ -133,8 +133,11 @@ def check_r(raw: str | bytes) -> list[Violation]:
 def check(raw: str | bytes) -> CheckResult:
     """Check *raw* JSON against CPB P and R grammar rules.
 
-    Returns ``'verified'`` if no violations are found, or ``'non-conforming'``
-    with the full violation list otherwise.
+    Returns ``'conforming'`` if no grammar violations are found, or
+    ``'non-conforming'`` with the full violation list otherwise.  A
+    ``'conforming'`` result is deliberately not called ``'verified'``:
+    Phase 1 does not resolve a digest context, retrieve an artifact, recompute
+    its digest, or compare that digest with a carried value.
 
     Phase 1 only.  ``'digest-mismatch'`` and ``'unknown-id'`` verdicts are
     Phase 2 and are not produced here.
@@ -152,9 +155,9 @@ def check(raw: str | bytes) -> CheckResult:
         return CheckResult(verdict='non-conforming', violations=all_violations)
 
     return CheckResult(
-        verdict='verified',
+        verdict='conforming',
         note=(
-            'grammar check passed (Phase 1); '
-            'digest verification awaits Phase 2 (canonicalization_id / G1)'
+            'grammar conformance check passed (Phase 1); no artifact or digest '
+            'was verified (digest processing awaits Phase 2)'
         ),
     )

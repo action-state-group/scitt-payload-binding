@@ -1,0 +1,10 @@
+{
+  "id": "jcs-fail-01",
+  "algorithm": "jcs",
+  "description": "MUST-FAIL: the JSON input contains two members whose decoded Unicode names are both 'a'. RFC 8785 requires I-JSON input, so a conforming implementation rejects the duplicate rather than retaining either value before canonicalization.",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-03, Algorithm jcs; RFC 8785 Section 3.1; RFC 7493 Section 2.3",
+  "must_fail": true,
+  "failure_reason": "jcs_duplicate_member_name",
+  "input_json": "{\"a\":1,\"\\u0061\":2}",
+  "duplicate_member_name": "a"
+}

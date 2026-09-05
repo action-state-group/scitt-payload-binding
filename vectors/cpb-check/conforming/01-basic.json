@@ -1,7 +1,7 @@
 {
   "id": "cpb-check-conforming-01",
   "description": "Conforming record: integer values only, no null/empty members, unique keys.",
-  "expected_verdict": "verified",
+  "expected_verdict": "conforming",
   "record": {
     "type": "action",
     "id": "urn:example:action:1234",

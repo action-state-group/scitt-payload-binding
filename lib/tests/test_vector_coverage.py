@@ -27,11 +27,14 @@ from cpb import (
     CarriedIdMismatch,
     ContextMismatchError,
     DigestAlgorithmMismatchError,
+    JsonWireFormatError,
     RepresentationMismatchError,
     TypedRef,
     UnsafeIntegerError,
     canonical_digest,
+    canonical_digest_json,
     evaluate_typed_ref_digest,
+    raw_digest,
     verify_carried_id,
 )
 from cpb.canonicalize import FloatInDigestError
@@ -71,6 +74,25 @@ def _handle_integer_formatting_divergence(v: dict) -> None:
     excl = set(v.get("exclusion_set", []))
     with pytest.raises(UnsafeIntegerError):
         canonical_digest(v["input"], excl or None, algorithm="jcs-n")
+
+
+def _handle_jcs_duplicate_member_name(v: dict) -> None:
+    with pytest.raises(JsonWireFormatError):
+        canonical_digest_json(v["input_json"], algorithm="jcs")
+
+
+def _handle_as_transmitted_textual_hex_substitution(v: dict) -> None:
+    selected = bytes.fromhex(v["selected_bytes_hex"])
+    textual_hex = v["selected_bytes_hex"].encode("ascii")
+    nonconforming = v["nonconforming_pre_image"]
+
+    assert textual_hex == bytes.fromhex(nonconforming["bytes_hex"])
+    assert raw_digest(selected, algorithm="as-transmitted").hex() == v["digest"]
+    assert raw_digest(textual_hex, algorithm="as-transmitted").hex() == (
+        nonconforming["digest"]
+    )
+    assert v["carried_digest"] == nonconforming["digest"]
+    assert v["carried_digest"] != v["digest"]
 
 
 def _handle_carried_id_mismatch(v: dict) -> None:
@@ -273,6 +295,47 @@ def _handle_stream_incomplete(v: dict) -> None:
                 raise ValueError(f"unknown transform: {t.get('id')!r}")
 
 
+class _UnresolvableReferenceError(ValueError):
+    """draft-03 §8.1: `type` resolves to more than one digest context and
+    `purpose` does not select exactly one of them."""
+
+
+def _resolve_digest_context_or_raise(purpose, digest_contexts: dict) -> str:
+    """Minimal model of §8.1's context-resolution rule.
+
+    The cpb library's ArtifactTypeRegistryEntry models only a single digest
+    context per type (see PurposeMismatchError's docstring: "Resolving a
+    `purpose` against a multi-context registry entry is not implemented
+    here"), so this re-derives the resolution rule directly from §8.1's
+    text rather than calling into the library -- the same approach
+    _handle_duplicate_key and _handle_invalid_wire_number_token already use
+    for checks the library does not implement.
+    """
+    if len(digest_contexts) > 1:
+        if purpose is None or purpose not in digest_contexts:
+            raise _UnresolvableReferenceError(
+                f"type resolves to {len(digest_contexts)} digest contexts; "
+                f"purpose {purpose!r} does not select exactly one"
+            )
+        return digest_contexts[purpose]
+    (only_context,) = digest_contexts.values()
+    return only_context
+
+
+def _handle_purpose_absent_on_multi_context_type_envelope_carriage(v: dict) -> None:
+    """typed-ref-fail-07: §8.1's multi-context/purpose-absent rule applies
+    identically whether the reference is carried in the payload or, as this
+    vector demonstrates, as a `cpb-refs` header entry (§8.2) -- carriage
+    does not change the resolution algorithm."""
+    reg = v["artifact_type_registry_entry"]
+    digest_contexts = reg["digest_contexts"]
+    assert len(digest_contexts) > 1, "vector must declare a genuinely multi-context type"
+    ref = v["typed_reference"]
+    assert "purpose" not in ref, "vector's whole point is an ABSENT purpose"
+    with pytest.raises(_UnresolvableReferenceError):
+        _resolve_digest_context_or_raise(ref.get("purpose"), digest_contexts)
+
+
 def _handle_profile_independence_violation(v: dict) -> None:
     """profile-independence-fail-01: informative/behavioral. The executable
     contract is the documented CONFORMING alternative -- see
@@ -416,12 +479,16 @@ def _handle_assembled_preimage_member_mapping_undeclared(v: dict) -> None:
 
 
 _HANDLERS = {
+    "as_transmitted_textual_hex_substitution": (
+        _handle_as_transmitted_textual_hex_substitution
+    ),
     "assembled_preimage_member_mapping_undeclared": (
         _handle_assembled_preimage_member_mapping_undeclared
     ),
     "float_in_digest_bearing_field": _handle_float_in_digest_bearing_field,
     "unsafe_integer_in_digest_bearing_field": _handle_unsafe_integer_in_digest_bearing_field,
     "integer_formatting_divergence": _handle_integer_formatting_divergence,
+    "jcs_duplicate_member_name": _handle_jcs_duplicate_member_name,
     "carried_id_mismatch": _handle_carried_id_mismatch,
     "recomputed_digest_mismatch": _handle_recomputed_digest_mismatch,
     "digest_context_incompatible_equal_hex_is_not_a_join": _handle_textual_equality_trap,
@@ -432,6 +499,9 @@ _HANDLERS = {
     "identifier_inconsistent_with_context": _handle_identifier_inconsistent_with_context,
     "digest_algorithm_inconsistent_with_context": _handle_digest_algorithm_inconsistent_with_context,
     "digest_alg_inconsistent_with_registered_context": _handle_digest_alg_inconsistent_with_registered_context,
+    "purpose_absent_on_multi_context_type_envelope_carriage": (
+        _handle_purpose_absent_on_multi_context_type_envelope_carriage
+    ),
     "nfc_normalisation_deviation": _handle_nfc_normalisation_deviation,
     "string_escape_uppercase_hex": _handle_string_escape_uppercase_hex,
     "string_escape_long_form_for_named_char": _handle_string_escape_long_form_for_named_char,

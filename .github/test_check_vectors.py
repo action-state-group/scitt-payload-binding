@@ -10,7 +10,6 @@ one-direction-only submission for a brand-new name was scored as an
 ordinary passing positive vector -- 0 FAILED, no signal at all.
 """
 import importlib.util
-import hashlib
 import json
 import pathlib
 
@@ -52,164 +51,135 @@ def test_representation_vector_rejects_a_mutated_check_hash():
     assert any("raw_input.check_sha256 mismatch" in error for error in errors)
 
 
-def _as_transmitted_vector(*, must_fail: bool = False) -> dict:
-    """Build an exact-byte COSE fixture without depending on the later vector PR."""
-    protected = check_vectors._encode_cbor_deterministic(
-        check_vectors._CborMap(((1, -7),))
-    )
-    payload = b"CPB exact-byte boundary"
-    cose = check_vectors._CborTag(
-        18,
-        [protected, check_vectors._CborMap(()), payload, b"signature"],
-    )
-    selected = check_vectors._encode_cbor_deterministic(
-        ["Signature1", protected, b"", payload]
-    )
-    digest = hashlib.sha256(selected).hexdigest()
-    vector = {
-        "id": "self-contained-as-transmitted",
-        "algorithm": "as-transmitted",
-        "exclusion_set": [],
-        "container": {
-            "format": "COSE_Sign1",
-            "bytes_hex": check_vectors._encode_cbor_deterministic(cose).hex(),
-        },
-        "byte_boundary_selector": {
-            "normative_reference": "RFC 9052 Section 4.4",
-            "named_production": "Sig_structure (ToBeSigned)",
-            "context": "Signature1",
-            "external_aad_bytes_hex": "",
-        },
-        "selected_bytes_hex": selected.hex(),
-        "selected_length_octets": len(selected),
-        "digest_alg": "SHA-256",
-        "digest_representation": "lowercase-hex",
-        "digest": digest,
+def _committed_as_transmitted_vector(side: str) -> dict:
+    names = {
+        "pass": "01-cose-sign1-to-be-signed.json",
+        "fail": "01-textual-hex-substitution.json",
     }
-    if must_fail:
-        textual_hex = selected.hex().encode("ascii")
-        wrong_digest = hashlib.sha256(textual_hex).hexdigest()
-        vector.update(
-            {
-                "id": "self-contained-as-transmitted-text-hex",
-                "must_fail": True,
-                "failure_reason": "as_transmitted_textual_hex_substitution",
-                "nonconforming_pre_image": {
-                    "construction": "selected_bytes_hex.encode('ascii')",
-                    "bytes_hex": textual_hex.hex(),
-                    "length_octets": len(textual_hex),
-                    "digest": wrong_digest,
-                },
-                "carried_digest": wrong_digest,
-            }
-        )
-    return vector
+    path = _HERE.parent / "vectors" / "as-transmitted" / side / names[side]
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _jcs_vector(*, must_fail: bool = False) -> dict:
-    """Build a plain-JCS fixture without depending on the later vector PR."""
-    if must_fail:
-        return {
-            "id": "self-contained-jcs-duplicate",
-            "algorithm": "jcs",
-            "must_fail": True,
-            "failure_reason": "jcs_duplicate_member_name",
-            "input_json": '{"a":1,"\\u0061":2}',
-            "duplicate_member_name": "a",
-        }
-
-    source = '{"z":null,"a":{},"m":[],"s":"CPB"}'
-    data_model = json.loads(source)
-    pre_image = check_vectors._jcs_rfc8785(data_model)
-    pre_image_bytes = pre_image.encode("utf-8")
-    return {
-        "id": "self-contained-jcs",
-        "algorithm": "jcs",
-        "exclusion_set": [],
-        "input_json": source,
-        "input_data_model": data_model,
-        "pre_image": pre_image,
-        "pre_image_bytes_hex": pre_image_bytes.hex(),
-        "digest_alg": "SHA-256",
-        "digest_representation": "lowercase-hex",
-        "digest": hashlib.sha256(pre_image_bytes).hexdigest(),
-    }
-
-
-def _write_algorithm_pair(root: pathlib.Path, name: str, vectors: tuple[dict, dict]) -> None:
-    for side, vector in zip(("pass", "fail"), vectors, strict=True):
-        target = root / name / side
-        target.mkdir(parents=True, exist_ok=True)
-        (target / f"{vector['id']}.json").write_text(
-            json.dumps(vector), encoding="utf-8"
-        )
-
-
-def test_as_transmitted_paths_are_live_without_later_vectors(tmp_path, capsys):
-    positive = _as_transmitted_vector()
-    negative = _as_transmitted_vector(must_fail=True)
-    ok, errors = check_vectors._exercise_as_transmitted(positive, positive["id"])
+def test_as_transmitted_positive_derives_exact_selected_bytes_from_container():
+    vector = _committed_as_transmitted_vector("pass")
+    ok, errors = check_vectors._exercise_as_transmitted(vector, vector["id"])
     assert ok, errors
+
+    # The container remains authoritative. A false selected-byte pin cannot make
+    # the vector pass even if a submitter were to change prose around it.
+    vector["selected_bytes_hex"] = "00" + vector["selected_bytes_hex"][2:]
+    ok, errors = check_vectors._exercise_as_transmitted(vector, "selected-byte-mutant")
+    assert not ok
+    assert any("does not equal the Sig_structure" in error for error in errors)
+
+
+def test_as_transmitted_textual_hex_negative_and_mutation_probe_are_live():
+    vector = _committed_as_transmitted_vector("fail")
     ok, errors = check_vectors._exercise_must_fail(
-        negative, negative["id"], [], _probe_mutants=False
+        vector, vector["id"], [], _probe_mutants=False
     )
     assert ok, errors
 
-    mutant = check_vectors._mutant_N(negative)
+    mutant = check_vectors._mutant_N(vector)
     assert mutant is not None
+    assert mutant["carried_digest"] == vector["digest"]
     ok, errors = check_vectors._exercise_must_fail(
         mutant, "as-transmitted-condition-removed", [], _probe_mutants=False
     )
     assert not ok
     assert any("no textual-hex substitution remains" in error for error in errors)
 
-    _write_algorithm_pair(tmp_path, "as-transmitted", (positive, negative))
-    assert check_vectors.check_vectors(tmp_path) == 0
-    out = capsys.readouterr().out
-    assert "2 pass/exercised" in out
-    assert "coverage 'as-transmitted': 1 positive, 1 MUST-FAIL" in out
 
-
-def test_as_transmitted_container_remains_authoritative():
-    vector = _as_transmitted_vector()
-    vector["selected_bytes_hex"] = "00" + vector["selected_bytes_hex"][2:]
-    ok, errors = check_vectors._exercise_as_transmitted(vector, "false-byte-pin")
-    assert not ok
-    assert any("does not equal the Sig_structure" in error for error in errors)
-
-
-def test_jcs_paths_are_live_without_later_vectors(tmp_path, capsys):
-    positive = _jcs_vector()
-    negative = _jcs_vector(must_fail=True)
-    ok, errors = check_vectors._exercise_jcs(positive, positive["id"])
-    assert ok, errors
+def test_as_transmitted_negative_rejects_an_unpinned_textual_boundary():
+    vector = _committed_as_transmitted_vector("fail")
+    vector["nonconforming_pre_image"]["bytes_hex"] = vector["selected_bytes_hex"]
     ok, errors = check_vectors._exercise_must_fail(
-        negative, negative["id"], [], _probe_mutants=False
+        vector, "as-transmitted-wrong-boundary-mutant", [], _probe_mutants=False
+    )
+    assert not ok
+    assert any("is not the ASCII encoding" in error for error in errors)
+
+
+def test_as_transmitted_committed_suite_is_routed_and_two_sided(capsys):
+    root = _HERE.parent / "vectors" / "as-transmitted"
+    rc = check_vectors.check_vectors(root)
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "2 pass/exercised" in out
+    assert "0 no-check (skipped)" in out
+    assert "0 FAILED" in out
+    assert "coverage 'as-transmitted': 1 positive, 1 MUST-FAIL" in out
+    assert "WARNING" not in out
+
+
+def _committed_jcs_vector(side: str) -> dict:
+    names = {
+        "pass": "01-retain-null-and-empty-members.json",
+        "fail": "01-duplicate-member-name.json",
+    }
+    path = _HERE.parent / "vectors" / "jcs" / side / names[side]
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_jcs_positive_retains_null_and_empty_members():
+    vector = _committed_jcs_vector("pass")
+    ok, errors = check_vectors._exercise_jcs(vector, vector["id"])
+    assert ok, errors
+    assert '"a":{}' in vector["pre_image"]
+    assert '"m":[]' in vector["pre_image"]
+    assert '"z":null' in vector["pre_image"]
+
+    vector["pre_image"] = '{"s":"CPB"}'
+    ok, errors = check_vectors._exercise_jcs(vector, "jcs-normalizing-mutant")
+    assert not ok
+    assert any("jcs pre_image mismatch" in error for error in errors)
+
+
+def test_jcs_positive_rejects_a_drifting_data_model_mirror():
+    vector = _committed_jcs_vector("pass")
+    vector["input_data_model"]["z"] = "not-null"
+    ok, errors = check_vectors._exercise_jcs(vector, "jcs-input-mirror-mutant")
+    assert not ok
+    assert any("input_data_model mirror does not equal" in error for error in errors)
+
+
+def test_jcs_duplicate_name_negative_and_mutation_probe_are_live():
+    vector = _committed_jcs_vector("fail")
+    assert "\\u0061" in vector["input_json"]
+    ok, errors = check_vectors._exercise_must_fail(
+        vector, vector["id"], [], _probe_mutants=False
     )
     assert ok, errors
 
-    mutant = check_vectors._mutant_O(negative)
+    mutant = check_vectors._mutant_O(vector)
     assert mutant is not None
+    assert json.loads(mutant["input_json"]) == {"a": 2}
     ok, errors = check_vectors._exercise_must_fail(
         mutant, "jcs-duplicate-condition-removed", [], _probe_mutants=False
     )
     assert not ok
     assert any("does not occur more than once" in error for error in errors)
 
-    _write_algorithm_pair(tmp_path, "jcs", (positive, negative))
-    assert check_vectors.check_vectors(tmp_path) == 0
-    out = capsys.readouterr().out
-    assert "2 pass/exercised" in out
-    assert "coverage 'jcs': 1 positive, 1 MUST-FAIL" in out
 
-
-def test_jcs_duplicate_check_uses_exact_decoded_names_without_nfc():
-    vector = _jcs_vector(must_fail=True)
+def test_jcs_duplicate_check_does_not_apply_nfc_normalization():
+    vector = _committed_jcs_vector("fail")
     vector["input_json"] = '{"A\\u030a":1,"\\u00c5":2}'
     vector["duplicate_member_name"] = "Å"
     ok, errors = check_vectors._exercise_jcs_duplicate(vector, "jcs-nfc-distinct")
     assert not ok
     assert any("does not occur more than once" in error for error in errors)
+
+
+def test_jcs_committed_suite_is_routed_and_two_sided(capsys):
+    root = _HERE.parent / "vectors" / "jcs"
+    rc = check_vectors.check_vectors(root)
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "2 pass/exercised" in out
+    assert "0 no-check (skipped)" in out
+    assert "0 FAILED" in out
+    assert "coverage 'jcs': 1 positive, 1 MUST-FAIL" in out
+    assert "WARNING" not in out
 
 
 def _write_pos_only_vector(root: pathlib.Path, name: str = "pos-only-alg") -> None:

@@ -24,6 +24,7 @@ __all__ = [
     "normalize",
     "jcs",
     "jcs_n",
+    "raw_digest",
     "canonical_digest",
     "canonical_digest_json",
 ]
@@ -174,13 +175,52 @@ def jcs_n(v: Any) -> bytes:
     return _jcs_n_value(v).encode("utf-8")
 
 
+def raw_digest(
+    v: Any,
+    exclusion_set: frozenset[str] | set[str] | None = None,
+    *,
+    algorithm: str,
+) -> bytes:
+    """Evaluate a parsed canonical value or exact transmitted octets.
+
+    The result is exactly the byte form whose lowercase hexadecimal rendering
+    is returned by :func:`canonical_digest`; it is not the UTF-8 encoding of
+    that rendering. The algorithm is mandatory and explicit.
+
+    For ``jcs`` and historical ``jcs-n``, this parsed-value helper cannot prove
+    that source JSON had no duplicate members and does not report a verification
+    result. When raw JSON is available, use :func:`canonical_digest_json` for
+    its duplicate-preserving gate and pass that result through
+    :func:`cpb.hex_to_raw` at a declared raw-output boundary. Historical
+    ``jcs-n`` evaluation also does not by itself establish pre-withdrawal
+    vintage.
+
+    For ``as-transmitted``, ``v`` must be the exact ``bytes`` selected by the
+    container format's cited named production, and no non-empty exclusion set
+    is permitted. This function hashes those bytes; it cannot establish that a
+    caller selected the correct production or byte boundary.
+    """
+    if algorithm == "as-transmitted":
+        if not isinstance(v, bytes):
+            raise TypeError("as-transmitted input must be the exact bytes to hash")
+        if exclusion_set:
+            raise ValueError("as-transmitted does not permit an exclusion set")
+        return hashlib.sha256(v).digest()
+    if algorithm not in {"jcs", "jcs-n"}:
+        raise ValueError(f"unsupported canonicalization algorithm {algorithm!r}")
+    if exclusion_set and isinstance(v, dict):
+        v = {k: val for k, val in v.items() if k not in exclusion_set}
+    pre_image = jcs(v) if algorithm == "jcs" else jcs_n(normalize(v))
+    return hashlib.sha256(pre_image).digest()
+
+
 def canonical_digest(
     v: Any,
     exclusion_set: frozenset[str] | set[str] | None = None,
     *,
     algorithm: str,
 ) -> str:
-    """Evaluate a CPB digest over an already-parsed value.
+    """Evaluate a CPB digest over a parsed value or exact transmitted bytes.
 
     The algorithm is explicit so upgrading from the former ``jcs-n`` API can
     never silently change a content address. ``jcs-n`` is retained only for historical
@@ -190,19 +230,15 @@ def canonical_digest(
     :func:`canonical_digest_json` whenever raw JSON is available.
 
     Args:
-        v: The JSON-serializable value to digest (must be a dict for CPB payloads).
+        v: A JSON-serializable value for ``jcs``/``jcs-n``; exact ``bytes`` for
+            ``as-transmitted``.
         exclusion_set: Optional set of top-level field names to remove before
             the algorithm runs (§5), including before jcs-n normalization.
 
     Returns:
         64-character lowercase hex string.
     """
-    if algorithm not in {"jcs", "jcs-n"}:
-        raise ValueError(f"unsupported canonicalization algorithm {algorithm!r}")
-    if exclusion_set and isinstance(v, dict):
-        v = {k: val for k, val in v.items() if k not in exclusion_set}
-    pre_image = jcs(v) if algorithm == "jcs" else jcs_n(normalize(v))
-    return hashlib.sha256(pre_image).hexdigest()
+    return raw_digest(v, exclusion_set, algorithm=algorithm).hex()
 
 
 def canonical_digest_json(

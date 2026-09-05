@@ -1,5 +1,11 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""Registry snapshot loader and algorithm-id lookup.
+"""Legacy repository-snapshot loader and algorithm-id lookup.
+
+Draft -03 does not define a CPB artifact-type registry: consuming profiles
+identify their accepted artifact-type declarations by stable reference.  This
+module remains a compatibility trust source for deployments that have already
+pinned this repository's machine-readable snapshot; it is not discovery and
+does not make that snapshot a protocol registry.
 
 Snapshot-pin mechanism: a verifier loads a specific registry.json snapshot,
 checks its internal content-address (snapshot_sha256), compares that address

@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Typed digest reference: construction and verification.
 
-Reference: draft-mih-sokolov-scitt-payload-binding-02 §8 (Typed Digest
+Reference: draft-mih-sokolov-scitt-payload-binding-03 §8 (Typed Digest
 References) / §8.1 (Cross-Profile Comparability). §8.1 requires the
 verifier to confirm that ``digest_alg`` identifies a hash algorithm
-consistent with the referenced artifact type's registered canonicalization
+consistent with the referenced artifact type's accepted canonicalization
 context, in addition to recomputing and comparing the digest itself.
 """
 from __future__ import annotations
@@ -41,6 +41,7 @@ __all__ = [
     "evaluate_typed_ref_digest",
     "verify_typed_ref",
     "verify_typed_ref_json",
+    "verify_cbor_typed_ref",
     "hex_to_raw",
     "raw_to_hex",
 ]
@@ -127,7 +128,7 @@ class RepresentationMismatchError(TypedRefError):
 
     The spec (§5.1): "Representations are distinct and not interchangeable."
     This error is raised when the carried digest does not conform to the
-    representation declared in the artifact type registry entry -- including
+    representation declared in the artifact type's digest context -- including
     when a raw-octet (``bytes``) representation is declared but a hex
     ``str`` is carried instead (or vice versa): the raw-octet and hex
     representations are never implicitly interchangeable, even when one is
@@ -150,9 +151,9 @@ class DigestAlgorithmMismatchError(TypedRefError):
 
     §8 defines ``digest_alg`` as "the hash algorithm of the digest value".
     §8.1 requires the verifier to confirm that ``digest_alg`` is consistent
-    with the referenced artifact type's registered canonicalization context
+    with the referenced artifact type's accepted canonicalization context
     -- the canonicalization CONTEXT itself is always resolved from the
-    artifact-type registry entry, never from ``digest_alg``, but the field
+    artifact-type declaration, never from ``digest_alg``, but the field
     still makes a factual claim about which hash algorithm produced the
     carried digest. A reference that mislabels this (e.g. a jcs-n/SHA-256
     artifact cited with ``digest_alg: "SHA-512"``) is internally
@@ -167,7 +168,7 @@ class DigestAlgorithmMismatchError(TypedRefError):
         super().__init__(
             f"typed reference to {artifact_type!r}: declared digest_alg "
             f"{declared!r} does not match {expected!r}, the hash algorithm "
-            f"used by this artifact type's registered canonicalization algorithm"
+            f"used by this artifact type's declared canonicalization algorithm"
         )
 
 
@@ -298,8 +299,9 @@ class ArtifactTypeDefinition:
     accidentally pass only the selected row. ``context_set_sha256`` binds the
     name, every context (including unsupported siblings), and executable field
     selection. It detects truncation or mutation of an existing definition; it
-    is a content address, not proof of registry origin. A caller importing a
-    registry definition should compare it with an independently trusted pin.
+    is a content address, not proof of declaration origin. A caller importing
+    a profile-owned definition should compare it with an independently trusted
+    pin.
 
     Producers defining a profile use :meth:`for_construction`, publish its
     ``context_set_sha256``, and cannot use that unpinned object for a verification
@@ -453,7 +455,7 @@ class TypedRef:
     """A typed digest reference (§8).
 
     Fields match the spec-defined JSON object:
-        type       — artifact type, from Artifact Type Registry
+        type       — artifact type accepted from a stable profile declaration
         digest_alg — hash algorithm of the digest value (e.g., 'SHA-256')
         digest     — digest of the cited artifact, in its declared representation.
                      The JSON wire form permits the textual ``bare-hex`` and
@@ -615,7 +617,7 @@ def _prepare_reference(
     # Step 1: confirm registry_entry is for the correct type
     if registry_entry.name != ref.type:
         raise TypedRefError(
-            f"registry entry {registry_entry.name!r} does not match "
+            f"digest context {registry_entry.name!r} does not match "
             f"typed reference type {ref.type!r}"
         )
 
@@ -631,7 +633,7 @@ def _prepare_reference(
     # Step 2: confirm digest_alg names the hash algorithm this artifact
     # type's canonicalization algorithm actually uses. This is independent
     # of the canonicalization CONTEXT check below, which always comes from
-    # registry_entry -- never from digest_alg.
+    # selected context -- never from digest_alg.
     _require_executable_context(registry_entry)
     expected_alg = _ALGORITHM_DIGEST_ALG[registry_entry.algorithm]
     # Exact octets, not case-folded: the draft requires byte-for-byte comparison
@@ -704,6 +706,8 @@ def _require_json_typed_ref_representation(
 def _resolve_reference_context(
     ref: TypedRef | dict[str, str],
     artifact_type: ArtifactTypeDefinition,
+    *,
+    reference_encoding: str,
 ) -> tuple[TypedRef, ArtifactDigestContext]:
     """Resolve exactly one context from an integrity-bound artifact definition."""
     if not isinstance(artifact_type, ArtifactTypeDefinition):
@@ -715,11 +719,20 @@ def _resolve_reference_context(
     ref_type = ref.get("type") if isinstance(ref, dict) else ref.type
     purpose = ref.get("purpose") if isinstance(ref, dict) else ref.purpose
     selected = _select_context(str(ref_type), purpose, artifact_type.contexts)
-    _require_json_typed_ref_representation(selected)
+    if reference_encoding == "json":
+        _require_json_typed_ref_representation(selected)
+    elif reference_encoding != "cbor":  # pragma: no cover - private invariant
+        raise ValueError(f"unknown typed-reference encoding {reference_encoding!r}")
     return _prepare_reference(ref, selected), selected
 
 
 def _require_executable_context(registry_entry: ArtifactDigestContext) -> None:
+    if registry_entry.algorithm == "as-transmitted":
+        raise UnsupportedDigestContextError(
+            f"typed reference to {registry_entry.name!r}: as-transmitted requires "
+            "a profile-specific exact-octet selector and cannot be executed from "
+            "this generic whole-object digest context"
+        )
     if registry_entry.algorithm not in {"jcs", "jcs-n"}:
         raise UnsupportedDigestContextError(
             f"typed reference to {registry_entry.name!r}: canonicalization "
@@ -766,6 +779,26 @@ def _compare_recomputed(
     return recomputed
 
 
+def _verify_resolved_reference(
+    ref: TypedRef,
+    artifact_json: str | bytes,
+    registry_entry: ArtifactDigestContext,
+    *,
+    vintage_evidence: object | None,
+    verify_vintage_evidence: VintageEvidenceVerifier | None,
+) -> str:
+    """Apply the cited-artifact check after carrier-specific resolution."""
+    recomputed = _digest_json_for_context(artifact_json, registry_entry)
+    _compare_recomputed(ref, recomputed, registry_entry)
+    if registry_entry.algorithm == "jcs-n":
+        require_pre_cutoff_jcs_n_vintage(
+            evidence=vintage_evidence,
+            verify_evidence=verify_vintage_evidence,
+            artifact_digest=recomputed,
+        )
+    return recomputed
+
+
 def evaluate_typed_ref_digest(
     ref: TypedRef | dict[str, str],
     artifact_payload: dict[str, Any],
@@ -777,7 +810,7 @@ def evaluate_typed_ref_digest(
     checks type, purpose, digest-algorithm, representation, and digest equality,
     but it deliberately does **not** report the reference as verified: a parsed
     mapping cannot prove that duplicate JSON members were absent. When the
-    registry entry names historical ``jcs-n``, this call also establishes no
+    digest context names historical ``jcs-n``, this call also establishes no
     authenticated pre-cutoff vintage.
     """
     if not isinstance(artifact_payload, dict):
@@ -809,16 +842,71 @@ def verify_typed_ref_json(
     Missing, unauthenticated, naive, or post-cutoff evidence fails closed.
     Live ``jcs`` requires no vintage evidence.
     """
-    checked_ref, registry_entry = _resolve_reference_context(ref, artifact_type)
-    recomputed = _digest_json_for_context(artifact_json, registry_entry)
-    _compare_recomputed(checked_ref, recomputed, registry_entry)
-    if registry_entry.algorithm == "jcs-n":
-        require_pre_cutoff_jcs_n_vintage(
-            evidence=vintage_evidence,
-            verify_evidence=verify_vintage_evidence,
-            artifact_digest=recomputed,
+    checked_ref, registry_entry = _resolve_reference_context(
+        ref,
+        artifact_type,
+        reference_encoding="json",
+    )
+    return _verify_resolved_reference(
+        checked_ref,
+        artifact_json,
+        registry_entry,
+        vintage_evidence=vintage_evidence,
+        verify_vintage_evidence=verify_vintage_evidence,
+    )
+
+
+def verify_cbor_typed_ref(
+    ref: TypedRef,
+    artifact_json: str | bytes,
+    artifact_type: ArtifactTypeDefinition,
+    *,
+    vintage_evidence: object | None = None,
+    verify_vintage_evidence: VintageEvidenceVerifier | None = None,
+) -> str:
+    """Verify a CBOR-decoded typed reference against a raw JSON artifact.
+
+    CBOR can carry either a text string or a byte string for ``digest``.  This
+    entry point therefore permits raw digest octets, but only when the selected
+    context in the complete, independently pinned ``ArtifactTypeDefinition``
+    explicitly declares the ``raw`` representation.  It never converts between
+    text and bytes implicitly.
+
+    ``ref`` must first have come through a strict CBOR/carrier validation path
+    such as :func:`cpb.cose_refs.validate_cpb_signed_statement`.  This function
+    deliberately does not validate a COSE envelope, verify its signature or
+    signer trust, or fetch the cited artifact.  It performs only cited-artifact
+    digest verification once those independent steps have supplied the
+    reference and exact artifact bytes.
+
+    The cited artifact is still accepted as raw JSON text or bytes so duplicate
+    members cannot disappear before canonicalization.  The returned value is
+    the recomputed 64-character lowercase hexadecimal digest, irrespective of
+    the comparison representation carried by the reference.
+    """
+    if not isinstance(ref, TypedRef):
+        raise TypeError(
+            "CBOR typed-reference verification requires a TypedRef returned by "
+            "strict carrier decoding, not a mapping or bare value"
         )
-    return recomputed
+    if not isinstance(artifact_json, (str, bytes)):
+        raise TypeError(
+            "verified cited-artifact input must be raw JSON text or bytes; "
+            "use evaluate_typed_ref_digest() for non-verifying parsed-value analysis"
+        )
+
+    checked_ref, registry_entry = _resolve_reference_context(
+        ref,
+        artifact_type,
+        reference_encoding="cbor",
+    )
+    return _verify_resolved_reference(
+        checked_ref,
+        artifact_json,
+        registry_entry,
+        vintage_evidence=vintage_evidence,
+        verify_vintage_evidence=verify_vintage_evidence,
+    )
 
 
 def verify_typed_ref(
