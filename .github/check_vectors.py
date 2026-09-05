@@ -17,6 +17,14 @@ using a minimal RFC 8785 / jcs-n implementation, then verifies:
   For domain-transform PASS vectors (those with 'domain_transforms' + 'source'):
   additionally verifies that applying the named transform to source produces 'input'.
 
+For every vector carrying either 'protected_header' or 'cose_sign1_bytes_hex':
+  decodes the tagged COSE_Sign1 and the protected-header bstr as authoritative
+  CBOR, validates every cpb-refs entry, confirms cpb-refs is protected (and is
+  absent from the unprotected map), checks the separately pinned protected bytes,
+  and checks any JSON mirrors.  A carrier-only PASS vector is therefore exercised,
+  not counted as an unchecked/skipped vector.  Supplying only one of the two
+  carrier fields is a hard failure.
+
 For diverge vectors ('diverge': true) — category J:
   J. Subject-binding algorithm divergence: 'action' + 'jcs' + 'jcs_n'
      -> compute plain JCS (_jcs(action), no normalize) AND jcs-n
@@ -34,6 +42,19 @@ For representation-contrast vectors ('representation_contrast': true):
     64-octet contrast input and its check hash; and
   - assert the two inputs and check hashes differ. These SHA-256 checks do not
     define or assume a VDS leaf-hash algorithm.
+
+For as-transmitted PASS vectors ('algorithm': 'as-transmitted'):
+  - decode the pinned COSE_Sign1 container and reconstruct the RFC 9052 Section 4.4
+    Sig_structure (ToBeSigned) selected by the vector's cited named production;
+  - require the reconstruction to equal selected_bytes_hex byte-for-byte; and
+  - hash those selected octets directly with SHA-256 and compare the lowercase-hex
+    output.  No JSON, UTF-8, or hexadecimal-text re-encoding enters the pre-image.
+
+For jcs PASS vectors ('algorithm': 'jcs'):
+  - parse the pinned input_json with duplicate-name rejection, and require its data
+    model to equal the required input_data_model review mirror;
+  - apply plain RFC 8785 JCS without the historical jcs-n normalization pass; and
+  - verify the canonical UTF-8 bytes and SHA-256 lowercase-hex digest against pins.
 
 For must_fail vectors — each MUST match at least one category (enforced):
   A. Algorithm-rejection: 'input' present, no 'jcs_n_correct_digest'/'pre_image'
@@ -92,6 +113,48 @@ For must_fail vectors — each MUST match at least one category (enforced):
      Mutant: append a terminal chunk so reassembly succeeds -- checker must flip to failure.
      Letter reserved by Anton 2026-08-19: main owns A-J (through #31's diverge-vector
      category J); #16 takes K; this category takes L.
+
+  M. Purpose absent on a multi-context type in cpb-refs protected-header carriage:
+     failure_reason == 'purpose_absent_on_multi_context_type_envelope_carriage'.
+     REQUIRES 'protected_header.bytes_hex', 'protected_header.cpb_refs_label', and
+     'protected_header.entry_index'. The checker strictly decodes the pinned CBOR
+     protected-header map, reads the selected cpb-refs entry from those bytes as the
+     source of truth, and confirms key 2 ('purpose') is absent while the matching
+     artifact_type_registry_entry.digest_contexts JSON array contains more than one
+     uniquely-labelled context entry. The carrier subset is deterministic and
+     definite-length, caps resource use, and accepts only the closed member-key set
+     1--4 with non-empty bounded values. REQUIRES 'cose_sign1_bytes_hex' and
+     decodes tagged COSE_Sign1, confirms its protected bstr is byte-identical to
+     the separately pinned protected-header bytes, and rejects cpb-refs in the
+     unprotected map. This is structural carrier validation, not cryptographic
+     signature verification. Optional 'cbor_map_entry' and
+     'typed_reference' JSON renderings are mirrors only and must match the decoded bytes.
+     Registry contexts remain an ordered list of entries; they are never collapsed into
+     a purpose-keyed object, because that would erase duplicate-purpose ambiguity before
+     the checker can reject it. The cpb library models only single-context registry
+     entries, so this category applies the resolution rule independently.
+     Mutant: add key 2 to the carried CBOR map, rebuild the protected-header bytes and
+     COSE_Sign1 wrapper, and assert the MUST-FAIL check flips.
+
+  N. as-transmitted textual-hex substitution:
+     failure_reason == 'as_transmitted_textual_hex_substitution'. REQUIRES the
+     complete as-transmitted COSE_Sign1/Sig_structure fixture used by the positive
+     path, plus a nonconforming_pre_image object. Reconstruct the exact selected
+     bytes from the container, verify the correct pinned digest, independently form
+     selected_bytes_hex.encode('ascii'), verify the pinned wrong digest over those
+     doubled-length text bytes, and require carried_digest to be that wrong digest
+     rather than the digest of the selected bytes.
+     Mutant: replace carried_digest with the correct digest; the MUST-FAIL check must
+     flip because the textual-hex substitution is no longer the candidate result.
+
+  O. jcs duplicate member name:
+     failure_reason == 'jcs_duplicate_member_name'. REQUIRES input_json containing
+     the actual JSON source text. Parse it while preserving object-member pairs and
+     require the declared duplicate_member_name to occur more than once after JSON
+     escape processing. NFC normalization is not applied: only exact decoded Unicode
+     name equality is a duplicate.
+     Mutant: parse with ordinary last-member-wins behavior and serialize the resulting
+     unique-name object; the duplicate rejection must then flip to failure.
 
   I. Assembled pre-image, member mapping undeclared: 'implementation_a' + 'implementation_b'
      + 'declared_digest_context'
@@ -424,6 +487,515 @@ def _apply_domain_transforms(transforms: list, source: object) -> object:
     return result
 
 
+class _CborTag:
+    """A decoded CBOR tag, kept distinct from ordinary arrays and maps."""
+
+    __slots__ = ("tag", "value")
+
+    def __init__(self, tag: int, value: object) -> None:
+        self.tag = tag
+        self.value = value
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, _CborTag)
+            and self.tag == other.tag
+            and self.value == other.value
+        )
+
+    def __repr__(self) -> str:
+        return f"_CborTag({self.tag!r}, {self.value!r})"
+
+
+class _CborMap:
+    """CBOR map entries retained as pairs until duplicate/order checks finish."""
+
+    __slots__ = ("pairs",)
+
+    def __init__(self, pairs: object) -> None:
+        self.pairs = tuple(pairs)
+
+    def get(self, key: object, default: object = None) -> object:
+        for candidate, value in self.pairs:
+            if type(candidate) is type(key) and candidate == key:
+                return value
+        return default
+
+    def __contains__(self, key: object) -> bool:
+        return any(
+            type(candidate) is type(key) and candidate == key
+            for candidate, _ in self.pairs
+        )
+
+    def __getitem__(self, key: object) -> object:
+        sentinel = object()
+        value = self.get(key, sentinel)
+        if value is sentinel:
+            raise KeyError(key)
+        return value
+
+    def keys(self) -> tuple[object, ...]:
+        return tuple(key for key, _ in self.pairs)
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, _CborMap) and self.pairs == other.pairs
+
+    def __repr__(self) -> str:
+        return f"_CborMap({self.pairs!r})"
+
+
+_MAX_CBOR_BYTES = 1 << 20
+_MAX_CBOR_ITEMS = 4096
+_MAX_CBOR_DEPTH = 16
+_MAX_CPB_REFS = 64
+_MAX_TYPE_BYTES = 255
+_MAX_PURPOSE_BYTES = 64
+_MAX_DIGEST_ALG_BYTES = 32
+_MAX_DIGEST_BYTES = 128
+
+
+def _same_cbor_key(left: object, right: object) -> bool:
+    return type(left) is type(right) and left == right
+
+
+def _cbor_argument(data: bytes, offset: int, additional: int) -> tuple[int, int]:
+    """Decode a definite-length CBOR argument and require preferred encoding."""
+    if additional < 24:
+        return additional, offset
+    widths = {24: 1, 25: 2, 26: 4, 27: 8}
+    width = widths.get(additional)
+    if width is None:
+        if additional == 31:
+            raise ValueError("indefinite-length CBOR is not permitted in pinned fixtures")
+        raise ValueError(f"reserved CBOR additional-information value {additional}")
+    end = offset + width
+    if end > len(data):
+        raise ValueError("truncated CBOR argument")
+    value = int.from_bytes(data[offset:end], "big")
+    minimum = {1: 24, 2: 1 << 8, 4: 1 << 16, 8: 1 << 32}[width]
+    if value < minimum:
+        raise ValueError("non-preferred CBOR integer/length encoding")
+    return value, end
+
+
+def decode_strict_cbor(data: bytes) -> object:
+    """Decode the deterministic CBOR subset needed by CPB/COSE fixtures.
+
+    The decoder is dependency-free for candidate-validate. It rejects trailing
+    bytes, indefinite lengths, non-preferred integer/length encodings, duplicate
+    or out-of-order map keys, invalid UTF-8, unsupported floating/simple values,
+    and bounded-input violations. Maps remain ordered key/value pairs until all
+    duplicate/order checks finish, so Python dict conversion can never erase a
+    malformed duplicate. This is not a general-purpose CBOR implementation.
+    """
+    if not isinstance(data, bytes):
+        raise ValueError("CBOR input must be bytes")
+    if len(data) > _MAX_CBOR_BYTES:
+        raise ValueError(f"CBOR input exceeds {_MAX_CBOR_BYTES} bytes")
+    budget = [_MAX_CBOR_ITEMS]
+
+    def _decode(offset: int, depth: int) -> tuple[object, int]:
+        if depth > _MAX_CBOR_DEPTH:
+            raise ValueError(f"CBOR nesting exceeds {_MAX_CBOR_DEPTH} levels")
+        budget[0] -= 1
+        if budget[0] < 0:
+            raise ValueError(f"CBOR item count exceeds {_MAX_CBOR_ITEMS}")
+        if offset >= len(data):
+            raise ValueError("truncated CBOR item")
+        initial = data[offset]
+        offset += 1
+        major = initial >> 5
+        additional = initial & 0x1F
+
+        if major == 7:
+            if additional == 20:
+                return False, offset
+            if additional == 21:
+                return True, offset
+            if additional == 22:
+                return None, offset
+            raise ValueError(
+                f"unsupported CBOR simple/floating value (additional={additional})"
+            )
+
+        argument, offset = _cbor_argument(data, offset, additional)
+        if major == 0:
+            return argument, offset
+        if major == 1:
+            return -1 - argument, offset
+        if major in (2, 3):
+            end = offset + argument
+            if end > len(data):
+                raise ValueError("truncated CBOR byte/text string")
+            raw = data[offset:end]
+            if major == 2:
+                return raw, end
+            try:
+                return raw.decode("utf-8", errors="strict"), end
+            except UnicodeDecodeError as exc:
+                raise ValueError("invalid UTF-8 in CBOR text string") from exc
+        if major == 4:
+            items: list[object] = []
+            for _ in range(argument):
+                item, offset = _decode(offset, depth + 1)
+                items.append(item)
+            return items, offset
+        if major == 5:
+            pairs: list[tuple[object, object]] = []
+            previous_key_encoding: bytes | None = None
+            for _ in range(argument):
+                key_start = offset
+                key, offset = _decode(offset, depth + 1)
+                key_encoding = data[key_start:offset]
+                if isinstance(key, (list, _CborMap, _CborTag)):
+                    raise ValueError("container-valued CBOR map keys are not permitted")
+                if any(_same_cbor_key(key, prior) for prior, _ in pairs):
+                    raise ValueError(f"duplicate CBOR map key {key!r}")
+                if previous_key_encoding is not None and (
+                    len(key_encoding), key_encoding
+                ) <= (len(previous_key_encoding), previous_key_encoding):
+                    raise ValueError("CBOR map keys are not in deterministic order")
+                previous_key_encoding = key_encoding
+                value, offset = _decode(offset, depth + 1)
+                pairs.append((key, value))
+            return _CborMap(pairs), offset
+        if major == 6:
+            value, offset = _decode(offset, depth + 1)
+            return _CborTag(argument, value), offset
+        raise ValueError(f"unsupported CBOR major type {major}")
+
+    value, end = _decode(0, 0)
+    if end != len(data):
+        raise ValueError(f"trailing bytes after CBOR item: {len(data) - end}")
+    return value
+
+
+def _cbor_head(major: int, argument: int) -> bytes:
+    if argument < 0:
+        raise ValueError("CBOR argument must be non-negative")
+    if argument < 24:
+        return bytes([(major << 5) | argument])
+    if argument < 1 << 8:
+        return bytes([(major << 5) | 24, argument])
+    if argument < 1 << 16:
+        return bytes([(major << 5) | 25]) + argument.to_bytes(2, "big")
+    if argument < 1 << 32:
+        return bytes([(major << 5) | 26]) + argument.to_bytes(4, "big")
+    if argument < 1 << 64:
+        return bytes([(major << 5) | 27]) + argument.to_bytes(8, "big")
+    raise ValueError("CBOR integer exceeds uint64 fixture subset")
+
+
+def _encode_cbor_deterministic(value: object) -> bytes:
+    """Encode the same bounded CBOR subset using deterministic map ordering."""
+    if value is False:
+        return b"\xf4"
+    if value is True:
+        return b"\xf5"
+    if value is None:
+        return b"\xf6"
+    if isinstance(value, int):
+        return _cbor_head(0, value) if value >= 0 else _cbor_head(1, -1 - value)
+    if isinstance(value, bytes):
+        return _cbor_head(2, len(value)) + value
+    if isinstance(value, str):
+        encoded = value.encode("utf-8")
+        return _cbor_head(3, len(encoded)) + encoded
+    if isinstance(value, (list, tuple)):
+        return _cbor_head(4, len(value)) + b"".join(
+            _encode_cbor_deterministic(item) for item in value
+        )
+    if isinstance(value, _CborTag):
+        return _cbor_head(6, value.tag) + _encode_cbor_deterministic(value.value)
+    if isinstance(value, _CborMap):
+        pairs = list(value.pairs)
+    elif isinstance(value, dict):
+        pairs = list(value.items())
+    else:
+        raise ValueError(f"unsupported CBOR fixture value type: {type(value).__name__}")
+
+    encoded_items: list[tuple[bytes, bytes]] = []
+    seen_keys: list[object] = []
+    for key, item in pairs:
+        if isinstance(key, (list, tuple, dict, _CborMap, _CborTag)):
+            raise ValueError("container-valued CBOR map keys are not permitted")
+        if any(_same_cbor_key(key, prior) for prior in seen_keys):
+            raise ValueError(f"duplicate CBOR map key {key!r}")
+        seen_keys.append(key)
+        encoded_key = _encode_cbor_deterministic(key)
+        encoded_items.append((encoded_key, _encode_cbor_deterministic(item)))
+    encoded_items.sort(key=lambda pair: (len(pair[0]), pair[0]))
+    return _cbor_head(5, len(encoded_items)) + b"".join(
+        key + item for key, item in encoded_items
+    )
+
+
+def _strict_hex_bytes(value: object, field: str, *, allow_empty: bool = False) -> bytes:
+    if not isinstance(value, str):
+        raise ValueError(f"{field} must be a lowercase hexadecimal string")
+    if (not value and not allow_empty) or re.fullmatch(r"(?:[0-9a-f]{2})*", value) is None:
+        raise ValueError(f"{field} must be even-length lowercase hexadecimal")
+    return bytes.fromhex(value)
+
+
+def _cose_sign1_parts(encoded: bytes) -> tuple[list, bool]:
+    decoded = decode_strict_cbor(encoded)
+    if not isinstance(decoded, _CborTag) or decoded.tag != 18:
+        raise ValueError("COSE_Sign1 fixture must use CBOR tag 18")
+    decoded = decoded.value
+    if not isinstance(decoded, list) or len(decoded) != 4:
+        raise ValueError("COSE_Sign1 fixture must decode to a four-element array")
+    protected, unprotected, payload, signature = decoded
+    if not isinstance(protected, bytes):
+        raise ValueError("COSE_Sign1 protected field must be a byte string")
+    if not isinstance(unprotected, _CborMap):
+        raise ValueError("COSE_Sign1 unprotected field must be a map")
+    if payload is not None and not isinstance(payload, bytes):
+        raise ValueError("COSE_Sign1 payload must be a byte string or null")
+    if not isinstance(signature, bytes):
+        raise ValueError("COSE_Sign1 signature must be a byte string")
+    return decoded, True
+
+
+def _cbor_json_mirror(value: object) -> object:
+    """Render decoded CBOR losslessly enough for optional JSON review mirrors."""
+    if isinstance(value, bytes):
+        return {"bytes_hex": value.hex()}
+    if isinstance(value, list):
+        return [_cbor_json_mirror(item) for item in value]
+    if isinstance(value, _CborMap):
+        return {
+            str(key): _cbor_json_mirror(item)
+            for key, item in value.pairs
+        }
+    if isinstance(value, _CborTag):
+        return {"tag": value.tag, "value": _cbor_json_mirror(value.value)}
+    return value
+
+
+def _bounded_nonempty_text(value: object, name: str, maximum: int) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{name} must be a non-empty text string")
+    if len(value.encode("utf-8")) > maximum:
+        raise ValueError(f"{name} exceeds {maximum} UTF-8 bytes")
+    return value
+
+
+def _validate_cpb_ref_map(ref_map: object) -> _CborMap:
+    if not isinstance(ref_map, _CborMap):
+        raise ValueError("each cpb-refs array entry must be a CBOR map")
+    keys = ref_map.keys()
+    if any(isinstance(key, bool) or not isinstance(key, int) for key in keys):
+        raise ValueError("cpb-refs entry keys must be integers")
+    unknown = set(keys) - {1, 2, 3, 4}
+    if unknown:
+        raise ValueError(f"unknown cpb-refs member key(s): {sorted(unknown)!r}")
+    missing = {1, 3, 4} - set(keys)
+    if missing:
+        raise ValueError(f"cpb-refs entry missing required key(s): {sorted(missing)!r}")
+
+    _bounded_nonempty_text(ref_map[1], "cpb-refs key 1 (type)", _MAX_TYPE_BYTES)
+    if 2 in ref_map:
+        _bounded_nonempty_text(
+            ref_map[2], "cpb-refs key 2 (purpose)", _MAX_PURPOSE_BYTES
+        )
+    _bounded_nonempty_text(
+        ref_map[3], "cpb-refs key 3 (digest_alg)", _MAX_DIGEST_ALG_BYTES
+    )
+    digest = ref_map[4]
+    if not isinstance(digest, (str, bytes)) or isinstance(digest, bool) or not digest:
+        raise ValueError(
+            "cpb-refs key 4 (digest) must be a non-empty text or byte string"
+        )
+    digest_length = len(digest.encode("utf-8")) if isinstance(digest, str) else len(digest)
+    if digest_length > _MAX_DIGEST_BYTES:
+        raise ValueError(f"cpb-refs key 4 (digest) exceeds {_MAX_DIGEST_BYTES} bytes")
+    return ref_map
+
+
+def _decode_cpb_carrier(v: dict) -> tuple[_CborMap, list, int, _CborMap, bytes]:
+    """Decode and validate a pinned cpb-refs protected-header fixture.
+
+    This is the common carrier gate for both positive and MUST-FAIL vectors.
+    ``protected_header.bytes_hex`` and the protected bstr embedded in
+    ``cose_sign1_bytes_hex`` must agree byte-for-byte; descriptive JSON fields
+    never substitute for those carried bytes.
+    """
+    carrier = v.get("protected_header")
+    if not isinstance(carrier, dict):
+        raise ValueError("Category M requires protected_header object")
+    protected_bytes = _strict_hex_bytes(
+        carrier.get("bytes_hex"), "protected_header.bytes_hex"
+    )
+    header = decode_strict_cbor(protected_bytes)
+    if not isinstance(header, _CborMap):
+        raise ValueError("protected_header.bytes_hex must decode to a CBOR map")
+    if any(
+        isinstance(key, bool) or not isinstance(key, (int, str))
+        for key in header.keys()
+    ):
+        raise ValueError("COSE protected-header keys must be integer or text labels")
+    if _encode_cbor_deterministic(header) != protected_bytes:
+        raise ValueError(
+            "protected_header.bytes_hex must use deterministic CBOR fixture encoding"
+        )
+
+    label = carrier.get("cpb_refs_label")
+    if isinstance(label, bool) or not isinstance(label, (int, str)):
+        raise ValueError("protected_header.cpb_refs_label must be an integer or text label")
+    if label not in header:
+        raise ValueError(f"protected header does not contain cpb-refs label {label!r}")
+    refs = header[label]
+    if not isinstance(refs, list) or not refs:
+        raise ValueError("cpb-refs protected-header value must be a non-empty CBOR array")
+    if len(refs) > _MAX_CPB_REFS:
+        raise ValueError(f"cpb-refs exceeds the {_MAX_CPB_REFS}-reference limit")
+
+    validated_refs = [_validate_cpb_ref_map(ref) for ref in refs]
+    seen_refs: set[tuple[object, ...]] = set()
+    for ref in validated_refs:
+        digest = ref[4]
+        identity = (
+            ref[1],
+            ref.get(2),
+            ref[3],
+            "text" if isinstance(digest, str) else "bytes",
+            digest,
+        )
+        if identity in seen_refs:
+            raise ValueError("cpb-refs repeats the same typed digest reference")
+        seen_refs.add(identity)
+
+    index = carrier.get("entry_index")
+    if isinstance(index, bool) or not isinstance(index, int) or index < 0:
+        raise ValueError("protected_header.entry_index must be a non-negative integer")
+    if index >= len(refs):
+        raise ValueError(
+            f"protected_header.entry_index {index} is outside {len(refs)} cpb-refs entries"
+        )
+    ref_map = validated_refs[index]
+
+    if "carriage" in v and v["carriage"] != "envelope-header":
+        raise ValueError("Category M carriage metadata must be 'envelope-header'")
+    if "header_parameter" in v and v["header_parameter"] != "cpb-refs":
+        raise ValueError("Category M header_parameter metadata must be 'cpb-refs'")
+
+    if "cose_sign1_bytes_hex" not in v:
+        raise ValueError(
+            "Category M requires cose_sign1_bytes_hex to prove cpb-refs is protected"
+        )
+    cose_bytes = _strict_hex_bytes(v["cose_sign1_bytes_hex"], "cose_sign1_bytes_hex")
+    parts, tagged = _cose_sign1_parts(cose_bytes)
+    cose_value: object = _CborTag(18, parts) if tagged else parts
+    if _encode_cbor_deterministic(cose_value) != cose_bytes:
+        raise ValueError(
+            "cose_sign1_bytes_hex must use deterministic CBOR fixture encoding"
+        )
+    if parts[0] != protected_bytes:
+        raise ValueError(
+            "COSE_Sign1 protected bstr does not match protected_header.bytes_hex"
+        )
+    if any(
+        isinstance(key, bool) or not isinstance(key, (int, str))
+        for key in parts[1].keys()
+    ):
+        raise ValueError("COSE unprotected-header keys must be integer or text labels")
+    if label in parts[1]:
+        raise ValueError("cpb-refs must not also appear in COSE unprotected headers")
+
+    # Human-readable renderings are review aids; decoded CBOR remains authoritative.
+    cbor_mirror = v.get("cbor_map_entry")
+    if cbor_mirror is not None:
+        if not isinstance(cbor_mirror, dict):
+            raise ValueError("cbor_map_entry mirror must be an object")
+        expected_mirror = _cbor_json_mirror(ref_map)
+        if cbor_mirror != expected_mirror:
+            raise ValueError(
+                "cbor_map_entry mirror does not exactly match the selected carried map"
+            )
+
+    typed_mirror = v.get("typed_reference")
+    if typed_mirror is not None:
+        if not isinstance(typed_mirror, dict):
+            raise ValueError("typed_reference mirror must be an object")
+        expected = {"type": ref_map[1], "digest_alg": ref_map[3]}
+        if 2 in ref_map:
+            expected["purpose"] = ref_map[2]
+        for key, value in expected.items():
+            if typed_mirror.get(key) != value:
+                raise ValueError(f"typed_reference mirror disagrees at {key!r}")
+        if isinstance(ref_map[4], bytes):
+            if typed_mirror.get("digest_bytes_hex") != ref_map[4].hex():
+                raise ValueError("typed_reference mirror disagrees at byte-string digest")
+        elif typed_mirror.get("digest") != ref_map[4]:
+            raise ValueError("typed_reference mirror disagrees at 'digest'")
+        if "purpose" not in expected and "purpose" in typed_mirror:
+            raise ValueError("typed_reference mirror carries purpose absent from CBOR")
+
+    return header, refs, index, ref_map, protected_bytes
+
+
+def _digest_context_entries(digest_contexts: object) -> list[dict]:
+    """Validate and return registry contexts without changing their cardinality.
+
+    The registry schema represents ``digest_contexts`` as an array of entries.
+    Keeping that shape is security-relevant: converting the array to a mapping
+    keyed by ``purpose`` would silently discard an earlier entry when two entries
+    use the same purpose, turning an ambiguous registry declaration into an
+    apparently resolvable one.
+    """
+    if not isinstance(digest_contexts, list):
+        raise ValueError("digest_contexts must be a JSON array of context entries")
+    if not digest_contexts:
+        raise ValueError("digest_contexts must contain at least one context entry")
+
+    entries: list[dict] = []
+    for index, context in enumerate(digest_contexts):
+        if not isinstance(context, dict):
+            raise ValueError(f"digest_contexts[{index}] must be an object")
+        context_purpose = context.get("purpose")
+        if not isinstance(context_purpose, str) or not context_purpose:
+            raise ValueError(
+                f"digest_contexts[{index}].purpose must be a non-empty string"
+            )
+        context_algorithm = context.get("algorithm")
+        if not isinstance(context_algorithm, str) or not context_algorithm:
+            raise ValueError(
+                f"digest_contexts[{index}].algorithm must be a non-empty string"
+            )
+        entries.append(context)
+    return entries
+
+
+def _resolve_digest_context(purpose: object, digest_contexts: object) -> dict:
+    """Resolve exactly one digest-context entry, independent of carriage.
+
+    A missing purpose is resolvable only for a single-context type.  A present
+    purpose must match exactly one context entry.  Zero matches and duplicate
+    purpose labels are both ambiguous and fail closed.  This helper checks only
+    abstract typed-reference resolution; it makes no assertion about COSE/CBOR
+    or payload carriage.
+    """
+    entries = _digest_context_entries(digest_contexts)
+    if purpose is None:
+        if len(entries) != 1:
+            raise ValueError(
+                f"unresolvable: type resolves to {len(entries)} digest contexts; "
+                "purpose is absent"
+            )
+        return entries[0]
+    if not isinstance(purpose, str) or not purpose:
+        raise ValueError("purpose must be a non-empty string when present")
+
+    matches = [context for context in entries if context["purpose"] == purpose]
+    if len(matches) != 1:
+        raise ValueError(
+            f"unresolvable: purpose {purpose!r} matches {len(matches)} of "
+            f"{len(entries)} digest contexts; exactly one match is required"
+        )
+    return matches[0]
+
+
 # ---------------------------------------------------------------------------
 # Informative-vector helpers (Category E)
 # ---------------------------------------------------------------------------
@@ -648,6 +1220,82 @@ def _mutant_K(v: dict) -> dict | None:
     return m
 
 
+def _mutant_M(v: dict) -> dict | None:
+    """Add a purpose to the carried map and rebuild its enclosing CBOR.
+
+    Category M requires unique purpose labels so this condition-removed mutant
+    becomes resolvable.  If a malformed vector contains duplicate purposes, the
+    category check rejects it and this generator refuses to hide that ambiguity.
+    The COSE wrapper is rebuilt structurally with its existing payload/signature
+    bytes; no claim of cryptographic validity is made.
+    """
+    m = copy.deepcopy(v)
+    reg_entry = m.get("artifact_type_registry_entry")
+    digest_contexts = reg_entry.get("digest_contexts") if isinstance(reg_entry, dict) else None
+    try:
+        entries = _digest_context_entries(digest_contexts)
+        header, _, index, ref_map, _ = _decode_cpb_carrier(m)
+    except ValueError:
+        return None
+    purposes = [context["purpose"] for context in entries]
+    if len(entries) <= 1 or len(set(purposes)) != len(purposes):
+        return None
+
+    # Mutate the authoritative carried object, not either descriptive mirror.
+    refs = header[m["protected_header"]["cpb_refs_label"]]
+    refs[index] = _CborMap((*ref_map.pairs, (2, purposes[0])))
+    protected_bytes = _encode_cbor_deterministic(header)
+    m["protected_header"]["bytes_hex"] = protected_bytes.hex()
+
+    cose_hex = m.get("cose_sign1_bytes_hex")
+    if cose_hex is not None:
+        try:
+            parts, tagged = _cose_sign1_parts(
+                _strict_hex_bytes(cose_hex, "cose_sign1_bytes_hex")
+            )
+        except ValueError:
+            return None
+        parts[0] = protected_bytes
+        rebuilt: object = _CborTag(18, parts) if tagged else parts
+        m["cose_sign1_bytes_hex"] = _encode_cbor_deterministic(rebuilt).hex()
+
+    # Keep optional human-readable mirrors synchronized with the carried map so
+    # the probe changes exactly the absent-purpose condition.
+    cbor_mirror = m.get("cbor_map_entry")
+    if isinstance(cbor_mirror, dict):
+        cbor_mirror["2"] = purposes[0]
+    typed_mirror = m.get("typed_reference")
+    if isinstance(typed_mirror, dict):
+        typed_mirror["purpose"] = purposes[0]
+    return m
+
+
+def _mutant_N(v: dict) -> dict | None:
+    """Replace the candidate's textual-hex digest with the correct raw-byte digest."""
+    m = copy.deepcopy(v)
+    correct_digest = m.get("digest")
+    if not isinstance(correct_digest, str):
+        return None
+    m["carried_digest"] = correct_digest
+    return m
+
+
+def _mutant_O(v: dict) -> dict | None:
+    """Remove duplicate names using JSON's ordinary last-member-wins data model."""
+    source = v.get("input_json")
+    if not isinstance(source, str):
+        return None
+    try:
+        unique = json.loads(source, parse_constant=_reject_json_constant)
+    except (TypeError, ValueError):
+        return None
+    m = copy.deepcopy(v)
+    m["input_json"] = json.dumps(
+        unique, ensure_ascii=False, separators=(",", ":")
+    )
+    return m
+
+
 _MUTANT_GENERATORS: dict[str, object] = {
     "A": _mutant_A,
     "B": _mutant_B,
@@ -658,6 +1306,9 @@ _MUTANT_GENERATORS: dict[str, object] = {
     "I": _mutant_I,
     "K": _mutant_K,
     "L": _mutant_L,
+    "M": _mutant_M,
+    "N": _mutant_N,
+    "O": _mutant_O,
 }
 
 
@@ -1282,6 +1933,93 @@ def _exercise_must_fail(
         except ValueError:
             pass
 
+    # M. Purpose absent on a multi-context type in cpb-refs protected carriage.
+    # Match on the declared failure kind first: malformed carrier/registry inputs
+    # must produce precise hard errors, not fall through as an unexercised vector.
+    if v.get("failure_reason") == "purpose_absent_on_multi_context_type_envelope_carriage":
+        ran_any_check = True
+        categories_fired.append("M")
+        reg_entry_m = v.get("artifact_type_registry_entry")
+        digest_contexts = (
+            reg_entry_m.get("digest_contexts")
+            if isinstance(reg_entry_m, dict)
+            else None
+        )
+        entries_m: list[dict] = []
+        try:
+            entries_m = _digest_context_entries(digest_contexts)
+        except ValueError as exc:
+            vec_errors.append(f"Category M registry: {exc}")
+
+        if entries_m and len(entries_m) <= 1:
+            vec_errors.append(
+                "Category M: artifact type must carry more than one digest-context "
+                "entry; an absent purpose is resolvable for a single-context type"
+            )
+        purposes_m = [entry["purpose"] for entry in entries_m]
+        if len(set(purposes_m)) != len(purposes_m):
+            vec_errors.append(
+                "Category M: duplicate purpose labels make the registry entry itself "
+                "ambiguous; preserve them as entries, but use unique labels in this "
+                "absent-purpose vector so the mutant can isolate that condition"
+            )
+
+        carried_ref_m: dict | None = None
+        try:
+            _, _, _, carried_ref_m, _ = _decode_cpb_carrier(v)
+        except ValueError as exc:
+            vec_errors.append(f"Category M carrier: {exc}")
+
+        if carried_ref_m is not None:
+            registered_type = (
+                reg_entry_m.get("name") if isinstance(reg_entry_m, dict) else None
+            )
+            if not isinstance(registered_type, str) or not registered_type:
+                vec_errors.append(
+                    "Category M: artifact_type_registry_entry.name must be a "
+                    "non-empty string"
+                )
+            elif carried_ref_m[1] != registered_type:
+                vec_errors.append(
+                    f"Category M: carried type {carried_ref_m[1]!r} does not match "
+                    f"artifact_type_registry_entry.name {registered_type!r}"
+                )
+            if 2 in carried_ref_m:
+                vec_errors.append(
+                    "Category M: carried cpb-refs map contains key 2 (purpose) -- "
+                    "the vector's failure condition is purpose absent from the "
+                    "signature-covered protected-header bytes"
+                )
+
+        if entries_m and len(entries_m) > 1 and carried_ref_m is not None and 2 not in carried_ref_m:
+            try:
+                _resolve_digest_context(None, entries_m)
+                vec_errors.append(
+                    "Category M: digest context resolved despite purpose being absent "
+                    "from a multi-context carried reference"
+                )
+            except ValueError:
+                pass
+
+    # N. The selected bytes are correct, but the candidate hashes their textual
+    # hexadecimal spelling instead of the selected octets themselves.
+    if v.get("failure_reason") == _AS_TRANSMITTED_TEXT_HEX_FAILURE:
+        ran_any_check = True
+        categories_fired.append("N")
+        _, as_transmitted_errors = _exercise_as_transmitted(
+            v, vid, expect_text_hex_substitution=True
+        )
+        vec_errors.extend(
+            f"Category N: {error}" for error in as_transmitted_errors
+        )
+
+    # O. RFC 8785 input must not contain duplicate decoded member names.
+    if v.get("failure_reason") == _JCS_DUPLICATE_FAILURE:
+        ran_any_check = True
+        categories_fired.append("O")
+        _, jcs_duplicate_errors = _exercise_jcs_duplicate(v, vid)
+        vec_errors.extend(f"Category O: {error}" for error in jcs_duplicate_errors)
+
     # Enforcement: a vector matching none of the above is a hard failure.
     if not ran_any_check:
         vec_errors.append(
@@ -1561,6 +2299,367 @@ def _exercise_diverge(
     return (not errs), errs
 
 
+def _category_m_self_test_vector() -> dict:
+    """Return the minimal Category M carrier schema consumed by draft-03 vectors.
+
+    Required vector shape is ``protected_header: {bytes_hex, cpb_refs_label,
+    entry_index}`` plus ``artifact_type_registry_entry: {name,
+    digest_contexts: [{purpose, algorithm, ...}, ...]}``, together with a
+    structural ``cose_sign1_bytes_hex``. The two decoded JSON mirrors are
+    optional, but are checked against the authoritative protected bytes when
+    supplied.
+
+    The literals deliberately pin bytes independently of the encoder below.  The
+    COSE_Sign1 signature bstr is empty: this fixture proves only protected-header
+    placement and decoding, never signature validity.
+    """
+    digest = "0" * 64
+    protected_hex = (
+        "a13a0001000081a30171"
+        "6d756c74692d636f6e746578742d646f63"
+        "03675348412d323536"
+        "047840"
+        + "30" * 64
+    )
+    # tag(18), array(4), bstr(103), protected bytes, {}, null, bstr(0).
+    cose_sign1_hex = "d2845867" + protected_hex + "a0f640"
+    return {
+        "id": "self-test-category-m-carried-purpose-absent",
+        "must_fail": True,
+        "failure_reason": "purpose_absent_on_multi_context_type_envelope_carriage",
+        "carriage": "envelope-header",
+        "header_parameter": "cpb-refs",
+        "protected_header": {
+            "bytes_hex": protected_hex,
+            # Private-use stand-in until cpb-refs receives its IANA label.
+            "cpb_refs_label": -65537,
+            "entry_index": 0,
+        },
+        "cose_sign1_bytes_hex": cose_sign1_hex,
+        "cose_sign1_fixture_scope": (
+            "Structural only: payload is null and signature is an empty bstr; "
+            "no cryptographic-validity claim."
+        ),
+        "artifact_type_registry_entry": {
+            "name": "multi-context-doc",
+            # Registry schema shape: contexts remain entries, including if two
+            # happen to repeat a purpose. Category M rejects such ambiguity.
+            "digest_contexts": [
+                {
+                    "purpose": "identifier",
+                    "algorithm": "jcs-n",
+                    "exclusion_set": "{doc_id}",
+                    "representation": "64-char lowercase hex",
+                },
+                {
+                    "purpose": "content",
+                    "algorithm": "jcs-n",
+                    "exclusion_set": "{}",
+                    "representation": "64-char lowercase hex",
+                },
+            ],
+        },
+        "cbor_map_entry": {
+            "1": "multi-context-doc",
+            "3": "SHA-256",
+            "4": digest,
+        },
+        "typed_reference": {
+            "type": "multi-context-doc",
+            "digest_alg": "SHA-256",
+            "digest": digest,
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# Algorithm jcs exercisers
+# ---------------------------------------------------------------------------
+
+_JCS_DUPLICATE_FAILURE = "jcs_duplicate_member_name"
+
+
+def _exercise_jcs(v: dict, vid: str) -> tuple[bool, list[str]]:
+    """Exercise a positive plain-RFC-8785 vector from its JSON source text."""
+    errs: list[str] = []
+    if v.get("algorithm") != "jcs":
+        errs.append("jcs vector must declare algorithm 'jcs'")
+    if v.get("exclusion_set") not in (None, []):
+        errs.append("jcs algorithm vectors cannot apply an exclusion set internally")
+
+    source = v.get("input_json")
+    if not isinstance(source, str) or not source:
+        errs.append("jcs vector requires non-empty input_json source text")
+        return False, errs
+    try:
+        parsed = json.loads(
+            source,
+            parse_constant=_reject_json_constant,
+            object_pairs_hook=_no_dup_keys,
+        )
+    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+        errs.append(f"jcs input_json is not valid unique-name JSON: {exc}")
+        return False, errs
+
+    if "input_data_model" not in v:
+        errs.append("jcs vector requires an input_data_model review mirror")
+    elif parsed != v["input_data_model"]:
+        errs.append(
+            "input_data_model mirror does not equal the data model parsed from input_json"
+        )
+    try:
+        pre_image = _jcs_rfc8785(parsed)
+    except (TypeError, ValueError) as exc:
+        errs.append(f"plain JCS failed for this dependency-free vector subset: {exc}")
+        return False, errs
+
+    pinned_pre_image = v.get("pre_image")
+    if pinned_pre_image != pre_image:
+        errs.append(
+            f"jcs pre_image mismatch\n"
+            f"  expected: {pre_image!r}\n"
+            f"  pinned:   {pinned_pre_image!r}"
+        )
+    pre_image_bytes = pre_image.encode("utf-8")
+    if v.get("pre_image_bytes_hex") != pre_image_bytes.hex():
+        errs.append(
+            "jcs pre_image_bytes_hex does not equal the canonical UTF-8 octets"
+        )
+    if v.get("digest_alg") != "SHA-256":
+        errs.append("jcs digest_alg must be 'SHA-256'")
+    if v.get("digest_representation") != "lowercase-hex":
+        errs.append("jcs digest_representation must be 'lowercase-hex'")
+    digest = hashlib.sha256(pre_image_bytes).hexdigest()
+    pinned_digest = v.get("digest")
+    if not isinstance(pinned_digest, str) or not _BARE_HEX_64_RE.fullmatch(
+        pinned_digest
+    ):
+        errs.append("jcs digest must be exactly 64 lowercase hex characters")
+    elif pinned_digest != digest:
+        errs.append(
+            f"jcs digest mismatch\n  expected: {digest}\n  pinned:   {pinned_digest}"
+        )
+    return not errs, errs
+
+
+def _exercise_jcs_duplicate(v: dict, vid: str) -> tuple[bool, list[str]]:
+    """Prove an exact decoded member name occurs twice in input_json."""
+    errs: list[str] = []
+    if v.get("algorithm") != "jcs":
+        errs.append("jcs duplicate vector must declare algorithm 'jcs'")
+    source = v.get("input_json")
+    expected = v.get("duplicate_member_name")
+    if not isinstance(source, str) or not source:
+        errs.append("jcs duplicate vector requires non-empty input_json source text")
+        return False, errs
+    if not isinstance(expected, str):
+        errs.append("jcs duplicate vector requires duplicate_member_name string")
+        return False, errs
+
+    duplicates: list[str] = []
+
+    def _retain_and_record(pairs: list[tuple[str, object]]) -> dict:
+        result: dict[str, object] = {}
+        seen: set[str] = set()
+        for key, value in pairs:
+            if key in seen:
+                duplicates.append(key)
+            seen.add(key)
+            result[key] = value
+        return result
+
+    try:
+        json.loads(
+            source,
+            parse_constant=_reject_json_constant,
+            object_pairs_hook=_retain_and_record,
+        )
+    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+        errs.append(
+            "jcs duplicate vector must otherwise be syntactically valid JSON: "
+            f"{exc}"
+        )
+        return False, errs
+
+    if expected not in duplicates:
+        errs.append(
+            f"decoded member name {expected!r} does not occur more than once in "
+            "input_json"
+        )
+    return not errs, errs
+
+
+# ---------------------------------------------------------------------------
+# Algorithm as-transmitted exerciser
+# ---------------------------------------------------------------------------
+
+_AS_TRANSMITTED_TEXT_HEX_FAILURE = "as_transmitted_textual_hex_substitution"
+
+
+def _exercise_as_transmitted(
+    v: dict,
+    vid: str,
+    *,
+    expect_text_hex_substitution: bool = False,
+) -> tuple[bool, list[str]]:
+    """Exercise the exact-byte boundary for the in-repo as-transmitted suite.
+
+    The fixture's selector is the named RFC 9052 Section 4.4 Sig_structure
+    production for a COSE_Sign1 object.  The checker derives ToBeSigned from the
+    container; ``selected_bytes_hex`` is a pin, never the source of the bytes.
+    """
+    errs: list[str] = []
+
+    if v.get("algorithm") != "as-transmitted":
+        errs.append("as-transmitted vector must declare algorithm 'as-transmitted'")
+    if v.get("exclusion_set") not in (None, []):
+        errs.append("as-transmitted has no exclusion set")
+
+    container = v.get("container")
+    selector = v.get("byte_boundary_selector")
+    if not isinstance(container, dict) or container.get("format") != "COSE_Sign1":
+        errs.append("as-transmitted vector requires a COSE_Sign1 container object")
+        return False, errs
+    if not isinstance(selector, dict):
+        errs.append("as-transmitted vector requires a byte_boundary_selector object")
+        return False, errs
+
+    if selector.get("normative_reference") != "RFC 9052 Section 4.4":
+        errs.append(
+            "byte_boundary_selector.normative_reference must be "
+            "'RFC 9052 Section 4.4'"
+        )
+    if selector.get("named_production") != "Sig_structure (ToBeSigned)":
+        errs.append(
+            "byte_boundary_selector.named_production must identify "
+            "'Sig_structure (ToBeSigned)'"
+        )
+    if selector.get("context") != "Signature1":
+        errs.append("byte_boundary_selector.context must be 'Signature1'")
+
+    try:
+        container_bytes = _strict_hex_bytes(
+            container.get("bytes_hex"), "container.bytes_hex"
+        )
+        parts, _ = _cose_sign1_parts(container_bytes)
+        external_aad = _strict_hex_bytes(
+            selector.get("external_aad_bytes_hex"),
+            "byte_boundary_selector.external_aad_bytes_hex",
+            allow_empty=True,
+        )
+    except (TypeError, ValueError) as exc:
+        errs.append(f"as-transmitted source/selector decode failed: {exc}")
+        return False, errs
+
+    protected, _, payload, signature = parts
+    if payload is None:
+        errs.append(
+            "as-transmitted fixture uses detached COSE payload but supplies no "
+            "selected payload bytes"
+        )
+        return False, errs
+    if not signature:
+        errs.append("as-transmitted COSE_Sign1 fixture signature must not be empty")
+
+    selected = _encode_cbor_deterministic(
+        ["Signature1", protected, external_aad, payload]
+    )
+    try:
+        pinned_selected = _strict_hex_bytes(
+            v.get("selected_bytes_hex"), "selected_bytes_hex"
+        )
+    except (TypeError, ValueError) as exc:
+        errs.append(str(exc))
+        return False, errs
+
+    if pinned_selected != selected:
+        errs.append(
+            "selected_bytes_hex does not equal the Sig_structure reconstructed "
+            "from the COSE_Sign1 container"
+        )
+    if v.get("selected_length_octets") != len(selected):
+        errs.append(
+            f"selected_length_octets != {len(selected)}: "
+            f"{v.get('selected_length_octets')!r}"
+        )
+    if v.get("digest_alg") != "SHA-256":
+        errs.append("as-transmitted digest_alg must be 'SHA-256'")
+    if v.get("digest_representation") != "lowercase-hex":
+        errs.append("as-transmitted digest_representation must be 'lowercase-hex'")
+
+    correct_digest = hashlib.sha256(selected).hexdigest()
+    pinned_digest = v.get("digest")
+    if not isinstance(pinned_digest, str) or not _BARE_HEX_64_RE.fullmatch(
+        pinned_digest
+    ):
+        errs.append("as-transmitted digest must be exactly 64 lowercase hex characters")
+    elif pinned_digest != correct_digest:
+        errs.append(
+            f"as-transmitted digest mismatch\n"
+            f"  expected: {correct_digest}\n"
+            f"  pinned:   {pinned_digest}"
+        )
+
+    if expect_text_hex_substitution:
+        wrong = v.get("nonconforming_pre_image")
+        if not isinstance(wrong, dict):
+            errs.append(
+                "textual-hex MUST-FAIL vector requires nonconforming_pre_image object"
+            )
+            return False, errs
+        if wrong.get("construction") != "selected_bytes_hex.encode('ascii')":
+            errs.append(
+                "nonconforming_pre_image.construction must name the textual-hex "
+                "substitution exactly"
+            )
+        textual_hex = selected.hex().encode("ascii")
+        try:
+            pinned_wrong = _strict_hex_bytes(
+                wrong.get("bytes_hex"), "nonconforming_pre_image.bytes_hex"
+            )
+        except (TypeError, ValueError) as exc:
+            errs.append(str(exc))
+            return False, errs
+        if pinned_wrong != textual_hex:
+            errs.append(
+                "nonconforming_pre_image.bytes_hex is not the ASCII encoding of "
+                "selected_bytes_hex"
+            )
+        if wrong.get("length_octets") != len(textual_hex):
+            errs.append(
+                f"nonconforming_pre_image.length_octets != {len(textual_hex)}: "
+                f"{wrong.get('length_octets')!r}"
+            )
+        wrong_digest = hashlib.sha256(textual_hex).hexdigest()
+        if wrong.get("digest") != wrong_digest:
+            errs.append(
+                f"nonconforming_pre_image.digest mismatch\n"
+                f"  expected: {wrong_digest}\n"
+                f"  pinned:   {wrong.get('digest')!r}"
+            )
+        carried_digest = v.get("carried_digest")
+        if not isinstance(carried_digest, str) or not _BARE_HEX_64_RE.fullmatch(
+            carried_digest
+        ):
+            errs.append("carried_digest must be exactly 64 lowercase hex characters")
+        elif carried_digest != wrong_digest:
+            errs.append(
+                "carried_digest is not the digest produced by the textual-hex "
+                "substitution"
+            )
+        if carried_digest == correct_digest:
+            errs.append(
+                "carried_digest equals the correct selected-byte digest -- no "
+                "textual-hex substitution remains to reject"
+            )
+        if textual_hex == selected:
+            errs.append("textual-hex bytes equal selected bytes -- no boundary contrast")
+        if wrong_digest == correct_digest:
+            errs.append("wrong and correct digests are equal -- no rejection demonstrated")
+
+    return not errs, errs
+
+
 # ---------------------------------------------------------------------------
 # Representation-boundary contrast exerciser
 # ---------------------------------------------------------------------------
@@ -1665,6 +2764,125 @@ def _run_self_tests() -> None:
         _jcs({"k": [(1 << 53) - 1]})
     except ValueError as exc:
         errors.append(f"SELF-TEST FAIL: _jcs rejected safe integer: {exc}")
+
+    # Category M is present on this branch even though its first committed vector
+    # arrives with draft-03. Exercise the exact carrier schema here so the checker
+    # cannot merge with a dead category waiting for a later PR to activate it.
+    category_m = _category_m_self_test_vector()
+    try:
+        header_m, _, _, ref_m, protected_m = _decode_cpb_carrier(category_m)
+        parts_m, tagged_m = _cose_sign1_parts(
+            bytes.fromhex(category_m["cose_sign1_bytes_hex"])
+        )
+        if len(protected_m) != 103:
+            errors.append(
+                f"SELF-TEST FAIL: Category M protected fixture length is "
+                f"{len(protected_m)}, expected independently pinned length 103"
+            )
+        if header_m.get(-65537) != [ref_m] or 2 in ref_m:
+            errors.append(
+                "SELF-TEST FAIL: Category M literal does not carry exactly the "
+                "expected purpose-absent cpb-refs entry"
+            )
+        if not tagged_m or parts_m[0] != protected_m:
+            errors.append(
+                "SELF-TEST FAIL: Category M COSE_Sign1 literal does not embed the "
+                "pinned protected-header bstr"
+            )
+        if _encode_cbor_deterministic(header_m) != protected_m:
+            errors.append(
+                "SELF-TEST FAIL: Category M protected-header literal is not in the "
+                "checker encoder's deterministic form"
+            )
+    except ValueError as exc:
+        errors.append(f"SELF-TEST FAIL: Category M carrier literal rejected: {exc}")
+
+    ok, category_m_errs = _exercise_must_fail(
+        copy.deepcopy(category_m), "self-test-category-m-base", []
+    )
+    if not ok:
+        errors.append(
+            f"SELF-TEST FAIL: real Category M carrier rejected: {category_m_errs!r}"
+        )
+
+    category_m_mutant = _mutant_M(category_m)
+    if category_m_mutant is None:
+        errors.append("SELF-TEST FAIL: Category M could not build its carried-map mutant")
+    else:
+        try:
+            _, _, _, mutant_ref_m, mutant_protected_m = _decode_cpb_carrier(
+                category_m_mutant
+            )
+            if mutant_ref_m.get(2) != "identifier":
+                errors.append(
+                    "SELF-TEST FAIL: Category M mutant did not add purpose key 2 to "
+                    "the carried CBOR map"
+                )
+            if mutant_protected_m == bytes.fromhex(
+                category_m["protected_header"]["bytes_hex"]
+            ):
+                errors.append(
+                    "SELF-TEST FAIL: Category M mutant changed a mirror but not the "
+                    "protected-header bytes"
+                )
+        except ValueError as exc:
+            errors.append(f"SELF-TEST FAIL: Category M mutant carrier rejected: {exc}")
+        mutant_ok_m, mutant_errs_m = _exercise_must_fail(
+            category_m_mutant,
+            "self-test-category-m-purpose-present",
+            [],
+            _probe_mutants=False,
+        )
+        if mutant_ok_m or not any("contains key 2" in err for err in mutant_errs_m):
+            errors.append(
+                "SELF-TEST FAIL: Category M carried-purpose mutant did not flip the "
+                f"absent-purpose assertion: {mutant_errs_m!r}"
+            )
+
+    duplicate_contexts = copy.deepcopy(
+        category_m["artifact_type_registry_entry"]["digest_contexts"]
+    )
+    duplicate_contexts[1]["purpose"] = duplicate_contexts[0]["purpose"]
+    try:
+        _resolve_digest_context("identifier", duplicate_contexts)
+    except ValueError as exc:
+        if "matches 2" not in str(exc):
+            errors.append(
+                f"SELF-TEST FAIL: duplicate purposes failed for the wrong reason: {exc}"
+            )
+    else:
+        errors.append(
+            "SELF-TEST FAIL: duplicate digest-context purpose entries collapsed into "
+            "one resolvable context"
+        )
+    duplicate_category_m = copy.deepcopy(category_m)
+    duplicate_category_m["artifact_type_registry_entry"]["digest_contexts"][1][
+        "purpose"
+    ] = "identifier"
+    duplicate_ok_m, duplicate_errs_m = _exercise_must_fail(
+        duplicate_category_m, "self-test-category-m-duplicate-purpose", []
+    )
+    if duplicate_ok_m or not any(
+        "duplicate purpose labels" in err for err in duplicate_errs_m
+    ):
+        errors.append(
+            "SELF-TEST FAIL: Category M did not reject the preserved duplicate-purpose "
+            f"registry entries as ambiguous: {duplicate_errs_m!r}"
+        )
+
+    for encoded_m, label_m in (
+        (bytes.fromhex("1800"), "non-preferred integer"),
+        (bytes.fromhex("9f01ff"), "indefinite-length array"),
+        (bytes.fromhex("a201010102"), "duplicate map key"),
+        (bytes.fromhex("a202000100"), "out-of-order map keys"),
+        (bytes.fromhex("0000"), "trailing CBOR item"),
+    ):
+        try:
+            decode_strict_cbor(encoded_m)
+        except ValueError:
+            pass
+        else:
+            errors.append(f"SELF-TEST FAIL: strict CBOR accepted {label_m}")
 
     # ran_any_check enforcement: bare must_fail must hard-fail.
     ok, _errs = _exercise_must_fail({"must_fail": True}, "bare-must_fail-self-test", [])
@@ -2160,6 +3378,22 @@ def check_vectors(root: Path) -> int:
                 failed += 1
             continue
 
+        # Carrier validation is orthogonal to the vector's digest/result category.
+        # Gate on presence of EITHER field so deleting one half cannot turn a
+        # carrier vector back into an unchecked JSON record.  Category M repeats
+        # this decode while testing its absent-purpose semantic condition; that is
+        # intentional, because all other carrier vectors need the same structural
+        # guarantees without claiming Category M.
+        carrier_exercised = False
+        if "protected_header" in v or "cose_sign1_bytes_hex" in v:
+            try:
+                _decode_cpb_carrier(v)
+                carrier_exercised = True
+            except (TypeError, ValueError) as exc:
+                errors.append(f"FAIL {vid} (cpb carrier): {exc}")
+                failed += 1
+                continue
+
         if v.get("diverge"):
             ok, vec_errors = _exercise_diverge(v, vid)
             if ok:
@@ -2203,8 +3437,35 @@ def check_vectors(root: Path) -> int:
                 failed += 1
             continue
 
+        if registered_name == "as-transmitted":
+            ok, vec_errors = _exercise_as_transmitted(v, vid)
+            if ok:
+                passed += 1
+            else:
+                errors.append(
+                    f"FAIL {vid} (as-transmitted):\n"
+                    + "\n".join(f"  {e}" for e in vec_errors)
+                )
+                failed += 1
+            continue
+
+        if registered_name == "jcs":
+            ok, vec_errors = _exercise_jcs(v, vid)
+            if ok:
+                passed += 1
+            else:
+                errors.append(
+                    f"FAIL {vid} (jcs):\n"
+                    + "\n".join(f"  {e}" for e in vec_errors)
+                )
+                failed += 1
+            continue
+
         if "pre_image" not in v or "input" not in v:
-            skipped += 1
+            if carrier_exercised:
+                passed += 1
+            else:
+                skipped += 1
             continue
 
         # For domain-transform PASS vectors: verify the transform chain produces 'input'.

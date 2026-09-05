@@ -10,6 +10,7 @@ one-direction-only submission for a brand-new name was scored as an
 ordinary passing positive vector -- 0 FAILED, no signal at all.
 """
 import importlib.util
+import hashlib
 import json
 import pathlib
 
@@ -49,6 +50,166 @@ def test_representation_vector_rejects_a_mutated_check_hash():
     )
     assert not ok
     assert any("raw_input.check_sha256 mismatch" in error for error in errors)
+
+
+def _as_transmitted_vector(*, must_fail: bool = False) -> dict:
+    """Build an exact-byte COSE fixture without depending on the later vector PR."""
+    protected = check_vectors._encode_cbor_deterministic(
+        check_vectors._CborMap(((1, -7),))
+    )
+    payload = b"CPB exact-byte boundary"
+    cose = check_vectors._CborTag(
+        18,
+        [protected, check_vectors._CborMap(()), payload, b"signature"],
+    )
+    selected = check_vectors._encode_cbor_deterministic(
+        ["Signature1", protected, b"", payload]
+    )
+    digest = hashlib.sha256(selected).hexdigest()
+    vector = {
+        "id": "self-contained-as-transmitted",
+        "algorithm": "as-transmitted",
+        "exclusion_set": [],
+        "container": {
+            "format": "COSE_Sign1",
+            "bytes_hex": check_vectors._encode_cbor_deterministic(cose).hex(),
+        },
+        "byte_boundary_selector": {
+            "normative_reference": "RFC 9052 Section 4.4",
+            "named_production": "Sig_structure (ToBeSigned)",
+            "context": "Signature1",
+            "external_aad_bytes_hex": "",
+        },
+        "selected_bytes_hex": selected.hex(),
+        "selected_length_octets": len(selected),
+        "digest_alg": "SHA-256",
+        "digest_representation": "lowercase-hex",
+        "digest": digest,
+    }
+    if must_fail:
+        textual_hex = selected.hex().encode("ascii")
+        wrong_digest = hashlib.sha256(textual_hex).hexdigest()
+        vector.update(
+            {
+                "id": "self-contained-as-transmitted-text-hex",
+                "must_fail": True,
+                "failure_reason": "as_transmitted_textual_hex_substitution",
+                "nonconforming_pre_image": {
+                    "construction": "selected_bytes_hex.encode('ascii')",
+                    "bytes_hex": textual_hex.hex(),
+                    "length_octets": len(textual_hex),
+                    "digest": wrong_digest,
+                },
+                "carried_digest": wrong_digest,
+            }
+        )
+    return vector
+
+
+def _jcs_vector(*, must_fail: bool = False) -> dict:
+    """Build a plain-JCS fixture without depending on the later vector PR."""
+    if must_fail:
+        return {
+            "id": "self-contained-jcs-duplicate",
+            "algorithm": "jcs",
+            "must_fail": True,
+            "failure_reason": "jcs_duplicate_member_name",
+            "input_json": '{"a":1,"\\u0061":2}',
+            "duplicate_member_name": "a",
+        }
+
+    source = '{"z":null,"a":{},"m":[],"s":"CPB"}'
+    data_model = json.loads(source)
+    pre_image = check_vectors._jcs_rfc8785(data_model)
+    pre_image_bytes = pre_image.encode("utf-8")
+    return {
+        "id": "self-contained-jcs",
+        "algorithm": "jcs",
+        "exclusion_set": [],
+        "input_json": source,
+        "input_data_model": data_model,
+        "pre_image": pre_image,
+        "pre_image_bytes_hex": pre_image_bytes.hex(),
+        "digest_alg": "SHA-256",
+        "digest_representation": "lowercase-hex",
+        "digest": hashlib.sha256(pre_image_bytes).hexdigest(),
+    }
+
+
+def _write_algorithm_pair(root: pathlib.Path, name: str, vectors: tuple[dict, dict]) -> None:
+    for side, vector in zip(("pass", "fail"), vectors, strict=True):
+        target = root / name / side
+        target.mkdir(parents=True, exist_ok=True)
+        (target / f"{vector['id']}.json").write_text(
+            json.dumps(vector), encoding="utf-8"
+        )
+
+
+def test_as_transmitted_paths_are_live_without_later_vectors(tmp_path, capsys):
+    positive = _as_transmitted_vector()
+    negative = _as_transmitted_vector(must_fail=True)
+    ok, errors = check_vectors._exercise_as_transmitted(positive, positive["id"])
+    assert ok, errors
+    ok, errors = check_vectors._exercise_must_fail(
+        negative, negative["id"], [], _probe_mutants=False
+    )
+    assert ok, errors
+
+    mutant = check_vectors._mutant_N(negative)
+    assert mutant is not None
+    ok, errors = check_vectors._exercise_must_fail(
+        mutant, "as-transmitted-condition-removed", [], _probe_mutants=False
+    )
+    assert not ok
+    assert any("no textual-hex substitution remains" in error for error in errors)
+
+    _write_algorithm_pair(tmp_path, "as-transmitted", (positive, negative))
+    assert check_vectors.check_vectors(tmp_path) == 0
+    out = capsys.readouterr().out
+    assert "2 pass/exercised" in out
+    assert "coverage 'as-transmitted': 1 positive, 1 MUST-FAIL" in out
+
+
+def test_as_transmitted_container_remains_authoritative():
+    vector = _as_transmitted_vector()
+    vector["selected_bytes_hex"] = "00" + vector["selected_bytes_hex"][2:]
+    ok, errors = check_vectors._exercise_as_transmitted(vector, "false-byte-pin")
+    assert not ok
+    assert any("does not equal the Sig_structure" in error for error in errors)
+
+
+def test_jcs_paths_are_live_without_later_vectors(tmp_path, capsys):
+    positive = _jcs_vector()
+    negative = _jcs_vector(must_fail=True)
+    ok, errors = check_vectors._exercise_jcs(positive, positive["id"])
+    assert ok, errors
+    ok, errors = check_vectors._exercise_must_fail(
+        negative, negative["id"], [], _probe_mutants=False
+    )
+    assert ok, errors
+
+    mutant = check_vectors._mutant_O(negative)
+    assert mutant is not None
+    ok, errors = check_vectors._exercise_must_fail(
+        mutant, "jcs-duplicate-condition-removed", [], _probe_mutants=False
+    )
+    assert not ok
+    assert any("does not occur more than once" in error for error in errors)
+
+    _write_algorithm_pair(tmp_path, "jcs", (positive, negative))
+    assert check_vectors.check_vectors(tmp_path) == 0
+    out = capsys.readouterr().out
+    assert "2 pass/exercised" in out
+    assert "coverage 'jcs': 1 positive, 1 MUST-FAIL" in out
+
+
+def test_jcs_duplicate_check_uses_exact_decoded_names_without_nfc():
+    vector = _jcs_vector(must_fail=True)
+    vector["input_json"] = '{"A\\u030a":1,"\\u00c5":2}'
+    vector["duplicate_member_name"] = "Å"
+    ok, errors = check_vectors._exercise_jcs_duplicate(vector, "jcs-nfc-distinct")
+    assert not ok
+    assert any("does not occur more than once" in error for error in errors)
 
 
 def _write_pos_only_vector(root: pathlib.Path, name: str = "pos-only-alg") -> None:
@@ -199,3 +360,345 @@ def test_candidate_mode_grades_the_directory_it_is_given_not_the_checkout_root(
     out = capsys.readouterr().out
     assert rc == 1, "checker did not read the directory it was given"
     assert "1 FAILED" in out
+
+
+def _write_category_m_vector(root: pathlib.Path, vector: dict | None = None) -> pathlib.Path:
+    target = root / "typed-refs" / "fail"
+    target.mkdir(parents=True, exist_ok=True)
+    path = target / "category-m.json"
+    path.write_text(
+        json.dumps(vector or check_vectors._category_m_self_test_vector()),
+        encoding="utf-8",
+    )
+    return path
+
+
+def _minimal_positive_carrier() -> dict:
+    """A carrier-only PASS fixture with authoritative CBOR and optional mirrors."""
+    label = -65537
+    digest = "00" * 32
+    ref = check_vectors._CborMap(
+        ((1, "example-artifact"), (3, "SHA-256"), (4, digest))
+    )
+    header = check_vectors._CborMap(((label, [ref]),))
+    protected = check_vectors._encode_cbor_deterministic(header)
+    cose = check_vectors._CborTag(
+        18,
+        [protected, check_vectors._CborMap(()), b"payload", b"signature"],
+    )
+    return {
+        "id": "minimal-positive-carrier",
+        "must_fail": False,
+        "protected_header": {
+            "bytes_hex": protected.hex(),
+            "cpb_refs_label": label,
+            "entry_index": 0,
+        },
+        "cose_sign1_bytes_hex": check_vectors._encode_cbor_deterministic(cose).hex(),
+        "cbor_map_entry": {
+            "1": "example-artifact",
+            "3": "SHA-256",
+            "4": digest,
+        },
+        "typed_reference": {
+            "type": "example-artifact",
+            "digest_alg": "SHA-256",
+            "digest": digest,
+        },
+    }
+
+
+def _write_positive_carrier(root: pathlib.Path, vector: dict | None = None) -> pathlib.Path:
+    target = root / "typed-refs" / "pass"
+    target.mkdir(parents=True, exist_ok=True)
+    path = target / "minimal-carrier.json"
+    path.write_text(
+        json.dumps(vector or _minimal_positive_carrier()), encoding="utf-8"
+    )
+    return path
+
+
+def test_carrier_only_positive_is_exercised_not_skipped(tmp_path, capsys):
+    _write_positive_carrier(tmp_path)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    assert "1 pass/exercised" in out
+    assert "0 no-check (skipped)" in out
+    assert "0 FAILED" in out
+
+
+@pytest.mark.parametrize(
+    ("deleted", "message"),
+    [
+        ("protected_header", "requires protected_header object"),
+        (
+            "cose_sign1_bytes_hex",
+            "requires cose_sign1_bytes_hex to prove cpb-refs is protected",
+        ),
+    ],
+)
+def test_carrier_only_positive_rejects_deletion(
+    tmp_path, capsys, deleted, message
+):
+    vector = _minimal_positive_carrier()
+    del vector[deleted]
+    _write_positive_carrier(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+
+    assert rc == 1
+    assert "1 FAILED" in out
+    assert message in out
+
+
+def test_carrier_only_positive_rejects_protected_byte_mutation(tmp_path, capsys):
+    vector = _minimal_positive_carrier()
+    vector["protected_header"]["bytes_hex"] = "a0"
+    _write_positive_carrier(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+
+    assert rc == 1
+    assert "protected header does not contain cpb-refs label" in out
+
+
+def test_carrier_only_positive_rejects_cose_protected_bstr_mismatch(
+    tmp_path, capsys
+):
+    vector = _minimal_positive_carrier()
+    parts, _ = check_vectors._cose_sign1_parts(
+        bytes.fromhex(vector["cose_sign1_bytes_hex"])
+    )
+    parts[0] = b"\xa0"
+    vector["cose_sign1_bytes_hex"] = check_vectors._encode_cbor_deterministic(
+        check_vectors._CborTag(18, parts)
+    ).hex()
+    _write_positive_carrier(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+
+    assert rc == 1
+    assert "COSE_Sign1 protected bstr does not match" in out
+
+
+def test_carrier_only_positive_rejects_unprotected_cpb_refs(tmp_path, capsys):
+    vector = _minimal_positive_carrier()
+    parts, _ = check_vectors._cose_sign1_parts(
+        bytes.fromhex(vector["cose_sign1_bytes_hex"])
+    )
+    label = vector["protected_header"]["cpb_refs_label"]
+    parts[1] = check_vectors._CborMap(((label, []),))
+    vector["cose_sign1_bytes_hex"] = check_vectors._encode_cbor_deterministic(
+        check_vectors._CborTag(18, parts)
+    ).hex()
+    _write_positive_carrier(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+
+    assert rc == 1
+    assert "must not also appear in COSE unprotected headers" in out
+
+
+@pytest.mark.parametrize(
+    ("mirror", "member", "replacement", "message"),
+    [
+        (
+            "cbor_map_entry",
+            "1",
+            "wrong-type",
+            "cbor_map_entry mirror does not exactly match",
+        ),
+        (
+            "typed_reference",
+            "digest_alg",
+            "SHA-512",
+            "typed_reference mirror disagrees",
+        ),
+    ],
+)
+def test_carrier_only_positive_rejects_mutated_mirrors(
+    tmp_path, capsys, mirror, member, replacement, message
+):
+    vector = _minimal_positive_carrier()
+    vector[mirror][member] = replacement
+    _write_positive_carrier(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+
+    assert rc == 1
+    assert message in out
+
+
+def test_category_m_executes_the_carried_protected_header(tmp_path, capsys):
+    """Category M is live before draft-03's vector lands on this branch."""
+    _write_category_m_vector(tmp_path)
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "1 pass/exercised" in out
+    assert "0 FAILED" in out
+
+
+def test_category_m_rejects_a_descriptive_mirror_without_carried_bytes(
+    tmp_path, capsys
+):
+    vector = check_vectors._category_m_self_test_vector()
+    del vector["protected_header"]
+    del vector["cose_sign1_bytes_hex"]
+    _write_category_m_vector(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "Category M requires protected_header object" in out
+
+
+def test_category_m_requires_cose_wrapper_to_prove_protected_location(
+    tmp_path, capsys
+):
+    vector = check_vectors._category_m_self_test_vector()
+    del vector["cose_sign1_bytes_hex"]
+    _write_category_m_vector(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "requires cose_sign1_bytes_hex to prove cpb-refs is protected" in out
+
+
+def test_category_m_preserves_duplicate_purpose_entries_and_fails_closed():
+    contexts = [
+        {"purpose": "identifier", "algorithm": "jcs-n"},
+        {"purpose": "identifier", "algorithm": "jcs-n-v2"},
+    ]
+    entries = check_vectors._digest_context_entries(contexts)
+    assert entries == contexts
+    assert len(entries) == 2
+    with pytest.raises(ValueError, match="matches 2"):
+        check_vectors._resolve_digest_context("identifier", contexts)
+
+
+def test_category_m_vector_rejects_duplicate_purpose_ambiguity(tmp_path, capsys):
+    vector = check_vectors._category_m_self_test_vector()
+    contexts = vector["artifact_type_registry_entry"]["digest_contexts"]
+    contexts[1]["purpose"] = contexts[0]["purpose"]
+    _write_category_m_vector(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "duplicate purpose labels make the registry entry itself ambiguous" in out
+
+
+def test_category_m_rejects_cose_protected_bstr_mismatch(tmp_path, capsys):
+    vector = check_vectors._category_m_self_test_vector()
+    mismatched = check_vectors._CborTag(18, [b"", {}, None, b""])
+    vector["cose_sign1_bytes_hex"] = check_vectors._encode_cbor_deterministic(
+        mismatched
+    ).hex()
+    _write_category_m_vector(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "COSE_Sign1 protected bstr does not match" in out
+
+
+def test_category_m_mutant_changes_the_carried_map_and_wrapper():
+    vector = check_vectors._category_m_self_test_vector()
+    original_protected = vector["protected_header"]["bytes_hex"]
+    original_cose = vector["cose_sign1_bytes_hex"]
+
+    mutant = check_vectors._mutant_M(vector)
+    assert mutant is not None
+    _, _, _, carried, protected = check_vectors._decode_cpb_carrier(mutant)
+    cose_parts, _ = check_vectors._cose_sign1_parts(
+        bytes.fromhex(mutant["cose_sign1_bytes_hex"])
+    )
+
+    assert carried[2] == "identifier"
+    assert protected.hex() != original_protected
+    assert mutant["cose_sign1_bytes_hex"] != original_cose
+    assert cose_parts[0] == protected
+    assert mutant["cbor_map_entry"]["2"] == "identifier"
+    assert mutant["typed_reference"]["purpose"] == "identifier"
+
+    ok, errors = check_vectors._exercise_must_fail(
+        mutant, "category-m-purpose-present", [], _probe_mutants=False
+    )
+    assert not ok
+    assert any("contains key 2" in error for error in errors)
+
+
+def _replace_category_m_protected(vector: dict, header: object) -> None:
+    protected = check_vectors._encode_cbor_deterministic(header)
+    vector["protected_header"]["bytes_hex"] = protected.hex()
+    parts, _ = check_vectors._cose_sign1_parts(
+        bytes.fromhex(vector["cose_sign1_bytes_hex"])
+    )
+    parts[0] = protected
+    vector["cose_sign1_bytes_hex"] = check_vectors._encode_cbor_deterministic(
+        check_vectors._CborTag(18, parts)
+    ).hex()
+
+
+def test_category_m_rejects_unknown_carried_member_keys(tmp_path, capsys):
+    vector = check_vectors._category_m_self_test_vector()
+    header, refs, _, carried, _ = check_vectors._decode_cpb_carrier(vector)
+    refs[0] = check_vectors._CborMap((*carried.pairs, (5, "extension")))
+    _replace_category_m_protected(vector, header)
+    del vector["cbor_map_entry"]
+    del vector["typed_reference"]
+    _write_category_m_vector(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "unknown cpb-refs member key" in out
+
+
+def test_category_m_rejects_unprotected_cpb_refs(tmp_path, capsys):
+    vector = check_vectors._category_m_self_test_vector()
+    parts, _ = check_vectors._cose_sign1_parts(
+        bytes.fromhex(vector["cose_sign1_bytes_hex"])
+    )
+    label = vector["protected_header"]["cpb_refs_label"]
+    parts[1] = check_vectors._CborMap(((label, []),))
+    vector["cose_sign1_bytes_hex"] = check_vectors._encode_cbor_deterministic(
+        check_vectors._CborTag(18, parts)
+    ).hex()
+    _write_category_m_vector(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "must not also appear in COSE unprotected headers" in out
+
+
+def test_category_m_enforces_carrier_value_limits():
+    overlong_type = check_vectors._CborMap(
+        ((1, "x" * 256), (3, "SHA-256"), (4, b"digest"))
+    )
+    with pytest.raises(ValueError, match="exceeds 255"):
+        check_vectors._validate_cpb_ref_map(overlong_type)
+
+
+@pytest.mark.parametrize(
+    "encoded, message",
+    [
+        ("a201010102", "duplicate CBOR map key"),
+        ("a202000100", "deterministic order"),
+        ("9f01ff", "indefinite-length"),
+    ],
+)
+def test_category_m_strict_cbor_rejects_ambiguous_encodings(encoded, message):
+    with pytest.raises(ValueError, match=message):
+        check_vectors.decode_strict_cbor(bytes.fromhex(encoded))
