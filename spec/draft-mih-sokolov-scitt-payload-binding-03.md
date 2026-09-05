@@ -561,8 +561,8 @@ would be redundant at best and would break the very binding that makes the
 bytes authoritative at worst.
 
 Because there is no canonicalization step, `as-transmitted` has no field set
-and no exclusion set. An artifact type entry that declares `as-transmitted`
-as its canonicalization algorithm MUST instead state a byte-boundary
+and no exclusion set. A profile-owned artifact-type declaration that selects
+`as-transmitted` for a digest context MUST instead state a byte-boundary
 selector in place of a field set: a normative reference plus the name that
 referenced specification gives to the exact byte sequence in question. Two
 examples of a valid selector:
@@ -572,14 +572,14 @@ examples of a valid selector:
 * `RFC 9052 §4.4, ToBeSigned` -- the octets a COSE_Sign1 signature is
   computed over.
 
-A selector that is not a cited named production is prose, not a selector,
-and this registry exists to eliminate exactly that kind of ambiguity: an
-artifact type MUST NOT register `as-transmitted` on the strength of an
-uncited description such as "the payload bytes." If the container
-specification carrying the artifact does not itself name the exact byte
-sequence as a discrete production, the artifact type MUST NOT use
-`as-transmitted` -- it registers a canonicalization algorithm instead, one
-that defines the pre-image construction from first principles.
+A selector that is not a cited named production is prose, not a selector.
+This named-production rule eliminates that ambiguity: a digest-context
+declaration MUST NOT select `as-transmitted` on the strength of an uncited
+description such as "the payload bytes." If the container specification
+carrying the artifact does not itself name the exact byte sequence as a
+discrete production, the declaration MUST NOT use `as-transmitted`; it must
+select another registered canonicalization algorithm whose definition
+constructs the pre-image from first principles.
 
 The CANONICAL-DIGEST of a byte sequence B identified by the declared
 byte-boundary selector is:
@@ -620,10 +620,12 @@ A verifier MUST recompute the identifier from the payload bytes and the
 declared exclusion set. If the recomputed value does not match the carried
 value, the verifier MUST treat this as a defect in the record.
 
-When selective disclosure is in use, the derived identifier MUST be computed over the
-SD-encoded form of the payload, not the plaintext payload. A payload profile MUST
-declare non-eligible for selective disclosure any field that the profile's own verifier
-requires in order to evaluate the binding.
+If a payload profile applies a transformation before derived-identifier
+computation, its specification MUST define that transformation and its order
+relative to field exclusion and algorithm A so that producer and verifier
+derive the same exact input. This document defines no such transform. Absent
+an applicable profile declaration, the producer and verifier MUST use the
+untransformed payload and exclusion procedure defined above.
 
 ## Representation {#representation}
 
