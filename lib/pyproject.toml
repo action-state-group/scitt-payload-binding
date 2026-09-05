@@ -14,7 +14,7 @@ dependencies = ["rfc8785>=0.1.4,<0.2"]
 [project.optional-dependencies]
 # The installed-package regression test builds without isolation or network
 # access, so its active development environment must provide the build backend.
-dev = ["pytest>=7", "setuptools>=61"]
+dev = ["pytest>=7", "setuptools>=61", "cryptography>=41"]
 
 [project.scripts]
 cpb-check = "cpb._cli:main"

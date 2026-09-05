@@ -2,7 +2,7 @@
 title: "Canonical Payload Binding: A Signed Statement Construction Profile"
 abbrev: "Canonical Payload Binding"
 docname: draft-mih-sokolov-scitt-payload-binding-03
-date: 2026-09-04
+date: 2026-09-05
 category: std
 submissiontype: IETF
 ipr: trust200902
@@ -25,27 +25,35 @@ author:
  - ins: A. Sokolov
    name: Anton Sokolov
    organization: Tyche Institute
+   city: Tallinn
+   country: Estonia
    email: anton.sokolov@tyche.institute
 
 normative:
   RFC2119:
   RFC8174:
   RFC8126:
+  RFC6838:
   RFC8259:
+  RFC8610:
   RFC8785:
+  RFC8949:
   RFC9052:
+  RFC9942:
   RFC9943:
+  RFC9995:
 
 informative:
+  RFC7515:
+  RFC6920:
+  RFC9162:
   RFC9901:
-  RFC9942:
-  RFC9995:
   RFC4998:
   I-D.ietf-scitt-receipts-ccf-profile:
   I-D.mih-scitt-agent-action-capsule:
     title: "An Agent Action Capsule Profile for SCITT"
     seriesinfo:
-      Internet-Draft: draft-mih-scitt-agent-action-capsule-02
+      Internet-Draft: draft-mih-scitt-agent-action-capsule-04
     author:
       - ins: S. Mih
         name: Steven Mih
@@ -53,36 +61,73 @@ informative:
   I-D.hillier-scitt-arp:
     title: "Attestation Reconciliation Protocol"
     seriesinfo:
-      Internet-Draft: draft-hillier-scitt-arp-01
+      Internet-Draft: draft-hillier-scitt-arp-03
     author:
       - ins: J. Hillier
         name: Joel Hillier
+        organization: Certisyn, Inc.
   I-D.mih-sato-agent-accountability-composition:
     title: "Agent Accountability: Composition and Conformance"
     seriesinfo:
-      Internet-Draft: draft-mih-sato-agent-accountability-composition-00
+      Internet-Draft: draft-mih-sato-agent-accountability-composition-01
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
       - ins: T. Sato
         name: Tom Sato
+        organization: MyAuberge K.K.
+      - ins: I. Schrock
+        name: Iman Schrock
+        organization: EMILIA Protocol, Inc.
+      - ins: S. Bu
+        name: Songbo Bu
+        organization: Independent
+      - ins: A. Sokolov
+        name: Anton Sokolov
+        organization: Tyche Institute
   I-D.sokolov-rats-aep-composition:
     title: "Composing Application-Layer Action Evidence with Remote Attestation Procedures"
     seriesinfo:
-      Internet-Draft: draft-sokolov-rats-aep-composition-03
+      Internet-Draft: draft-sokolov-rats-aep-composition-06
     author:
       - ins: A. Sokolov
         name: Anton Sokolov
         organization: Tyche Institute
   I-D.birkholz-verifiable-agent-conversations:
-    title: "Verifiable Agent Conversations"
+    title: "Verifiable Agent Conversation Records"
     seriesinfo:
-      Internet-Draft: draft-birkholz-verifiable-agent-conversations-00
+      Internet-Draft: draft-birkholz-verifiable-agent-conversations-01
     author:
       - ins: H. Birkholz
         name: Henk Birkholz
         organization: Fraunhofer Institute for Secure Information Technology
+      - ins: T. Heldt
+        name: Tobias Heldt
+      - ins: O. Steele
+        name: Orie Steele
+  I-D.le-scitt-derived-subjects:
+    title: "SCITT Profile for Independently Derived Subjects"
+    seriesinfo:
+      Internet-Draft: draft-le-scitt-derived-subjects-00
+    author:
+      - ins: T. Le
+        name: Thanh Le
+  I-D.le-comparing-derived-identifiers:
+    title: "Principles for Comparing Independently Derived Identifiers"
+    seriesinfo:
+      Internet-Draft: draft-le-comparing-derived-identifiers-00
+    author:
+      - ins: T. Le
+        name: Thanh Le
+  I-D.nobuo-scitt-protected-object-binding:
+    title: "SCITT Statement Relationship and Protected Object Binding"
+    seriesinfo:
+      Internet-Draft: draft-nobuo-scitt-protected-object-binding-00
+    author:
+      - ins: N. Aoki
+        name: Nobuo Aoki
+        organization: The Graduate University for Advanced Studies (SOKENDAI)
   I-D.rampalli-pedigree:
     title: "PEDIGREE: Provenance and Delegation Records for Digital Artifacts"
     seriesinfo:
@@ -103,34 +148,26 @@ informative:
 --- abstract
 
 Independently written systems that anchor records to a SCITT Transparency
-Service repeatedly re-derive the same construction: a canonical form of
-structured content, a content-addressed identifier derived from that form, a
-receipt placed in the unprotected header of the Signed Statement, and a typed
-reference mechanism that lets one record cite another by digest across profile
-boundaries. This document defines that construction as a reusable profile —
-the Canonical Payload Binding — so that each payload class declares its
-canonicalization algorithm and exclusion set once, obtains an interoperable
-derived identifier, and inherits statement-to-receipt binding and typed
-digest reference semantics without restating the mechanics in every profile.
-It complements the COSE Hash Envelope mechanism defined in RFC 9995: where
-that mechanism signals that a Signed Statement's payload is a digest
-standing in for content held elsewhere, this document defines how that
-digest is computed from structured content so that independently written
-implementations converge on the same bytes. An IANA registry governs the canonicalization
-algorithms; entries are immutable. This document defines no payload content
-formats and registers no artifact types; the artifact types that a typed
-reference may cite, and their meaning, are registered in a single shared
-Artifact Type Registry, governed separately from this document, that
-payload profiles register into. A typed digest reference is defined as an
-abstract information model, carried either as a COSE protected header
-parameter or within a payload class's own serialization; this document
-fixes neither serialization as a requirement.
+Service repeatedly need the same construction: a canonical form of structured
+content, a content-addressed identifier derived from that form, binding to a
+SCITT Signed Statement and Receipt, and references that cite external artifacts
+by digest. This document defines that construction as the Canonical Payload
+Binding (CPB). A payload profile declares its canonicalization algorithm and
+exclusion set and thereby obtains a reproducible derived identifier. A CPB
+Signed Statement carries either the complete statement content as specified by
+RFC 9943 or a digest of content held elsewhere using the COSE Hash Envelope of
+RFC 9995. CPB also defines an abstract typed digest reference information model
+and one optional protected-header encoding, `cpb-refs`; a payload profile may
+instead define its own reference serialization. An IANA registry governs CPB
+canonicalization algorithms. CPB does not define payload content formats,
+establish or require a universal artifact-type registry, or require either
+typed-reference carrier.
 
 --- note_Note_to_Readers
 
 This document is an individual submission. The intended venue is the SCITT
-Working Group (scitt@ietf.org). Named attributions and acknowledgments in this document were individually
-confirmed in writing by the named parties.
+Working Group (scitt@ietf.org). Named acknowledgments in this document were
+individually confirmed in writing by the named parties.
 The short name "Canonical Payload Binding" and the document title are
 expected to be settled by the adopting working group.
 
@@ -151,19 +188,17 @@ by digest — but they have been restated independently in every profile that
 needed them, with small variations that defeat interoperability.
 
 This document extracts those four moves into a single reusable profile
-called the Canonical Payload Binding (CPB). CPB is the missing piece the COSE
-Hash Envelope mechanism {{RFC9995}} deliberately leaves open: RFC 9995 defines
-how a Signed Statement signals that its payload field carries a hash rather
-than the content itself, but it does not say how that hash is computed from
-structured content so that two independently written implementations arrive
-at the same bytes. CPB fills that gap and stops there — it defines the
-canonicalization algorithm, the derived identifier it produces, the binding
-of that identifier to a Signed Statement and its Receipt, and a typed
-reference mechanism for citing other digests, and it defines nothing about
-what the hashed content means. CPB is derived from
+called the Canonical Payload Binding (CPB). The COSE Hash Envelope
+{{RFC9995}} identifies a hash function and carries the resulting digest; when
+structured content needs a deterministic preimage, CPB supplies the
+profile-selected canonicalization and derived-identifier construction. CPB
+also supports the ordinary RFC 9943 case in which the complete statement
+content, rather than its digest, is supplied to COSE. CPB defines the binding
+mechanics and a typed-reference mechanism for citing other digests, but it
+does not define what any payload or cited artifact means. CPB is derived from
 {{I-D.mih-scitt-agent-action-capsule}} (§Conventions, §envelope, §registration,
 §identity), which first stated the construction in a SCITT context, and
-generalized at the IETF 126 hackathon in Vienna, where seven parties
+generalized at the IETF 126 hackathon in Vienna, where multiple parties
 participated in the public interop program. The public record reports four
 codebases demonstrating byte agreement in specific shared, declared contexts.
 Other frozen artifacts retained separately declared digest contexts. ORPRG
@@ -194,11 +229,9 @@ This document does not define:
 
 * Artifact types and their digest contexts — which named categories of
   structured content exist, what fields and exclusion sets each declares,
-  and which purpose labels its digest contexts use. Artifact types are
-  registered in the shared Artifact Type Registry, governed separately from
-  this document; CPB defines only the algorithms and the typed-reference
-  container they use. (See {{I-D.mih-scitt-agent-action-capsule}} for an
-  example payload profile that registers artifact types there.)
+  and which purpose labels its digest contexts use. Those declarations are
+  owned by payload or consuming profiles and identified by stable normative
+  references. CPB defines no artifact-type registry.
 
 * Application meaning — the real-world interpretation of any record
   anchored via this construction.
@@ -212,54 +245,25 @@ This document does not define:
 
 # Changes from -02 {#changes-02}
 
-This revision responds to a SCITT-chair charter-fit read of -02 (Henk
-Birkholz): everything in -02 is in-charter except {{typed-refs}}, which
-defined a normative JSON object carried inside payload bytes — reading as
-"a data format for payload content," SCITT charter non-goal 4. The fix
-moves the typed reference out of the payload and into the envelope; this
-revision makes that move and nothing else.
+This revision separates the payload-neutral CPB mechanisms from payload
+formats and makes their wire and verification behavior explicit:
 
-* **§8 loses its payload-format normativity.** {{typed-refs}} is now an
-  information model: the four members (`type`, `purpose`, `digest_alg`,
-  `digest`), their requiredness, and the verification algorithm
-  ({{comparability}}, {{verification-scope}}) are unchanged, but the
-  document no longer states that a typed digest reference "is a JSON
-  object" or fixes any serialization of it inside a payload. That was the
-  charter-non-goal-4 exposure; removing it is the entire point of this
-  revision.
-* **Typed references gain envelope carriage.** New {{envelope-carriage}}
-  defines a COSE protected header parameter, `cpb-refs`, that carries
-  typed digest references as a CBOR array of maps, signature-covered by
-  the issuer but outside the payload. This is the concrete first carrier
-  for the SCITT "semantic middle layer" Henk Birkholz proposed at the
-  chair review: a citation a SCITT-generic party — a Transparency Service
-  building a citation index, a profile-unaware verifier — can act on
-  without parsing or understanding the payload class. {{envelope}}
-  already permitted payload-class-specific protected-header fields
-  defined by the payload class specification; `cpb-refs` is CPB's own
-  such field, not an exception to that rule.
-* **JSON payload carriage is retained, informative.** New
-  {{payload-carriage}} states that a payload profile MAY carry typed
-  references in its own serialization instead of, or alongside, envelope
-  carriage; CPB does not define that serialization. The JSON table and
-  worked example that -02 stated normatively as part of {{typed-refs}}
-  move, unchanged in substance, to {{appendix-d}} as one profile's
-  mapping — {{I-D.mih-scitt-agent-action-capsule}}'s `references[]` — now
-  presented as an example rather than as this document's own wire format.
+* {{typed-refs}} is an abstract four-member information model. Payload
+  profiles own any payload-level serialization. CPB defines one optional,
+  closed CBOR encoding in the protected `cpb-refs` header.
+* CPB creates no artifact-type registry. A consuming profile identifies by
+  stable normative reference the artifact-type and digest-context
+  declarations it accepts.
+* Reference processing now distinguishes Malformed, Unresolved, Failed, and
+  Verified outcomes from validation of the enclosing COSE signature.
+* {{envelope}} separates RFC 9943 Full-Content Mode from RFC 9995 Hash
+  Envelope Mode and retains every applicable RFC 9943 requirement in both.
+* A Signed Statement uses at most one typed-reference carrier. The CDDL,
+  duplicate and unknown-key behavior, `crit` handling, and resource limits
+  for `cpb-refs` are now normative.
 
-Both carriage mechanisms verify identically: {{comparability}} and
-{{verification-scope}} apply to a typed digest reference regardless of
-where it is carried, because the algorithm operates on the four members,
-not on their container. A reference committed under the derived
-identifier (because a profile needs its citations covered by the payload
-digest) uses payload carriage; a reference that needs to be visible to a
-payload-blind party uses envelope carriage. Neither is required; a
-profile MAY use both for the same citation.
-
-The -01-to-02 registry correction (`jcs-n` withdrawn, `jcs` registered),
-and the rest of -02's consolidation of registry, canonicalization, and
-conformance-checker work, are unaffected by this revision; see the -02
-document text (this repository's git history) for that record.
+The -01-to-02 correction that withdrew `jcs-n` and registered `jcs` remains
+unchanged.
 
 # Conventions and Definitions {#conventions}
 
@@ -278,11 +282,11 @@ Payload Class:
   classes or artifact types.
 
 Derived Identifier:
-: The content-address of a payload: the output of CANONICAL-DIGEST applied
-  to the canonical form of the payload with the exclusion set removed.
-  Verifiers MUST recompute the derived identifier from the payload bytes;
-  a carried derived-identifier value is advisory only and a mismatch is a
-  defect.
+: The content-address of a payload: the output of CANONICAL-DIGEST(A, v),
+  where v is the payload value with its profile-declared exclusion set
+  removed. Verifiers MUST recompute the derived identifier from the payload
+  value; a carried derived-identifier value is advisory only and a mismatch
+  is a defect.
 
 Digest Context:
 : The complete set of parameters that determine how a digest was computed:
@@ -292,13 +296,22 @@ Digest Context:
   only when their full digest contexts are established as compatible. A
   payload class or artifact type MAY declare more than one digest context
   over the same payload, each serving a distinct purpose declared by the
-  payload profile that defines the class or type; the contexts are
+  profile that defines the class or type. The declaration MUST also state the
+  exact `digest_alg` token and comparison representation. The contexts are
   independent and MUST NOT be conflated.
+
+RAW-DIGEST:
+: A function parameterized by a canonicalization algorithm A: for any such
+  algorithm A and payload v, RAW-DIGEST(A, v) = H_A(A(v)), where A(v) is the
+  canonical octet string and H_A is the hash function declared by A's entry
+  in the Canonicalization Algorithm Registry ({{iana-alg}}). RAW-DIGEST is
+  an octet string; it has no textual encoding.
 
 CANONICAL-DIGEST:
 : A function parameterized by a canonicalization algorithm A: for any such
-  algorithm A and payload v, CANONICAL-DIGEST(A, v) = ENCODE_A(H_A(A(v))),
-  where H_A is the digest function and ENCODE_A the output encoding
+  algorithm A and payload v,
+  CANONICAL-DIGEST(A, v) = ENCODE_A(RAW-DIGEST(A, v)), where ENCODE_A is
+  the output encoding
   declared by A's entry in the Canonicalization Algorithm Registry
   ({{iana-alg}}). Every entry registered by this document declares SHA-256
   and 64-character lowercase hexadecimal; an entry registered by a later
@@ -311,6 +324,45 @@ CANONICAL-DIGEST:
 Signed Statement:
 : A COSE_Sign1 object {{RFC9052}} that carries a payload, a protected
   header, and an optional unprotected header; defined in {{RFC9943}}.
+
+Signature-Valid:
+: A state of a Signed Statement, independent of typed-reference processing.
+  The COSE signature has been cryptographically validated under the selected
+  verification key. This state alone does not establish that the key is
+  authorized for the asserted issuer. Merely being encoded in a protected
+  header does not establish this state.
+
+Issuer-Authenticated:
+: A state of a Signature-Valid Signed Statement for which the verifier's
+  policy accepts the signing key as authorized for the asserted issuer.
+  This state authenticates issuer claims but does not make a cited artifact
+  or typed reference Verified.
+
+Malformed:
+: A typed-reference processing state. The reference or its `cpb-refs`
+  container violates the applicable serialization, required-member,
+  duplicate, closed-extension, or size rules. A verifier MUST NOT report any
+  entry in a Malformed `cpb-refs` value as Verified.
+
+Unresolved:
+: A typed-reference processing state. The reference is well-formed, but the
+  verifier cannot select exactly one authorized digest context or cannot
+  obtain the cited artifact, or it lacks the implementation needed to execute
+  an otherwise valid digest context. An Unresolved reference is
+  not evidence of a content binding.
+
+Failed:
+: A typed-reference processing state. The reference is well-formed and exactly
+  one authorized digest context is selected, but the declared algorithm or
+  representation conflicts with that context, the selected token is
+  permanently undefined or prohibited, or a recomputed digest differs from
+  the supplied value.
+
+Verified:
+: A typed-reference processing state. The verifier selected exactly one
+  authorized digest context, obtained the cited artifact, applied that
+  context's canonicalization and hash rules, and obtained a digest equal to
+  the supplied value in the context's declared representation.
 
 Receipt:
 : A COSE structure produced by a Transparency Service that provides
@@ -339,7 +391,7 @@ Algorithm Registry ({{iana-alg}}) are:
 | Name | Summary | Reference |
 |---|---|---|
 | jcs | Plain RFC 8785 JCS, no normalization pass; SHA-256; lowercase hex output | {{algo-jcs}} |
-| jcs-n | Withdrawn -- JCS + absent-field normalization; never carried to IANA | {{algo-jcs-n}} (withdrawn) |
+| jcs-n | Withdrawn -- JCS + absent-field normalization; unavailable for new use | {{algo-jcs-n}} (withdrawn) |
 | cde-n | Withdrawn -- token reserved, never assigned a definition | {{algo-cde-n}} (withdrawn) |
 | as-transmitted | No canonicalization; digest over a byte sequence fixed by a cited named production in the container format; SHA-256; 64-character lowercase hex | {{algo-as-transmitted}} |
 
@@ -399,7 +451,8 @@ algorithm.
 
 Algorithm `jcs-n` is withdrawn (2026-08-18) -- terminal marking, never
 deletion: the token stays bound, the definition it once carried is not
-reassigned, and it is never carried forward to IANA. That is a terminal
+reassigned, and it is never carried forward as an active IANA algorithm.
+That is a terminal
 marking that `cde-n` ({{algo-cde-n}}) also carries, though on different
 facts: `cde-n` never acquired a definition, while `jcs-n` did and its
 records remain verifiable by vintage. `jcs-n` applied JCS {{RFC8785}} to an
@@ -427,13 +480,14 @@ retroactively invalidate records already sealed under it. A payload class
 or typed digest reference that names `jcs-n` MUST NOT be newly declared. A
 verifier encountering `jcs-n` in a record committed on or after 2026-08-18
 MUST fail closed — MUST NOT report the payload class or typed digest
-reference as verified. A verifier encountering `jcs-n` in a record
+reference as verified; a typed reference has the Failed outcome. A verifier
+encountering `jcs-n` in a record
 committed before 2026-08-18 MAY verify it against the withdrawn
 construction as that construction is permanently recorded in
 draft-mih-sokolov-scitt-payload-binding-00, Section 3.1; such a record is a
 historical record, not a live conformance case, and a verifier that
-declines to implement the withdrawn construction MUST report the reference
-as unverified rather than as failed. A historical identifier MUST NOT be
+declines to implement the withdrawn construction MUST report a typed
+reference as Unresolved rather than Failed. A historical identifier MUST NOT be
 relabelled to another algorithm token or recomputed under another
 algorithm.
 
@@ -451,7 +505,8 @@ token rather than by assigning a definition to `cde-n`.
 A payload class or typed digest reference that names `cde-n` cannot be
 verified: the token names no defined algorithm and never will, so a
 verifier encountering it MUST fail closed — MUST NOT report the payload
-class or typed digest reference as verified.
+class or typed digest reference as verified. For a typed reference, the
+outcome is Failed because the selected token has no algorithm definition.
 
 ## Algorithm as-transmitted {#algo-as-transmitted}
 
@@ -470,7 +525,7 @@ selector in place of a field set: a normative reference plus the name that
 referenced specification gives to the exact byte sequence in question. Two
 examples of a valid selector:
 
-* `RFC 7515 §5.1, JWS Signing Input` -- the octets a JWS signature is
+* {{RFC7515}}, Section 5.1, `JWS Signing Input` -- the octets a JWS signature is
   computed over.
 * `RFC 9052 §4.4, ToBeSigned` -- the octets a COSE_Sign1 signature is
   computed over.
@@ -547,31 +602,92 @@ the resulting comparison representation. Such a conversion is an explicit
 protocol operation and does not make the original representations
 byte-identical.
 
+Each digest context used by a typed reference MUST declare whether its
+comparison value is raw octets, bare text, or prefixed text, and MUST define
+the exact grammar of any textual form. In `cpb-refs`, raw octets are encoded
+as a CBOR byte string and textual forms as a CBOR text string. A verifier MUST
+NOT silently convert between these forms. A wire type or textual form that is
+inconsistent with the uniquely selected digest context produces the Failed
+state.
+
 # Envelope Conventions {#envelope}
 
-A Signed Statement carrying a CPB-bound payload MUST be a COSE_Sign1
-{{RFC9052}} structure. The protected header MUST carry:
+Every CPB Signed Statement MUST be a tagged COSE_Sign1 structure
+{{RFC9052}} and MUST satisfy every applicable requirement of {{RFC9943}}.
+CPB requirements are additive and do not replace or relax the SCITT
+baseline. In particular, the protected header MUST contain the CWT Claims
+header parameter (label 15), whose value includes `iss` (Claim label 1) and
+`sub` (Claim label 2). Key identification, certificate carriage, and the
+relationship among `kid`, `x5t`, and `x5chain` MUST follow {{RFC9943}}; CPB
+does not define an alternative credential rule.
 
-* `alg`: the signing algorithm.
-* `kid` or `x5chain`: the signing key identifier or certificate chain.
-* `content_type`: the media type of the payload, as `application/CLASS+json`
-  or `application/CLASS+cbor` according to the serialization the payload
-  class declares, where CLASS is the payload class name as declared by the
-  payload class's own defining specification.
+A CPB Signed Statement uses exactly one of the two modes below. Other COSE
+header parameters are permitted only when {{RFC9052}}, {{RFC9943}}, this
+document, or the applicable payload profile defines them. Producers MUST NOT add ad-hoc
+protected-header parameters. CPB assigns no meaning to non-critical header
+parameters defined elsewhere. The closed extension policy for the inner
+`cpb-refs` map is specified in {{envelope-carriage}}.
 
-A field belongs in the protected header only if a SCITT-generic party — a
-Transparency Service registration policy or a profile-unaware verifier —
-must act on it without understanding the payload class. Everything
-semantically specific to the payload class stays in the payload.
+## Full-Content Mode {#full-content-mode}
 
-Protected-header claims are a closed set per payload class: extensions
-are payload-only. A Transparency Service that does not understand a
-protected-header extension MUST be able to register the Signed Statement
-and verify the envelope without it.
+In Full-Content Mode, the payload supplied to COSE signing and verification
+is the complete serialized statement content, whether that payload is
+attached or detached as permitted by {{RFC9052}}. Protected `content_type`
+(label 3) MUST identify the serialization selected by the payload profile
+using a media type or content-format value permitted by {{RFC9943}} and
+{{RFC6838}}. CPB neither constructs media-type names from payload-class names
+nor registers a payload format. The RFC 9995 parameters 258, 259, and 260
+MUST NOT appear in this mode.
 
-The closed-claim principle does not prevent payload-class-specific
-protected-header fields from existing; it requires that such fields be
-defined by the payload class specification, not added ad-hoc by producers.
+## Hash Envelope Mode {#hash-envelope-mode}
+
+In Hash Envelope Mode, let s be the complete statement content after any
+carried derived identifier has been populated. The Signed Statement MUST
+conform to the COSE Hash Envelope rules in {{RFC9995}} in addition to the
+applicable {{RFC9943}} requirements stated above. The payload supplied to
+COSE signing and verification MUST be the raw octet string:
+
+~~~
+RAW-DIGEST(A, s) = H_A(A(s))
+~~~
+
+It MUST NOT be the hexadecimal or other encoded CANONICAL-DIGEST value. If
+the COSE payload is detached, the externally supplied payload is this same
+raw digest value.
+
+The profile's derived-identifier exclusion set MUST NOT be applied to this
+Hash Envelope computation: RFC 9995 binds the complete statement content.
+The derived identifier remains a separate computation over s with its
+declared exclusion set as specified in {{derived-id}}. Even when both use the
+same canonicalization and hash algorithm, a producer or verifier MUST NOT
+assume the Hash Envelope payload is the raw representation of the derived
+identifier. A verifier processing a carried derived identifier MUST check
+that identifier separately from the Hash Envelope content binding.
+
+The protected header MUST contain `payload-hash-alg` (CDDL
+`payload_hash_alg`, label 258), identifying H_A by its COSE hash-algorithm
+identifier, and `preimage-content-type` (CDDL
+`payload_preimage_content_type`, label 259), identifying the media type or
+content format of the exact canonical octets A(s) that were hashed. A
+`payload-location` (CDDL `payload_location`, label 260) MAY also appear in
+the protected header. As
+required by {{RFC9995}}, labels 258 through 260 MUST NOT appear in the
+unprotected header, and `content_type` (label 3) MUST NOT appear in either
+header bucket.
+
+The applicable payload profile MUST identify A and the complete preimage
+construction. Label 258 selects only H_A; a verifier MUST NOT treat it as a
+canonicalization-algorithm identifier. An algorithm used in Hash Envelope
+Mode MUST have an unambiguous COSE hash-algorithm mapping in its
+Canonicalization Algorithm Registry entry ({{iana-alg}}).
+
+A verifier that has not obtained s can establish Signature-Valid status and,
+after applying its issuer/key policy, can authenticate the digest claim, but
+it has not verified the content binding.
+To verify that binding, it MUST obtain s, compute A(s), apply the function
+identified by label 258, and compare the raw result to the COSE payload.
+`cpb-refs` MAY be used in either envelope mode, subject to
+{{envelope-carriage}}.
 
 # Statement-to-Receipt Binding {#receipt-binding}
 
@@ -594,30 +710,32 @@ alone. Unknown VDS identifiers MUST be rejected.
 ## Leaf Construction {#leaf-rule}
 
 This profile imposes no leaf construction on a Verifiable Data Structure.
-Where a Transparency Service's VDS keys its log on the derived identifier,
-the derived identifier is a 32-byte value and its hexadecimal form is a
-representation of that value ({{representation}}); a VDS or profile that
-keys on it therefore states which of the two it uses, and producer and
-verifier MUST use the same one. The following is the failure this
-requirement exists to prevent.
+Where a Transparency Service's VDS keys its log on a digest associated with
+the derived identifier, the algorithms defined in this document produce a
+32-byte RAW-DIGEST and a 64-character hexadecimal CANONICAL-DIGEST
+representation of that value ({{representation}}). The VDS or an applicable
+profile MUST state which one is its leaf input, and producer and verifier MUST
+use that same representation. Algorithms registered later may have different
+output sizes.
 
-That is, for a derived identifier whose string value is a 64-character
-hex string D, the log leaf input MUST be the raw 32-byte value:
-
-~~~
-leaf_input = bytes.fromhex(D)    -- correct: 32 raw bytes
-~~~
-
-The following is incorrect and MUST NOT be used:
+For example, when that declaration selects RAW-DIGEST and the carried derived
+identifier is a 64-character hexadecimal string D, the leaf input is:
 
 ~~~
-leaf_input = D.encode("utf-8")  -- WRONG: 64 ASCII bytes
+leaf_input = bytes.fromhex(D)    -- 32 raw bytes
 ~~~
 
-A verifier constructing the leaf for proof verification MUST apply the same
-rule. Failure to distinguish the byte sequence from its hex encoding produces
-a silently wrong leaf hash that fails inclusion verification against any
-correct log.
+Under that RAW-DIGEST declaration, the following is incorrect:
+
+~~~
+leaf_input = D.encode("utf-8")  -- 64 ASCII bytes, not RAW-DIGEST
+~~~
+
+If the declaration instead selects the textual CANONICAL-DIGEST, the latter
+64 ASCII bytes are the declared input. A verifier constructing a leaf MUST
+apply the declared selection and MUST NOT infer it from the apparent shape of
+the value. Confusing raw bytes with their hexadecimal encoding produces a
+different leaf hash.
 
 # Typed Digest References (Information Model) {#typed-refs}
 
@@ -627,30 +745,25 @@ configuration object, or any other verifiable item — by its content-address
 without embedding it.
 
 This section defines a typed digest reference as an abstract information
-model: four members, their meaning, and their requiredness. It does not
-fix a serialization or a container. A typed digest reference is carried
-either in the envelope ({{envelope-carriage}}) or in the payload
-({{payload-carriage}}); this document defines the reference itself and its
-verification algorithm ({{comparability}}, {{verification-scope}})
-identically for both, and does not require either carriage over the other.
+model: four members, their meaning, and their requiredness. It does not fix a
+payload serialization. CPB defines an optional protected-header serialization
+in {{envelope-carriage}}; a payload profile may instead define its own
+serialization as described in {{payload-carriage}}.
 
 A typed digest reference has the following members:
 
 | Member | Type | Req | Meaning |
 |---|---|---|---|
-| type | string | REQUIRED | The artifact type identifier. This document defines the reference and its verification algorithm; it does not itself register artifact types or resolve `type` values to digest contexts. That resolution is provided by the shared Artifact Type Registry, into which the payload profile that declares the cited artifact type registers it (see {{I-D.mih-scitt-agent-action-capsule}} for an example). |
-| purpose | string | CONDITIONAL | The purpose label selecting which of the artifact type's digest contexts this reference targets, drawn from the vocabulary the type's entry in the shared Artifact Type Registry defines. REQUIRED whenever the resolved artifact type declares more than one digest context. MAY be omitted only when the resolved artifact type declares exactly one digest context, in which case that single context applies; a verifier MUST NOT infer a default when more than one context is declared. |
+| type | string | REQUIRED | The artifact-type identifier defined by a stable specification that the consuming profile explicitly accepts. CPB does not register these values. |
+| purpose | string | CONDITIONAL | Selects one digest context for the resolved type. It is REQUIRED when that type has multiple accepted contexts and otherwise follows {{comparability}}. |
 | digest_alg | string | REQUIRED | The hash algorithm of the digest value (e.g., "SHA-256"). The canonicalization context of the cited artifact is resolved from the digest context selected by `type` and `purpose`, not from this field. |
-| digest | string | REQUIRED | The digest of the cited artifact, in the representation declared by the selected digest context. |
+| digest | string or byte string | REQUIRED | The digest of the cited artifact, in the exact representation declared by the selected digest context. |
 
-A carriage mechanism MAY admit additional members beyond these four; a
-verifier that does not understand an additional member MUST ignore it
-rather than fail. Each carriage mechanism states its own rule for
-additional members in its own wire terms ({{envelope-carriage}},
-{{payload-carriage}}), because "ignore" means something different in a
-CBOR map than in a JSON object; this section states only that the
-underlying requirement — an unrecognized member is not an error — is a
-property of the reference, not of one carriage mechanism.
+These are the only members of the CPB information model. A payload profile
+may place profile-specific fields beside its rendering of a typed reference,
+but those fields are not CPB typed-reference extensions and their processing
+is governed solely by that profile. The `cpb-refs` map is closed in this
+version; see {{envelope-carriage}}.
 
 ## Cross-Profile Comparability {#comparability}
 
@@ -659,44 +772,38 @@ and the digest recomputed over the referenced artifact are comparable only
 when both are interpreted under the same established referenced-artifact
 digest context and comparison representation.
 
-If the verifier cannot resolve a digest context for the value of `type`,
-it MUST NOT report the typed reference as verified; the reference is
-present but not verified. Two situations produce that outcome and a
-verifier MUST distinguish them in what it reports, because they call for
-different responses:
+A consuming profile that accepts typed references MUST identify, by stable
+normative reference, every artifact-type declaration that it accepts. Each
+declaration MUST bind an exact `type` token to one or more digest contexts.
+Each context MUST state its preimage construction, canonicalization
+algorithm, hash function, exact `digest_alg` token, output representation,
+and a purpose label when required below. A deployment MAY select a subset of
+the declarations its consuming profile permits, but it MUST NOT redefine a
+token or any parameter of its cited declaration. CPB creates no artifact-type
+registry and does not authorize discovery from an unspecified or mutable
+registry snapshot.
 
-* The type is absent from every registry the verifier consults. No payload
-  profile has declared a digest context under that name, and the citation
-  becomes verifiable only once one does.
-* The type is declared somewhere, but absent from the particular registry
-  snapshot the verifier holds, which may predate an entry that does exist.
-  The remedy is to obtain a current snapshot, not to seek a new
-  registration.
+The verifier MUST use `type` and, when present, `purpose` to select exactly
+one accepted context:
 
-A verifier that reports these as one condition sends an implementer to fix
-the wrong thing. A verifier that cannot tell them apart -- because it holds
-no snapshot version -- MUST report the weaker of the two, that its snapshot
-may be stale.
+* If exactly one context is accepted for `type`, `purpose` MAY be absent. If
+  it is present, it MUST exactly match that context's declared purpose;
+  otherwise the reference is Unresolved.
+* If multiple contexts are accepted for `type`, every context MUST have a
+  distinct, non-empty purpose label and the reference MUST carry `purpose`.
+  An absent or non-matching value makes the reference Unresolved.
+* If no declaration matches, or declarations from more than one normative
+  source leave the selection ambiguous, the reference is Unresolved. The
+  verifier MUST NOT choose by entry order, apparent recency, or preferred
+  algorithm.
+* A profile or deployment configuration containing duplicate `(type,
+  purpose)` selections is invalid and MUST NOT be used for verification.
 
-The consuming profile determines the disposition, and a profile MUST state
-what it does with a present-but-not-verified reference. A citation carrying
-an unresolvable `type` is not an error in the citing record. It is also not
-evidence: {{immutable-coordinates}} requires that citations pin content by
-CANONICAL-DIGEST precisely so that an unverified reference cannot be relied
-on, so a profile MUST NOT treat "not an error" as permission to proceed as
-though the reference had verified.
-
-To verify the reference, the verifier MUST use the `type` field, together
-with the `purpose` field when the resolved artifact type declares more than
-one digest context, to resolve exactly one of the referenced artifact's
-declared digest contexts. If `type` resolves to more than one digest
-context and `purpose` is absent, ambiguous (matching no purpose label the
-resolved artifact type declares), or names a purpose label the resolved
-artifact type does not declare, the reference is unresolvable: the verifier
-MUST NOT guess a
-context and MUST NOT report the typed reference as verified. It MUST confirm
-that `digest_alg` identifies a hash algorithm consistent with the resolved
-context.
+After selecting a context, the verifier MUST compare `digest_alg` with the
+exact token declared by that context. Comparison is case-sensitive and
+octet-for-octet: no case folding, alias table, or whitespace trimming is
+permitted. A mismatch makes the reference Failed; the verifier MUST NOT
+silently use the context's algorithm while ignoring the supplied value.
 
 `digest_alg` is REQUIRED even though every algorithm registered in
 {{iana-alg}} today names the same hash, SHA-256: it is the field that lets
@@ -704,42 +811,20 @@ a future Canonicalization Algorithm Registry entry using a different hash
 land as a new token without a breaking change to this wire format, rather
 than being decorative because only one value is legal now.
 
-The hash algorithm is not chosen per-reference: each entry in the
-Canonicalization Algorithm Registry names its hash function as an immutable
-part of its definition ({{algorithms}}), and each artifact type's own
-digest-context declaration names exactly one such algorithm. `digest_alg` is
-therefore fully
-determined by `type` (together with `purpose` where needed): a conforming
-reference can only carry the hash algorithm the resolved digest context
-mandates. It is a redundant consistency declaration by design — hash-in-algorithm
-is what makes Canonicalization Algorithm Registry entries immutable and enables
-long-term algorithm migration by registering a new entry rather than
-reinterpreting an existing one.
+The hash algorithm is not chosen per reference. The selected digest context
+determines it; `digest_alg` is a redundant consistency declaration for
+algorithm agility and downgrade detection.
 
-It MUST then recompute the referenced artifact's digest under that context and
-compare the recomputed value with the value carried in the `digest` field.
-
-**Comparison is byte-for-byte.** A verifier compares `digest_alg` against the
-name the resolved digest context mandates as an exact octet sequence: no case
-folding, no alias table, no whitespace trimming. `sha-256` does not match
-`SHA-256`. The two IANA registries an implementer is likely to reach for
-disagree on spelling for the same function, so a case-insensitive or
-alias-tolerant comparison silently accepts a reference that names a different
-registry's token — and once one implementation tolerates it, the field stops
-being a consistency declaration and becomes decoration. The registered name is
-the one the Canonicalization Algorithm Registry entry states.
-
-A `digest_alg` value that does not name the hash algorithm mandated by the
-resolved digest context is a defect in the reference. The verifier MUST treat
-this as a failure and MUST NOT attempt to reconcile the inconsistency — for
-example, by silently proceeding with the algorithm the registry mandates and
-ignoring the mislabeled field. More generally, if the context established from
-the `type` and `digest_alg` fields cannot be reconciled with the context used
-to recompute the referenced artifact, or if a required deterministic conversion
-to a common comparison representation is not expressly defined, the verifier
-MUST NOT report the typed reference as verified. The failure verdict is mandatory
-at the verifier layer; the consuming profile determines the resulting error
-disposition, but not the verdict itself.
+The verifier MUST next check that the carried value uses the selected
+context's declared representation. A mismatch is Failed. If the
+representation matches but the cited artifact cannot be obtained, the state
+is Unresolved. If the context is valid but the verifier does not implement its
+construction, the state is also Unresolved. Otherwise, the verifier
+MUST recompute the digest using the selected context and compare it
+byte-for-byte with `digest`. Equal values produce Verified; unequal values
+produce Failed. A deterministic conversion
+is permitted only when the selected context expressly defines that conversion
+and its output comparison representation.
 
 The citing record's own derived-identifier context need NOT be compatible
 with the referenced artifact's digest context; those contexts govern
@@ -748,53 +833,107 @@ different computations.
 The two values actually being compared must share an established comparison
 context. Bare hexadecimal equality alone is not a join.
 
+The enclosing Signed Statement's signature result is independent of these
+states. A verifier SHOULD return the signature result and each reference
+result separately. It MUST NOT treat a typed reference as authenticated or
+actionable on behalf of the issuer unless the Signed Statement is
+Issuer-Authenticated.
+A Signature-Valid statement can contain an Unresolved or Failed reference;
+a Verified digest match does not authenticate an issuer whose signature did
+not validate.
+
+The consuming profile MUST define the disposition of every non-Verified
+state. It MUST NOT rely on an Unresolved, Failed, or Malformed reference as
+evidence of a content binding.
+
+## Carriage Selection {#carriage-selection}
+
+A payload profile that uses CPB typed references MUST select exactly one
+carrier for them in each Signed Statement: `cpb-refs` envelope carriage or a
+profile-owned payload carriage. A producer MUST NOT use both carriers in one
+Signed Statement, whether for the same or different citations. A
+profile-aware verifier that detects both MUST classify the Signed Statement
+as nonconforming and MUST NOT merge the sets or prefer one carrier. A generic
+CPB verifier is not expected to recognize a payload profile's private
+serialization.
+
 ## Envelope Carriage {#envelope-carriage}
 
 A CPB-bound Signed Statement MAY carry its typed digest references as a
 COSE protected header parameter, `cpb-refs`, registered in {{iana-header}}.
-The parameter's value is a CBOR array; each array element is a CBOR map
-representing one typed digest reference, with its members carried under
-the following integer keys:
+The parameter MUST NOT occur in the unprotected header. Its value is defined
+by this CDDL {{RFC8610}}:
+
+~~~
+cpb-refs = [1*64 typed-digest-reference]
+
+typed-digest-reference = {
+  1 => type-tstr,  ; type
+  ? 2 => purpose-tstr,  ; purpose
+  3 => digest-alg-tstr,  ; digest_alg
+  4 => digest-value  ; digest
+}
+
+type-tstr = tstr .size (1..255)
+purpose-tstr = tstr .size (1..64)
+digest-alg-tstr = tstr .size (1..32)
+digest-value = tstr .size (1..128) / bstr .size (1..128)
+~~~
+
+The integer keys have these meanings:
 
 | Key | Member | CBOR type |
 |---|---|---|
 | 1 | type | text string |
 | 2 | purpose | text string |
 | 3 | digest_alg | text string |
-| 4 | digest | text string or byte string, per the representation the referenced artifact type's digest context declares ({{representation}}) |
+| 4 | digest | text string or byte string, matching the selected context's representation ({{representation}}) |
 
-Key 2 (`purpose`) follows the same requiredness as the information model
-({{typed-refs}}): present when the resolved artifact type declares more
-than one digest context, and MAY be absent otherwise. A map key other than
-1&ndash;4 MAY be present and MUST be ignored by a verifier that does not
-understand it; this is the CBOR-map form of the ignore-unknown-members
-rule ({{typed-refs}}).
+The encoded UTF-8 lengths of `type`, `purpose`, and `digest_alg` MUST be,
+respectively, 1 through 255, 1 through 64, and 1 through 32 octets. The
+encoded value at key 4 MUST be 1 through 128 octets. The array MUST contain
+1 through 64 entries. These limits are part of the wire profile;
+implementations MAY impose lower deployment limits only when their
+registration or consuming policy advertises those limits before accepting
+statements.
 
-{{envelope}} requires that a protected-header field be defined by the
-payload class specification rather than added ad-hoc by producers.
-`cpb-refs` is CPB's own such field: it is exactly the case {{envelope}}
-already anticipates — a field a SCITT-generic party (a Transparency
-Service building a citation index, or a profile-unaware verifier) can act
-on without parsing or understanding the payload class. A party that
-implements COSE and this document's typed-reference verification
-algorithm can enumerate and verify a record's citations from the
-protected header alone, with no dependency on the payload class's own
-serialization.
+The map is closed. Keys other than 1 through 4 are not extensions: their
+presence makes the entire `cpb-refs` value Malformed. Any missing required
+key, wrong CBOR type, empty or oversized value, or array outside the declared
+bounds has the same result. A future extension that changes the reference
+map requires a standards update or a new COSE header parameter; it MUST NOT
+be introduced through an unrecognized inner-map key.
 
-Verification of a `cpb-refs` entry proceeds exactly as {{comparability}}
-and {{verification-scope}} state; carriage in the protected header changes
-nothing about the algorithm, only where the reference's bytes are read
-from.
+CBOR map keys MUST be unique as required by this protocol's application of
+{{RFC8949}}. A decoder MUST detect duplicate keys before any data-model
+conversion that could discard them. Repeated array entries with the same
+decoded four-member tuple are also forbidden. A duplicate key or repeated
+entry makes the entire `cpb-refs` value Malformed; first-wins, last-wins,
+partial-success, and duplicate-weighting behavior are prohibited. If any
+array entry is Malformed, a verifier MUST NOT report another entry from that
+header value as Verified. The COSE signature result remains independently
+reportable.
 
-`cpb-refs` is signature-covered: it is protected-header content, so an
-issuer's signature covers it and any modification invalidates the
-Signed Statement. It is NOT covered by the payload's derived identifier
-({{derived-id}}) — the derived identifier is computed over the payload
-alone, and a header parameter is not payload. A profile whose citations
-must be committed under the derived identifier itself (for example, so
-that the citation set is fixed the moment the derived identifier is)
-uses payload carriage ({{payload-carriage}}) for that citation instead of,
-or in addition to, envelope carriage.
+The CDDL constrains the data model, not the choice among CBOR serializations.
+CPB imposes no deterministic-encoding or definite-length requirement beyond
+{{RFC8949}} and {{RFC9052}}. Test fixtures MAY pin one deterministic encoding
+solely to make expected bytes reproducible. A conforming verifier MUST NOT
+reject another otherwise valid encoding solely because its bytes differ from
+the fixture encoding.
+
+If a consuming profile requires understanding `cpb-refs` before accepting or
+processing the Signed Statement, the producer MUST include the `cpb-refs`
+label in the protected `crit` header parameter, and a verifier applying that
+profile MUST reject a statement that omits that critical marking. When the
+references are advisory to the applicable policy, the producer MAY omit the
+label from `crit`. Unsupported critical use is a COSE processing failure as
+specified by {{RFC9052}}. Critical marking does not make a Malformed,
+Unresolved, or Failed reference valid.
+
+`cpb-refs` is signature-covered because it is protected-header content, but
+it becomes authenticated as an issuer claim only after the Signed Statement
+is Issuer-Authenticated. It is not covered by the payload's derived identifier
+({{derived-id}}), which is computed from the payload content alone.
 
 ## Payload Carriage {#payload-carriage}
 
@@ -804,22 +943,15 @@ A payload profile MAY carry typed digest references in its own
 serialization — JSON, CBOR, or any other format the payload class
 defines — as part of the payload bytes that the derived identifier is
 computed over. This document does not define that serialization: a
-payload profile that carries references this way states its own field
-names, container structure, and any profile-specific requiredness beyond
-{{typed-refs}}'s information model, and remains responsible for its own
-conformance to that model. {{appendix-d}} shows a worked example of one
-profile's JSON mapping, informative only.
-
-Payload carriage and envelope carriage ({{envelope-carriage}}) are
-siblings in the same sense {{discovery}} already establishes for the
-discovery mirror: {{discovery}}'s mirror is an unprotected-header,
-advisory-only identifier with no binding guarantee, while a typed digest
-reference — in either carriage — is always a verified citation, whether
-signature-covered only ({{envelope-carriage}}) or additionally covered by
-the derived identifier (payload carriage). A profile MAY use both
-carriage mechanisms for the same citation; neither is required over the
-other, and this document takes no position on which a given profile
-should choose.
+payload profile that carries references this way states its own field names,
+container structure, extension behavior, and any profile-specific
+requiredness beyond {{typed-refs}}'s information model. The reference data
+are covered directly by the COSE signature in Full-Content Mode or by the
+verified raw digest in Hash Envelope Mode. Neither kind of coverage makes a
+reference Verified without the processing in {{comparability}}. Appendix
+{{appendix-d}} describes one profile-owned example without defining its wire
+format here. The prohibition on dual carriage in {{carriage-selection}}
+still applies.
 
 ## Verification Scope {#verification-scope}
 
@@ -840,65 +972,60 @@ consuming profile.
 
 # Profile Independence {#profile-independence}
 
-A payload profile MUST NOT impose requirements on the internal structure or field
-values of another payload profile. Relationships between artifacts of different types
-are expressed solely through typed references ({{typed-refs}}) that resolve against
-each artifact type's own digest-context declaration.
+When a payload profile uses CPB to bind an artifact of another type, it MUST
+NOT require the CPB citation-binding verifier to interpret the other payload
+profile's internal fields. The CPB relationship is expressed through a typed
+reference ({{typed-refs}}) that resolves against the cited artifact type's own
+digest-context declaration.
 
-This constraint keeps verification of a multi-artifact chain decomposable: a verifier
-evaluates each binding under each profile's own semantics independently and never needs
-to evaluate a pair of profiles jointly. Implementations therefore need not implement,
-or be aware of, profiles they neither produce nor consume, and a new profile may declare
-its own artifact types without revalidating existing profiles or implementations.
+This constraint keeps CPB binding verification decomposable: a verifier
+evaluates each digest under its own declared context. It does not prohibit an
+application or consuming profile from defining additional joint semantics or
+appraisal after the independent content bindings have been checked.
 
 # Discovery Mirror {#discovery}
 
 This section is informative.
 
 A producer MAY place an unprotected COSE header parameter that mirrors the
-derived identifier of the record. This parameter is advisory only: it
-allows log tooling, registration policies, and cross-grain citation to
-locate a record's content-address without parsing the payload, but it
+derived identifier of the record when the applicable payload profile defines
+that parameter's label, type, and processing. CPB does not assign a discovery
+label or wire encoding. Any such parameter is advisory only: it can help log
+tooling locate a record's content-address without parsing the payload, but it
 carries no binding guarantee.
 
-A verifier MUST recompute the derived identifier from the payload. A
-mismatch between the advisory mirror value and the recomputed value is a
-defect in the record and MUST be reported.
+A verifier MUST NOT rely on an advisory mirror without obtaining the content
+and recomputing its derived identifier under the applicable payload profile.
+A mismatch is a defect in the record and MUST be reported.
 
-The discovery mirror parameter is aligned with the trace-metadata convention
-in draft-birkholz-verifiable-agent-conversations §7.4
-{{I-D.birkholz-verifiable-agent-conversations}}, which defines a similar
-unprotected-header mechanism for conversation-grain records. A record using
-CPB at the action grain and a conversation container using that convention
-can share one discovery layer.
+Section 3.11.2 of {{I-D.birkholz-verifiable-agent-conversations}} defines an
+unprotected `trace-metadata` map with optional `content-hash` and
+`content-hash-alg` members. That is an analogous profile-owned discovery
+mechanism. CPB does not assert wire compatibility with it.
 
 # Extensibility and Cross-Cutting Facilities {#cross-cutting}
 
 This section is informative.
 
-Several concerns are common to all payload profiles and, if defined independently per
-profile, would undermine decomposable verification or fragment the interoperability
-surface: selective disclosure, countersignature and multi-party attestation, record
-relations (supersedes, confirms, corrects), erasure tombstones, producer timestamps
-and validity periods, batch aggregation, and profile versioning.
-
-This specification does not define these facilities in this document. Each will be
-addressed in a companion document that payload profiles MUST reference rather than
-developing an incompatible per-profile variant. Defining any of these facilities
-per-profile would violate the constraint established in {{profile-independence}}.
+This specification does not define selective disclosure, countersignature or
+multi-party attestation, record-relation semantics, erasure tombstones,
+producer timestamps or validity periods, batch aggregation, or profile
+versioning. A companion or payload profile that defines one specifies its own
+semantics and wire behavior; it does not thereby extend the closed `cpb-refs`
+map.
 
 # Security Considerations {#security}
 
 ## Preimages Are Bytes, Not Renderings
 
-The pre-image of a CANONICAL-DIGEST is the octet string produced by the
-canonicalization algorithm — not a rendered form, not a console output, and
-not a string with added whitespace, trailing newlines, or encoding
-differences. A producer that serializes then re-reads the payload before
-computing the digest MUST ensure the byte sequence entering SHA-256 is
-identical to what the canonicalization algorithm produces, not what a
-deserializer happens to emit. Diagnosing divergence requires comparing the
-exact octets, not visual representations.
+The preimage of RAW-DIGEST, and therefore of CANONICAL-DIGEST, is the octet
+string produced by the canonicalization algorithm — not a rendered form, not
+a console output, and not a string with added whitespace, trailing newlines,
+or encoding differences. A producer that serializes then re-reads the payload
+before computing the digest MUST ensure the byte sequence entering the hash
+function is identical to what the canonicalization algorithm produces, not
+what a deserializer happens to emit. Diagnosing divergence requires comparing
+the exact octets, not visual representations.
 
 ## Low-Entropy Fields
 
@@ -943,11 +1070,11 @@ CANONICAL-DIGEST. Names, labels, and human-readable identifiers MAY appear
 alongside a typed reference for display purposes but carry no evidentiary
 weight.
 
-When an artifact type cited in an immutable coordinate has no resolvable
-digest-context declaration at verification time, the citation is present
-but not verified; the consuming profile determines the disposition
-({{comparability}}). This is not a defect in the citing record: the
-citation becomes verifiable once a conforming declaration exists.
+When an artifact type cited in an immutable coordinate has no uniquely
+resolvable, profile-authorized digest-context declaration, the reference is
+Unresolved and the consuming profile determines the disposition
+({{comparability}}). A verifier MUST NOT invent a mapping or reinterpret an
+existing type token to make an earlier citation verifiable.
 
 ## Tamper Evidence and Runtime Honesty
 
@@ -976,17 +1103,28 @@ specification does not mandate a particular scheme.
 
 # Privacy Considerations {#privacy}
 
-A record bound under this profile carries digests of content rather than
-the content itself. The derived identifier and any typed digest references
-commit to the content without disclosing it; the record is therefore
-payload-blind to any verifier that does not independently possess the
-referenced artifacts.
+CPB provides integrity binding, not confidentiality. Full-Content Mode exposes
+the statement payload unless another applicable mechanism protects it. Hash
+Envelope Mode can withhold the preimage, but exposes a stable digest. COSE
+protected headers are integrity-protected after successful signature
+validation and issuer-authenticated only after the applicable key policy
+succeeds; they are not encrypted. In particular, `cpb-refs` exposes each reference's
+type, purpose, digest algorithm, and digest value, together with citation-graph
+structure. These values can enable correlation across records and dictionary
+attacks against low-entropy artifacts.
 
-Payload privacy is the responsibility of the payload class. A payload class
-that includes fields identifying persons, sessions, or request content
-SHOULD document the privacy properties of those fields, including whether
-they can be inferred from their digests given knowledge of the value space.
-Low-entropy fields are not confidential even when digested ({{security}}).
+A producer SHOULD omit `cpb-refs` or use a profile-defined confidential
+payload carrier when public header visibility is inappropriate. A consuming
+profile MUST analyze whether its type and purpose values, stable digests, or
+citation topology disclose identities, relationships, workflow state, or
+otherwise sensitive information. `type` and `purpose` MUST NOT contain secrets
+or unnecessary personal data.
+
+Low-entropy fields are not confidential merely because they are digested
+({{security}}). Salting, unlinkable identifiers, and selective-disclosure
+commitments can reduce some risks, but each changes the digest context and
+MUST be explicitly declared by the applicable profile. A verifier MUST NOT
+introduce such a transformation implicitly.
 
 An anchored record cannot be retracted: a Transparency Service's log is
 append-only and a registered record persists. Payload classes SHOULD
@@ -1001,26 +1139,17 @@ Payload Binding" heading, and one registration in an existing IANA
 registry, the `cpb-refs` COSE Header Parameter ({{iana-header}}). The
 Canonicalization Algorithm Registry uses the Specification Required
 policy ({{RFC8126}}, Section 4.6); a Designated Expert is required for each
-registration. This document does not define an Artifact Type registry:
-artifact types are registered in the shared Artifact Type Registry in
-`REGISTRY.md`, governed separately from this document under its own
-Designated Expert checklist and registration rungs; this document
-references that registry (see {{outofscope}}) but does not define it. This
-revision's Canonicalization Algorithm Registry entries reflect a deliberate
-correction over -01's: the registry was re-derived from what the field
-actually built, rather than restated from what -01 originally specified
-({{changes-02}}).
+registration. This document neither creates nor depends on an artifact-type
+registry. Artifact-type and digest-context declarations are owned and
+selected by profiles as specified in {{comparability}}.
 
-Registry entries are immutable. A registered entry defines a specific
-algorithm. If a behavior change is needed, a new entry MUST be registered;
-existing entries MUST NOT be modified retroactively. Maintainer is IANA per
-standard process; no other governance body is defined.
-
-Until this registry comes into existence at RFC publication, the table
-below serves as the provisional living registry, maintained in this
-document's source repository. If the document is adopted, the provisional
-registry moves with the document to a repository of the working group's
-choosing.
+An active entry's algorithm semantics are immutable. If a behavior change is
+needed, a new entry MUST be registered; an existing name MUST NOT be
+reinterpreted. Status changes follow the rules below and the same
+Specification Required policy. IANA is the registry maintainer; no source
+repository or other body is an alternative registry authority. Before RFC
+publication, the names in this document are draft-local and the table below
+is only the requested initial registry contents.
 
 ## Canonicalization Algorithm Registry {#iana-alg}
 
@@ -1036,24 +1165,51 @@ silently come to mean more than its name states.
 Registration template:
 
 * Name: A short ASCII identifier suitable for use in protocol fields.
-* Description: A normative prose description sufficient to implement the
-  algorithm deterministically.
-* Reference: The document that specifies the algorithm.
+* Status: `Active`, `Reserved`, or `Withdrawn`.
+* Preimage construction: A normative description sufficient to implement the
+  canonicalization or byte-selection operation deterministically.
+* Hash function and typed-reference token: The hash function and the exact
+  `digest_alg` string used by a digest context based on this entry.
+* COSE hash algorithm: The integer COSE Algorithms registry value used for
+  RFC 9995 Hash Envelope Mode, or "N/A" when that mode is unsupported.
+* Output representation: The exact ENCODE_A operation and result type.
+* Test vectors: Public positive and negative vectors covering preimage and
+  output boundaries.
+* Reference: The stable, publicly available specification that defines the
+  algorithm.
+
+An `Active` entry MUST complete every field other than permitting "N/A" for
+the COSE hash algorithm when Hash Envelope Mode is unsupported. A `Reserved`
+entry binds only its name and MAY use "N/A" for the remaining algorithm
+fields. Promotion from `Reserved` to `Active` requires a complete registration.
+An `Active` or `Reserved` entry MAY become `Withdrawn`; withdrawal is terminal,
+prohibits new use, and does not erase an active entry's last definition, which
+remains available for historical verification. A `Withdrawn` name MUST NOT be
+reassigned.
+
+The Designated Expert MUST verify that each required field is unambiguous, the
+cited specification and vectors are publicly available for an active entry,
+and the requested registration or status change does not alter the semantics
+of an existing active or withdrawn definition.
 
 Initial contents:
 
-| Name | Description | Reference |
-|---|---|---|
-| jcs | RFC 8785 JCS over the octets supplied to the algorithm, no normalization pass; SHA-256; 64-character lowercase hex | This document |
-| jcs-n | Withdrawn (2026-08-18) -- never carried to IANA. The token was reserved and defined a JCS-plus-absent-field-normalization construction, but that construction is not carried forward; the permanent record of the construction is draft-mih-sokolov-scitt-payload-binding-00, Section 3.1 | This document (withdrawn) |
-| cde-n | Withdrawn (2026-08-18) -- never carried to IANA. The token was reserved and stays bound; it was never assigned a definition and never will be | This document (withdrawn) |
-| as-transmitted | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex | This document |
+The preimage construction for each active entry is defined in
+{{algorithms}}.
+
+| Name | Status | Hash / token | COSE | Output | Reference |
+|---|---|---|---|---|---|
+| jcs | Active | SHA-256 / `SHA-256` | -16 | 64-char lowerhex | This document |
+| jcs-n | Withdrawn | SHA-256 / `SHA-256` | -16 | 64-char lowerhex | This document |
+| cde-n | Withdrawn | N/A | N/A | N/A | This document |
+| as-transmitted | Active | SHA-256 / `SHA-256` | -16 | 64-char lowerhex | This document |
 
 A payload class or typed digest reference naming `cde-n` MUST NOT be
 treated as verifiable under any vintage: the token was bound by a reserved
 entry but never assigned a definition, so no construction exists to verify
-against, and a verifier encountering it MUST fail closed. A payload class
-or typed digest reference naming `jcs-n` MUST NOT be newly declared;
+against, and a verifier encountering it MUST fail closed; for a typed
+reference, the outcome is Failed. A payload class or typed digest reference
+naming `jcs-n` MUST NOT be newly declared;
 records committed under it before 2026-08-18 are governed by the vintage
 rule in {{algo-jcs-n}}. Both withdrawals are recorded terminal states, not
 deletions: the tokens stay bound and are never assigned or reassigned. See
@@ -1072,57 +1228,67 @@ Header Parameters" registry {{RFC9052}}, Section 11.1:
 
 | Name | Label | Value Type | Value Registry | Description | Reference |
 |---|---|---|---|---|---|
-| cpb-refs | TBD (Specification Required) | array | | A list of typed digest references ({{typed-refs}}), each an entry per {{envelope-carriage}} | This document |
+| cpb-refs | TBD1 | array | | A closed, bounded array of typed digest references encoded as specified in {{envelope-carriage}} | This document |
 
-The registry uses the Specification Required policy ({{RFC8126}}, Section
-4.6). `cpb-refs` MAY appear in the protected header only; a producer MUST
-NOT place it in the unprotected header, since an unprotected-header value
-carries no binding guarantee ({{discovery}}) and a typed digest reference
-is, by definition, a verified citation, not an advisory one.
+IANA is requested to assign an integer value for TBD1. The registry uses the
+Specification Required policy ({{RFC8126}}, Section 4.6). `cpb-refs` may
+appear in the protected header only and MUST NOT appear in the unprotected
+header. Its critical-processing behavior and the distinction among
+signature coverage, authentication, and reference verification are specified
+in {{envelope-carriage}}.
 
 # Related Work {#related}
 
-COSE Hash Envelope ({{RFC9995}}) is the hash-side sibling: it defines how
-to carry a content-addressed reference to an opaque payload in a COSE
-structure. CPB is the statement-side complement: it defines how the payload
-content is canonicalized and identified so that the content-address is
-reproducible across implementations.
+{{RFC9995}} defines the protected parameters and COSE payload semantics for
+signing a hash rather than its preimage. CPB Hash Envelope Mode
+({{hash-envelope-mode}}) uses that format and adds the profile-selected
+canonicalization step that precedes the registered hash function.
 
-The CCF Receipt Profile ({{I-D.ietf-scitt-receipts-ccf-profile}}) and COSE Receipts ({{RFC9942}}) are the receipt-side
-twins: they define the Verifiable Data Structure formats that may appear in
-the unprotected headers of Transparent Statements whose binding layer is
-defined here.
-
-In-toto and DSSE represent an industry two-layer precedent: a
-content-addressed artifact layer combined with an attestation layer over
-the artifact's identifier. CPB formalizes the same pattern for the SCITT
-statement context.
+{{RFC9942}} defines generic COSE Receipts. The CCF Receipt Profile
+{{I-D.ietf-scitt-receipts-ccf-profile}} defines one VDS-specific Receipt
+profile. CPB does not alter either format.
 
 {{I-D.hillier-scitt-arp}} independently derives a similar canonical claim
-construction in its §2. Its Canonical Claim defines its own key-sort, NFC,
-number-rendering, and undefined-stripping rules, plus a Claim Hash join
-key. The construction is near-`jcs` but not byte-compatible. The
-independent re-derivation is evidence that this layer is consistently
-re-invented when it is not standardized; CPB exists to stop the
-re-invention. Implementations must not assume byte compatibility; ARP's
-Canonical Claim carries an explicit construction identifier by which a
-consumer can determine compatibility.
+construction in its Sections 3 and 4.1. Its Claim Hash uses its own
+normalization, deterministic encoding, and deployment-blinding rules. It is
+not byte-compatible with a CPB `jcs` identifier, and implementations MUST NOT
+substitute one construction for the other.
 
 {{I-D.birkholz-verifiable-agent-conversations}} defines trace-metadata
-conventions at the conversation grain (§7.4). The discovery mirror in
-{{discovery}} is designed to be compatible with that convention so that
-action-grain records and conversation-grain containers share one discovery
-layer. The alignment is informative; CPB does not normatively depend on
-that document.
+at the conversation grain in Section 3.11.2, including optional content-hash
+metadata in an unprotected header. {{discovery}} notes the analogous design
+without claiming a shared label or wire format. CPB does not normatively
+depend on that document.
+
+{{I-D.le-scitt-derived-subjects}} derives a protected CWT `sub` value from an
+application-admitted structured Value. It explicitly does not derive that
+subject from the Statement payload or define generic payload binding. CPB
+instead derives identifiers for Statement content and binds digest references;
+it does not replace that document's subject-identity profile.
+
+{{I-D.le-comparing-derived-identifiers}} gives general principles for fixing
+the comparison domain, equivalence relation, and complete derivation semantics
+of independently produced identifiers. It defines no wire syntax,
+canonicalization format, or hash procedure. CPB instantiates such choices for
+its narrower Statement-content and typed-reference mechanisms.
+
+{{I-D.nobuo-scitt-protected-object-binding}} defines protected-object and
+Statement-reference models, relationship vocabulary, and an optional graph
+manifest. It does not define CPB's canonicalization algorithms, derived-
+identifier procedure, or `cpb-refs` carrier; CPB does not import its graph
+semantics.
+
+{{RFC6920}} defines hash-based `ni` and `nih` names, URI/URL representations,
+and associated registries. CPB defines the structured-content preimage and
+digest context used for its bindings but defines no URI syntax or resolution
+protocol.
 
 {{I-D.sokolov-rats-aep-composition}} addresses the complementary problem in
 the RATS domain: composing application-layer action evidence with remote
 attestation. {{I-D.mih-sato-agent-accountability-composition}} defines
 composition and conformance rules for multi-agent accountability chains.
-Together these documents demonstrate that the canonicalize-and-derive-identifier
-construction is a recurring primitive across independent use cases — one shared
-binding layer serving SCITT-anchored agent records, RATS attestation
-composition, and multi-agent accountability chains.
+They address composition and appraisal questions outside CPB's payload-neutral
+binding rules; CPB does not import their payload semantics.
 
 --- back
 
@@ -1168,11 +1334,20 @@ to be placed back into the payload for transport.
 
 **Step 4 — Construct the Signed Statement:**
 
-Wrap the complete payload (including the now-populated `record_id`) in a
-COSE_Sign1 with:
+Use Full-Content Mode ({{full-content-mode}}): wrap the complete payload,
+including the now-populated `record_id`, in an RFC 9943 Signed Statement.
+Its protected header includes:
 
-* `content_type`: `application/temperature-record+json`
-* `alg` and `kid`: producer's signing algorithm and key identifier
+* `alg`: the producer's signing algorithm;
+* `content_type`: `application/example+json`, used here only as the
+  illustrative media type from the RFC 9943 examples;
+* CWT Claims (label 15), including an `iss` such as
+  `https://issuer.example` and a `sub` such as
+  `urn:example:temperature-record:WS-42`; and
+* key identification or certificate parameters conforming to RFC 9943.
+
+A real `temperature-record` profile would specify an appropriate media type;
+CPB does not register one.
 
 **Step 5 — Register and receive a Receipt:**
 
@@ -1182,11 +1357,11 @@ now suitable for distribution to verifiers.
 
 **Step 6 — Verify:**
 
-A verifier extracts the payload, strips `record_id`, applies JCS,
-recomputes SHA-256, and compares to the carried `record_id`. The verifier
-then verifies the envelope signature and, if present, the Receipt under
-a trusted service key. All three checks must pass for the record to be
-considered fully verified.
+A verifier validates the Signed Statement signature and RFC 9943 headers,
+extracts the payload, strips `record_id`, applies JCS, recomputes SHA-256,
+and compares the result to the carried `record_id`. If a Receipt is present,
+the verifier separately verifies it under a trusted Transparency Service
+key. The signature, content binding, and Receipt results remain distinct.
 
 # Synthetic Two-Slot Composition {#appendix-b}
 
@@ -1212,6 +1387,12 @@ Suppose the result is `"ab12cd34..."`.
 
 **Decision record** (payload class `decision-record`; algorithm `jcs`):
 
+For this example, the profile selects payload carriage and therefore the
+Signed Statement does not also contain `cpb-refs`. The profile accepts a
+stable specification for `authorization-doc` that declares exactly one
+digest context, using `jcs`, the `SHA-256` token, and lowercase hexadecimal
+output. `purpose` is therefore omitted.
+
 ~~~json
 {
   "record_id": null,
@@ -1230,13 +1411,13 @@ cited by resolving the `authorization-doc` artifact type's digest context
 from its governing specification, recomputing `"ab12cd34..."` from the
 doc's bytes, and matching.
 
-**Composability:** the verifier needs only the `authorization-doc` digest
-context — it does not need to understand the `decision-record` format to
-verify the citation binding. For generic citation-binding verification, a CPB verifier can process a
-typed reference to any artifact type whose digest context it can resolve.
-Whether a particular citation slot permits that artifact type is determined
-by the consuming profile. Artifact-specific appraisal, authorization
-semantics, and application integration remain separate.
+**Composability:** a profile-aware parser first extracts the reference from
+the `decision-record` payload. Generic citation-binding verification then
+needs the accepted `authorization-doc` digest-context declaration and cited
+artifact, but no other `decision-record` semantics. Whether this citation
+slot permits that type is determined by the consuming profile. Artifact
+appraisal, authorization semantics, and application integration remain
+separate.
 
 # Field-Verified Instances {#appendix-c}
 
@@ -1286,7 +1467,7 @@ Public record: GAR Session Block anchor, IETF 126 hackathon; gar-core.ts
 commit fe18f24; CT leaf 166.
 
 **What ran:** A GAR Session Block record was registered in a SCITT
-Transparency Service (RFC9162_SHA256 VDS). The log leaf was constructed as
+Transparency Service (`RFC9162_SHA256` VDS; {{RFC9162}}). The log leaf was constructed as
 SHA-256 of the raw bytes of the derived identifier — `bytes.fromhex(id)`,
 not `id.encode("utf-8")`. The inclusion proof verified correctly against the
 anchored Merkle root only when the leaf used the raw bytes.
@@ -1352,40 +1533,23 @@ cross-verifications complete.
 The PermitReceipt × MachineMandate composition is excluded from this appendix.
 It is recorded in the AAC interop registry (INTEROP.md).
 
-# Example Payload Carriage (JSON) {#appendix-d}
+# Profile-Owned Payload Carriage Example {#appendix-d}
 
-This appendix is informative. It illustrates one way a payload profile can
-carry a typed digest reference in its own serialization ({{payload-carriage}}),
-using a JSON object with the information model's four members as JSON
-fields. This is an example, not a normative wire format: this document
-does not define how a payload profile serializes a typed digest reference,
-and a profile MAY choose a different container, member naming, or
-serialization (CBOR, for instance) entirely.
+This appendix is informative. Section 5.5.5 of
+{{I-D.mih-scitt-agent-action-capsule}} defines a payload-level `references`
+array. In revision -04, each entry's identity uses the profile-owned JSON
+members `type`, `digest_alg`, and `digest`; the separate
+`citation_purpose` member describes why the Capsule cites the target. That
+field is not CPB's `purpose`, which selects a digest context.
 
-| Field | Type | Req | Meaning |
-|---|---|---|---|
-| type | string | REQUIRED | The artifact type identifier ({{typed-refs}}). |
-| purpose | string | CONDITIONAL | The purpose label, present when the resolved artifact type declares more than one digest context ({{typed-refs}}). |
-| digest_alg | string | REQUIRED | The hash algorithm of the digest value (e.g., "SHA-256"). |
-| digest | string | REQUIRED | The digest of the cited artifact, in the representation declared by the selected digest context. |
-
-A JSON object carrying these four fields, with additional fields present
-and ignored by a verifier that does not understand them, is one
-conforming rendering:
-
-~~~json
-{
-  "type": "authorization-doc",
-  "digest_alg": "SHA-256",
-  "digest": "0c837d01faa4106c63367f199af9bfa729d1917..."
-}
-~~~
-
-{{I-D.mih-scitt-agent-action-capsule}} carries typed digest references this
-way, as entries of a payload-level `references[]` array; each entry maps
-the four members onto the same field names shown above. That mapping is
-one profile's choice, cited here as an example, not restated as a
-requirement of this document.
+This is an example of the profile-owned payload carriage described in
+{{payload-carriage}}, not a CPB JSON wire format. CPB neither imports nor
+redefines AAC's field names, additional members, or extension behavior.
+Implementers of that carrier follow the cited AAC revision. An AAC consuming
+profile that applies CPB verification also identifies by stable normative
+reference the artifact-type and digest-context declarations it accepts, as
+required by {{comparability}}, and does not include `cpb-refs` in the same
+Signed Statement.
 
 # Acknowledgments {#acknowledgments}
 {:numbered="false"}
@@ -1393,14 +1557,6 @@ requirement of this document.
 The following individuals contributed findings from the IETF 126 hackathon in
 Vienna that directly shaped the rules in this document. All attributions
 cite public artifacts.
-
-Henk Birkholz (SCITT chair, Fraunhofer Institute for Secure Information
-Technology) reviewed -02 for SCITT charter fit and identified that
-{{typed-refs}}'s payload-format normativity fell under charter non-goal 4;
-this revision's split of the typed digest reference into an information
-model plus {{envelope-carriage}} and {{payload-carriage}} responds directly
-to that review, and {{envelope-carriage}} is the first concrete carrier for
-the SCITT "semantic middle layer" Birkholz proposed during the same review.
 
 **Contributors** \[all named attributions and contributor acknowledgments
 individually confirmed: Anton Sokolov (confirmed 2026-07-24), Iman Schrock

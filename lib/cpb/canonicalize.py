@@ -24,6 +24,7 @@ __all__ = [
     "normalize",
     "jcs",
     "jcs_n",
+    "raw_digest",
     "canonical_digest",
     "canonical_digest_json",
 ]
@@ -174,6 +175,25 @@ def jcs_n(v: Any) -> bytes:
     return _jcs_n_value(v).encode("utf-8")
 
 
+def raw_digest(
+    v: Any,
+    exclusion_set: frozenset[str] | set[str] | None = None,
+    *,
+    algorithm: str,
+) -> bytes:
+    """Evaluate a CPB digest and return its raw hash octets.
+
+    As with :func:`canonical_digest`, the algorithm is explicit and historical
+    ``jcs-n`` evaluation does not by itself establish pre-withdrawal vintage.
+    """
+    if algorithm not in {"jcs", "jcs-n"}:
+        raise ValueError(f"unsupported canonicalization algorithm {algorithm!r}")
+    if exclusion_set and isinstance(v, dict):
+        v = {k: val for k, val in v.items() if k not in exclusion_set}
+    pre_image = jcs(v) if algorithm == "jcs" else jcs_n(normalize(v))
+    return hashlib.sha256(pre_image).digest()
+
+
 def canonical_digest(
     v: Any,
     exclusion_set: frozenset[str] | set[str] | None = None,
@@ -197,12 +217,7 @@ def canonical_digest(
     Returns:
         64-character lowercase hex string.
     """
-    if algorithm not in {"jcs", "jcs-n"}:
-        raise ValueError(f"unsupported canonicalization algorithm {algorithm!r}")
-    if exclusion_set and isinstance(v, dict):
-        v = {k: val for k, val in v.items() if k not in exclusion_set}
-    pre_image = jcs(v) if algorithm == "jcs" else jcs_n(normalize(v))
-    return hashlib.sha256(pre_image).hexdigest()
+    return raw_digest(v, exclusion_set, algorithm=algorithm).hex()
 
 
 def canonical_digest_json(
