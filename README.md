@@ -46,7 +46,7 @@ Check any CPB record against the P/R grammar rules from the command line.
 pip install ./lib                      # install from repo root
 cpb-check record.json                  # human-readable verdict + path
 cpb-check record.json --json           # machine-readable JSON
-echo $?                                # 0 verified · 1 non-conforming · 2 error
+echo $?                                # 0 grammar-conforming · 1 non-conforming · 2 error
 cpb-check --self-test                  # run the built-in vector suite
 ```
 
@@ -57,7 +57,10 @@ are Phase 2, held for G1 (the emitter shipping the id field).
 
 The duplicate-preserving raw-bytes lexer is the most security-relevant
 component: `json.loads` silently collapses duplicate keys before any rule
-sees them; `cpb-check` reports them at their exact JSON path.
+sees them; `cpb-check` reports them at their exact JSON path. A successful
+Phase 1 result is `conforming`, not `verified`: this command does not resolve a
+digest context, retrieve a cited artifact, recompute its digest, or compare it
+with a carried value.
 
 ## Reference implementation and conformance vectors
 
