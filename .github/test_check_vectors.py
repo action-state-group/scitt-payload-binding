@@ -212,6 +212,170 @@ def _write_category_m_vector(root: pathlib.Path, vector: dict | None = None) -> 
     return path
 
 
+def _minimal_positive_carrier() -> dict:
+    """A carrier-only PASS fixture with authoritative CBOR and optional mirrors."""
+    label = -65537
+    digest = "00" * 32
+    ref = check_vectors._CborMap(
+        ((1, "example-artifact"), (3, "SHA-256"), (4, digest))
+    )
+    header = check_vectors._CborMap(((label, [ref]),))
+    protected = check_vectors._encode_cbor_deterministic(header)
+    cose = check_vectors._CborTag(
+        18,
+        [protected, check_vectors._CborMap(()), b"payload", b"signature"],
+    )
+    return {
+        "id": "minimal-positive-carrier",
+        "must_fail": False,
+        "protected_header": {
+            "bytes_hex": protected.hex(),
+            "cpb_refs_label": label,
+            "entry_index": 0,
+        },
+        "cose_sign1_bytes_hex": check_vectors._encode_cbor_deterministic(cose).hex(),
+        "cbor_map_entry": {
+            "1": "example-artifact",
+            "3": "SHA-256",
+            "4": digest,
+        },
+        "typed_reference": {
+            "type": "example-artifact",
+            "digest_alg": "SHA-256",
+            "digest": digest,
+        },
+    }
+
+
+def _write_positive_carrier(root: pathlib.Path, vector: dict | None = None) -> pathlib.Path:
+    target = root / "typed-refs" / "pass"
+    target.mkdir(parents=True, exist_ok=True)
+    path = target / "minimal-carrier.json"
+    path.write_text(
+        json.dumps(vector or _minimal_positive_carrier()), encoding="utf-8"
+    )
+    return path
+
+
+def test_carrier_only_positive_is_exercised_not_skipped(tmp_path, capsys):
+    _write_positive_carrier(tmp_path)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    assert "1 pass/exercised" in out
+    assert "0 no-check (skipped)" in out
+    assert "0 FAILED" in out
+
+
+@pytest.mark.parametrize(
+    ("deleted", "message"),
+    [
+        ("protected_header", "requires protected_header object"),
+        (
+            "cose_sign1_bytes_hex",
+            "requires cose_sign1_bytes_hex to prove cpb-refs is protected",
+        ),
+    ],
+)
+def test_carrier_only_positive_rejects_deletion(
+    tmp_path, capsys, deleted, message
+):
+    vector = _minimal_positive_carrier()
+    del vector[deleted]
+    _write_positive_carrier(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+
+    assert rc == 1
+    assert "1 FAILED" in out
+    assert message in out
+
+
+def test_carrier_only_positive_rejects_protected_byte_mutation(tmp_path, capsys):
+    vector = _minimal_positive_carrier()
+    vector["protected_header"]["bytes_hex"] = "a0"
+    _write_positive_carrier(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+
+    assert rc == 1
+    assert "protected header does not contain cpb-refs label" in out
+
+
+def test_carrier_only_positive_rejects_cose_protected_bstr_mismatch(
+    tmp_path, capsys
+):
+    vector = _minimal_positive_carrier()
+    parts, _ = check_vectors._cose_sign1_parts(
+        bytes.fromhex(vector["cose_sign1_bytes_hex"])
+    )
+    parts[0] = b"\xa0"
+    vector["cose_sign1_bytes_hex"] = check_vectors._encode_cbor_deterministic(
+        check_vectors._CborTag(18, parts)
+    ).hex()
+    _write_positive_carrier(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+
+    assert rc == 1
+    assert "COSE_Sign1 protected bstr does not match" in out
+
+
+def test_carrier_only_positive_rejects_unprotected_cpb_refs(tmp_path, capsys):
+    vector = _minimal_positive_carrier()
+    parts, _ = check_vectors._cose_sign1_parts(
+        bytes.fromhex(vector["cose_sign1_bytes_hex"])
+    )
+    label = vector["protected_header"]["cpb_refs_label"]
+    parts[1] = check_vectors._CborMap(((label, []),))
+    vector["cose_sign1_bytes_hex"] = check_vectors._encode_cbor_deterministic(
+        check_vectors._CborTag(18, parts)
+    ).hex()
+    _write_positive_carrier(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+
+    assert rc == 1
+    assert "must not also appear in COSE unprotected headers" in out
+
+
+@pytest.mark.parametrize(
+    ("mirror", "member", "replacement", "message"),
+    [
+        (
+            "cbor_map_entry",
+            "1",
+            "wrong-type",
+            "cbor_map_entry mirror does not exactly match",
+        ),
+        (
+            "typed_reference",
+            "digest_alg",
+            "SHA-512",
+            "typed_reference mirror disagrees",
+        ),
+    ],
+)
+def test_carrier_only_positive_rejects_mutated_mirrors(
+    tmp_path, capsys, mirror, member, replacement, message
+):
+    vector = _minimal_positive_carrier()
+    vector[mirror][member] = replacement
+    _write_positive_carrier(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+
+    assert rc == 1
+    assert message in out
+
+
 def test_category_m_executes_the_carried_protected_header(tmp_path, capsys):
     """Category M is live before draft-03's vector lands on this branch."""
     _write_category_m_vector(tmp_path)

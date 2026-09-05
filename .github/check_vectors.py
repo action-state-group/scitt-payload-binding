@@ -17,6 +17,14 @@ using a minimal RFC 8785 / jcs-n implementation, then verifies:
   For domain-transform PASS vectors (those with 'domain_transforms' + 'source'):
   additionally verifies that applying the named transform to source produces 'input'.
 
+For every vector carrying either 'protected_header' or 'cose_sign1_bytes_hex':
+  decodes the tagged COSE_Sign1 and the protected-header bstr as authoritative
+  CBOR, validates every cpb-refs entry, confirms cpb-refs is protected (and is
+  absent from the unprotected map), checks the separately pinned protected bytes,
+  and checks any JSON mirrors.  A carrier-only PASS vector is therefore exercised,
+  not counted as an unchecked/skipped vector.  Supplying only one of the two
+  carrier fields is a hard failure.
+
 For diverge vectors ('diverge': true) — category J:
   J. Subject-binding algorithm divergence: 'action' + 'jcs' + 'jcs_n'
      -> compute plain JCS (_jcs(action), no normalize) AND jcs-n
@@ -773,7 +781,13 @@ def _validate_cpb_ref_map(ref_map: object) -> _CborMap:
 
 
 def _decode_cpb_carrier(v: dict) -> tuple[_CborMap, list, int, _CborMap, bytes]:
-    """Decode and validate a pinned cpb-refs protected-header fixture."""
+    """Decode and validate a pinned cpb-refs protected-header fixture.
+
+    This is the common carrier gate for both positive and MUST-FAIL vectors.
+    ``protected_header.bytes_hex`` and the protected bstr embedded in
+    ``cose_sign1_bytes_hex`` must agree byte-for-byte; descriptive JSON fields
+    never substitute for those carried bytes.
+    """
     carrier = v.get("protected_header")
     if not isinstance(carrier, dict):
         raise ValueError("Category M requires protected_header object")
@@ -2996,6 +3010,22 @@ def check_vectors(root: Path) -> int:
                 failed += 1
             continue
 
+        # Carrier validation is orthogonal to the vector's digest/result category.
+        # Gate on presence of EITHER field so deleting one half cannot turn a
+        # carrier vector back into an unchecked JSON record.  Category M repeats
+        # this decode while testing its absent-purpose semantic condition; that is
+        # intentional, because all other carrier vectors need the same structural
+        # guarantees without claiming Category M.
+        carrier_exercised = False
+        if "protected_header" in v or "cose_sign1_bytes_hex" in v:
+            try:
+                _decode_cpb_carrier(v)
+                carrier_exercised = True
+            except (TypeError, ValueError) as exc:
+                errors.append(f"FAIL {vid} (cpb carrier): {exc}")
+                failed += 1
+                continue
+
         if v.get("diverge"):
             ok, vec_errors = _exercise_diverge(v, vid)
             if ok:
@@ -3040,7 +3070,10 @@ def check_vectors(root: Path) -> int:
             continue
 
         if "pre_image" not in v or "input" not in v:
-            skipped += 1
+            if carrier_exercised:
+                passed += 1
+            else:
+                skipped += 1
             continue
 
         # For domain-transform PASS vectors: verify the transform chain produces 'input'.
