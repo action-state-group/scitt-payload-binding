@@ -43,6 +43,19 @@ For representation-contrast vectors ('representation_contrast': true):
   - assert the two inputs and check hashes differ. These SHA-256 checks do not
     define or assume a VDS leaf-hash algorithm.
 
+For as-transmitted PASS vectors ('algorithm': 'as-transmitted'):
+  - decode the pinned COSE_Sign1 container and reconstruct the RFC 9052 Section 4.4
+    Sig_structure (ToBeSigned) selected by the vector's cited named production;
+  - require the reconstruction to equal selected_bytes_hex byte-for-byte; and
+  - hash those selected octets directly with SHA-256 and compare the lowercase-hex
+    output.  No JSON, UTF-8, or hexadecimal-text re-encoding enters the pre-image.
+
+For jcs PASS vectors ('algorithm': 'jcs'):
+  - parse the pinned input_json with duplicate-name rejection, and require its data
+    model to equal the required input_data_model review mirror;
+  - apply plain RFC 8785 JCS without the historical jcs-n normalization pass; and
+  - verify the canonical UTF-8 bytes and SHA-256 lowercase-hex digest against pins.
+
 For must_fail vectors — each MUST match at least one category (enforced):
   A. Algorithm-rejection: 'input' present, no 'jcs_n_correct_digest'/'pre_image'
      -> assert jcs_n_pre_image(input) raises ValueError.
@@ -122,6 +135,26 @@ For must_fail vectors — each MUST match at least one category (enforced):
      entries, so this category applies the resolution rule independently.
      Mutant: add key 2 to the carried CBOR map, rebuild the protected-header bytes and
      COSE_Sign1 wrapper, and assert the MUST-FAIL check flips.
+
+  N. as-transmitted textual-hex substitution:
+     failure_reason == 'as_transmitted_textual_hex_substitution'. REQUIRES the
+     complete as-transmitted COSE_Sign1/Sig_structure fixture used by the positive
+     path, plus a nonconforming_pre_image object. Reconstruct the exact selected
+     bytes from the container, verify the correct pinned digest, independently form
+     selected_bytes_hex.encode('ascii'), verify the pinned wrong digest over those
+     doubled-length text bytes, and require carried_digest to be that wrong digest
+     rather than the digest of the selected bytes.
+     Mutant: replace carried_digest with the correct digest; the MUST-FAIL check must
+     flip because the textual-hex substitution is no longer the candidate result.
+
+  O. jcs duplicate member name:
+     failure_reason == 'jcs_duplicate_member_name'. REQUIRES input_json containing
+     the actual JSON source text. Parse it while preserving object-member pairs and
+     require the declared duplicate_member_name to occur more than once after JSON
+     escape processing. NFC normalization is not applied: only exact decoded Unicode
+     name equality is a duplicate.
+     Mutant: parse with ordinary last-member-wins behavior and serialize the resulting
+     unique-name object; the duplicate rejection must then flip to failure.
 
   I. Assembled pre-image, member mapping undeclared: 'implementation_a' + 'implementation_b'
      + 'declared_digest_context'
@@ -1237,6 +1270,32 @@ def _mutant_M(v: dict) -> dict | None:
     return m
 
 
+def _mutant_N(v: dict) -> dict | None:
+    """Replace the candidate's textual-hex digest with the correct raw-byte digest."""
+    m = copy.deepcopy(v)
+    correct_digest = m.get("digest")
+    if not isinstance(correct_digest, str):
+        return None
+    m["carried_digest"] = correct_digest
+    return m
+
+
+def _mutant_O(v: dict) -> dict | None:
+    """Remove duplicate names using JSON's ordinary last-member-wins data model."""
+    source = v.get("input_json")
+    if not isinstance(source, str):
+        return None
+    try:
+        unique = json.loads(source, parse_constant=_reject_json_constant)
+    except (TypeError, ValueError):
+        return None
+    m = copy.deepcopy(v)
+    m["input_json"] = json.dumps(
+        unique, ensure_ascii=False, separators=(",", ":")
+    )
+    return m
+
+
 _MUTANT_GENERATORS: dict[str, object] = {
     "A": _mutant_A,
     "B": _mutant_B,
@@ -1248,6 +1307,8 @@ _MUTANT_GENERATORS: dict[str, object] = {
     "K": _mutant_K,
     "L": _mutant_L,
     "M": _mutant_M,
+    "N": _mutant_N,
+    "O": _mutant_O,
 }
 
 
@@ -1940,6 +2001,25 @@ def _exercise_must_fail(
             except ValueError:
                 pass
 
+    # N. The selected bytes are correct, but the candidate hashes their textual
+    # hexadecimal spelling instead of the selected octets themselves.
+    if v.get("failure_reason") == _AS_TRANSMITTED_TEXT_HEX_FAILURE:
+        ran_any_check = True
+        categories_fired.append("N")
+        _, as_transmitted_errors = _exercise_as_transmitted(
+            v, vid, expect_text_hex_substitution=True
+        )
+        vec_errors.extend(
+            f"Category N: {error}" for error in as_transmitted_errors
+        )
+
+    # O. RFC 8785 input must not contain duplicate decoded member names.
+    if v.get("failure_reason") == _JCS_DUPLICATE_FAILURE:
+        ran_any_check = True
+        categories_fired.append("O")
+        _, jcs_duplicate_errors = _exercise_jcs_duplicate(v, vid)
+        vec_errors.extend(f"Category O: {error}" for error in jcs_duplicate_errors)
+
     # Enforcement: a vector matching none of the above is a hard failure.
     if not ran_any_check:
         vec_errors.append(
@@ -2290,6 +2370,294 @@ def _category_m_self_test_vector() -> dict:
             "digest": digest,
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Algorithm jcs exercisers
+# ---------------------------------------------------------------------------
+
+_JCS_DUPLICATE_FAILURE = "jcs_duplicate_member_name"
+
+
+def _exercise_jcs(v: dict, vid: str) -> tuple[bool, list[str]]:
+    """Exercise a positive plain-RFC-8785 vector from its JSON source text."""
+    errs: list[str] = []
+    if v.get("algorithm") != "jcs":
+        errs.append("jcs vector must declare algorithm 'jcs'")
+    if v.get("exclusion_set") not in (None, []):
+        errs.append("jcs algorithm vectors cannot apply an exclusion set internally")
+
+    source = v.get("input_json")
+    if not isinstance(source, str) or not source:
+        errs.append("jcs vector requires non-empty input_json source text")
+        return False, errs
+    try:
+        parsed = json.loads(
+            source,
+            parse_constant=_reject_json_constant,
+            object_pairs_hook=_no_dup_keys,
+        )
+    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+        errs.append(f"jcs input_json is not valid unique-name JSON: {exc}")
+        return False, errs
+
+    if "input_data_model" not in v:
+        errs.append("jcs vector requires an input_data_model review mirror")
+    elif parsed != v["input_data_model"]:
+        errs.append(
+            "input_data_model mirror does not equal the data model parsed from input_json"
+        )
+    try:
+        pre_image = _jcs_rfc8785(parsed)
+    except (TypeError, ValueError) as exc:
+        errs.append(f"plain JCS failed for this dependency-free vector subset: {exc}")
+        return False, errs
+
+    pinned_pre_image = v.get("pre_image")
+    if pinned_pre_image != pre_image:
+        errs.append(
+            f"jcs pre_image mismatch\n"
+            f"  expected: {pre_image!r}\n"
+            f"  pinned:   {pinned_pre_image!r}"
+        )
+    pre_image_bytes = pre_image.encode("utf-8")
+    if v.get("pre_image_bytes_hex") != pre_image_bytes.hex():
+        errs.append(
+            "jcs pre_image_bytes_hex does not equal the canonical UTF-8 octets"
+        )
+    if v.get("digest_alg") != "SHA-256":
+        errs.append("jcs digest_alg must be 'SHA-256'")
+    if v.get("digest_representation") != "lowercase-hex":
+        errs.append("jcs digest_representation must be 'lowercase-hex'")
+    digest = hashlib.sha256(pre_image_bytes).hexdigest()
+    pinned_digest = v.get("digest")
+    if not isinstance(pinned_digest, str) or not _BARE_HEX_64_RE.fullmatch(
+        pinned_digest
+    ):
+        errs.append("jcs digest must be exactly 64 lowercase hex characters")
+    elif pinned_digest != digest:
+        errs.append(
+            f"jcs digest mismatch\n  expected: {digest}\n  pinned:   {pinned_digest}"
+        )
+    return not errs, errs
+
+
+def _exercise_jcs_duplicate(v: dict, vid: str) -> tuple[bool, list[str]]:
+    """Prove an exact decoded member name occurs twice in input_json."""
+    errs: list[str] = []
+    if v.get("algorithm") != "jcs":
+        errs.append("jcs duplicate vector must declare algorithm 'jcs'")
+    source = v.get("input_json")
+    expected = v.get("duplicate_member_name")
+    if not isinstance(source, str) or not source:
+        errs.append("jcs duplicate vector requires non-empty input_json source text")
+        return False, errs
+    if not isinstance(expected, str):
+        errs.append("jcs duplicate vector requires duplicate_member_name string")
+        return False, errs
+
+    duplicates: list[str] = []
+
+    def _retain_and_record(pairs: list[tuple[str, object]]) -> dict:
+        result: dict[str, object] = {}
+        seen: set[str] = set()
+        for key, value in pairs:
+            if key in seen:
+                duplicates.append(key)
+            seen.add(key)
+            result[key] = value
+        return result
+
+    try:
+        json.loads(
+            source,
+            parse_constant=_reject_json_constant,
+            object_pairs_hook=_retain_and_record,
+        )
+    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+        errs.append(
+            "jcs duplicate vector must otherwise be syntactically valid JSON: "
+            f"{exc}"
+        )
+        return False, errs
+
+    if expected not in duplicates:
+        errs.append(
+            f"decoded member name {expected!r} does not occur more than once in "
+            "input_json"
+        )
+    return not errs, errs
+
+
+# ---------------------------------------------------------------------------
+# Algorithm as-transmitted exerciser
+# ---------------------------------------------------------------------------
+
+_AS_TRANSMITTED_TEXT_HEX_FAILURE = "as_transmitted_textual_hex_substitution"
+
+
+def _exercise_as_transmitted(
+    v: dict,
+    vid: str,
+    *,
+    expect_text_hex_substitution: bool = False,
+) -> tuple[bool, list[str]]:
+    """Exercise the exact-byte boundary for the in-repo as-transmitted suite.
+
+    The fixture's selector is the named RFC 9052 Section 4.4 Sig_structure
+    production for a COSE_Sign1 object.  The checker derives ToBeSigned from the
+    container; ``selected_bytes_hex`` is a pin, never the source of the bytes.
+    """
+    errs: list[str] = []
+
+    if v.get("algorithm") != "as-transmitted":
+        errs.append("as-transmitted vector must declare algorithm 'as-transmitted'")
+    if v.get("exclusion_set") not in (None, []):
+        errs.append("as-transmitted has no exclusion set")
+
+    container = v.get("container")
+    selector = v.get("byte_boundary_selector")
+    if not isinstance(container, dict) or container.get("format") != "COSE_Sign1":
+        errs.append("as-transmitted vector requires a COSE_Sign1 container object")
+        return False, errs
+    if not isinstance(selector, dict):
+        errs.append("as-transmitted vector requires a byte_boundary_selector object")
+        return False, errs
+
+    if selector.get("normative_reference") != "RFC 9052 Section 4.4":
+        errs.append(
+            "byte_boundary_selector.normative_reference must be "
+            "'RFC 9052 Section 4.4'"
+        )
+    if selector.get("named_production") != "Sig_structure (ToBeSigned)":
+        errs.append(
+            "byte_boundary_selector.named_production must identify "
+            "'Sig_structure (ToBeSigned)'"
+        )
+    if selector.get("context") != "Signature1":
+        errs.append("byte_boundary_selector.context must be 'Signature1'")
+
+    try:
+        container_bytes = _strict_hex_bytes(
+            container.get("bytes_hex"), "container.bytes_hex"
+        )
+        parts, _ = _cose_sign1_parts(container_bytes)
+        external_aad = _strict_hex_bytes(
+            selector.get("external_aad_bytes_hex"),
+            "byte_boundary_selector.external_aad_bytes_hex",
+            allow_empty=True,
+        )
+    except (TypeError, ValueError) as exc:
+        errs.append(f"as-transmitted source/selector decode failed: {exc}")
+        return False, errs
+
+    protected, _, payload, signature = parts
+    if payload is None:
+        errs.append(
+            "as-transmitted fixture uses detached COSE payload but supplies no "
+            "selected payload bytes"
+        )
+        return False, errs
+    if not signature:
+        errs.append("as-transmitted COSE_Sign1 fixture signature must not be empty")
+
+    selected = _encode_cbor_deterministic(
+        ["Signature1", protected, external_aad, payload]
+    )
+    try:
+        pinned_selected = _strict_hex_bytes(
+            v.get("selected_bytes_hex"), "selected_bytes_hex"
+        )
+    except (TypeError, ValueError) as exc:
+        errs.append(str(exc))
+        return False, errs
+
+    if pinned_selected != selected:
+        errs.append(
+            "selected_bytes_hex does not equal the Sig_structure reconstructed "
+            "from the COSE_Sign1 container"
+        )
+    if v.get("selected_length_octets") != len(selected):
+        errs.append(
+            f"selected_length_octets != {len(selected)}: "
+            f"{v.get('selected_length_octets')!r}"
+        )
+    if v.get("digest_alg") != "SHA-256":
+        errs.append("as-transmitted digest_alg must be 'SHA-256'")
+    if v.get("digest_representation") != "lowercase-hex":
+        errs.append("as-transmitted digest_representation must be 'lowercase-hex'")
+
+    correct_digest = hashlib.sha256(selected).hexdigest()
+    pinned_digest = v.get("digest")
+    if not isinstance(pinned_digest, str) or not _BARE_HEX_64_RE.fullmatch(
+        pinned_digest
+    ):
+        errs.append("as-transmitted digest must be exactly 64 lowercase hex characters")
+    elif pinned_digest != correct_digest:
+        errs.append(
+            f"as-transmitted digest mismatch\n"
+            f"  expected: {correct_digest}\n"
+            f"  pinned:   {pinned_digest}"
+        )
+
+    if expect_text_hex_substitution:
+        wrong = v.get("nonconforming_pre_image")
+        if not isinstance(wrong, dict):
+            errs.append(
+                "textual-hex MUST-FAIL vector requires nonconforming_pre_image object"
+            )
+            return False, errs
+        if wrong.get("construction") != "selected_bytes_hex.encode('ascii')":
+            errs.append(
+                "nonconforming_pre_image.construction must name the textual-hex "
+                "substitution exactly"
+            )
+        textual_hex = selected.hex().encode("ascii")
+        try:
+            pinned_wrong = _strict_hex_bytes(
+                wrong.get("bytes_hex"), "nonconforming_pre_image.bytes_hex"
+            )
+        except (TypeError, ValueError) as exc:
+            errs.append(str(exc))
+            return False, errs
+        if pinned_wrong != textual_hex:
+            errs.append(
+                "nonconforming_pre_image.bytes_hex is not the ASCII encoding of "
+                "selected_bytes_hex"
+            )
+        if wrong.get("length_octets") != len(textual_hex):
+            errs.append(
+                f"nonconforming_pre_image.length_octets != {len(textual_hex)}: "
+                f"{wrong.get('length_octets')!r}"
+            )
+        wrong_digest = hashlib.sha256(textual_hex).hexdigest()
+        if wrong.get("digest") != wrong_digest:
+            errs.append(
+                f"nonconforming_pre_image.digest mismatch\n"
+                f"  expected: {wrong_digest}\n"
+                f"  pinned:   {wrong.get('digest')!r}"
+            )
+        carried_digest = v.get("carried_digest")
+        if not isinstance(carried_digest, str) or not _BARE_HEX_64_RE.fullmatch(
+            carried_digest
+        ):
+            errs.append("carried_digest must be exactly 64 lowercase hex characters")
+        elif carried_digest != wrong_digest:
+            errs.append(
+                "carried_digest is not the digest produced by the textual-hex "
+                "substitution"
+            )
+        if carried_digest == correct_digest:
+            errs.append(
+                "carried_digest equals the correct selected-byte digest -- no "
+                "textual-hex substitution remains to reject"
+            )
+        if textual_hex == selected:
+            errs.append("textual-hex bytes equal selected bytes -- no boundary contrast")
+        if wrong_digest == correct_digest:
+            errs.append("wrong and correct digests are equal -- no rejection demonstrated")
+
+    return not errs, errs
 
 
 # ---------------------------------------------------------------------------
@@ -3064,6 +3432,30 @@ def check_vectors(root: Path) -> int:
             else:
                 errors.append(
                     f"FAIL {vid} (must_fail verification):\n"
+                    + "\n".join(f"  {e}" for e in vec_errors)
+                )
+                failed += 1
+            continue
+
+        if registered_name == "as-transmitted":
+            ok, vec_errors = _exercise_as_transmitted(v, vid)
+            if ok:
+                passed += 1
+            else:
+                errors.append(
+                    f"FAIL {vid} (as-transmitted):\n"
+                    + "\n".join(f"  {e}" for e in vec_errors)
+                )
+                failed += 1
+            continue
+
+        if registered_name == "jcs":
+            ok, vec_errors = _exercise_jcs(v, vid)
+            if ok:
+                passed += 1
+            else:
+                errors.append(
+                    f"FAIL {vid} (jcs):\n"
                     + "\n".join(f"  {e}" for e in vec_errors)
                 )
                 failed += 1
