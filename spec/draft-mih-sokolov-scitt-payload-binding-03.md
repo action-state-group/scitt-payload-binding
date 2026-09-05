@@ -7,7 +7,7 @@ category: std
 submissiontype: IETF
 ipr: trust200902
 area: "Security"
-workgroup: "SCITT"
+workgroup: "Network Working Group"
 keyword:
  - SCITT
  - canonicalization
@@ -52,6 +52,7 @@ informative:
   I-D.ietf-scitt-receipts-ccf-profile:
   I-D.mih-scitt-agent-action-capsule:
     title: "An Agent Action Capsule Profile for SCITT"
+    date: 2026-08-28
     seriesinfo:
       Internet-Draft: draft-mih-scitt-agent-action-capsule-04
     author:
@@ -60,6 +61,7 @@ informative:
         organization: Action State Group, Inc.
   I-D.hillier-scitt-arp:
     title: "Attestation Reconciliation Protocol"
+    date: 2026-08-13
     seriesinfo:
       Internet-Draft: draft-hillier-scitt-arp-03
     author:
@@ -68,6 +70,7 @@ informative:
         organization: Certisyn, Inc.
   I-D.mih-sato-agent-accountability-composition:
     title: "Agent Accountability: Composition and Conformance"
+    date: 2026-08-16
     seriesinfo:
       Internet-Draft: draft-mih-sato-agent-accountability-composition-01
     author:
@@ -88,6 +91,7 @@ informative:
         organization: Tyche Institute
   I-D.sokolov-rats-aep-composition:
     title: "Composing Application-Layer Action Evidence with Remote Attestation Procedures"
+    date: 2026-08-31
     seriesinfo:
       Internet-Draft: draft-sokolov-rats-aep-composition-06
     author:
@@ -96,6 +100,7 @@ informative:
         organization: Tyche Institute
   I-D.birkholz-verifiable-agent-conversations:
     title: "Verifiable Agent Conversation Records"
+    date: 2026-08-31
     seriesinfo:
       Internet-Draft: draft-birkholz-verifiable-agent-conversations-01
     author:
@@ -108,6 +113,7 @@ informative:
         name: Orie Steele
   I-D.le-scitt-derived-subjects:
     title: "SCITT Profile for Independently Derived Subjects"
+    date: 2026-08-22
     seriesinfo:
       Internet-Draft: draft-le-scitt-derived-subjects-00
     author:
@@ -115,6 +121,7 @@ informative:
         name: Thanh Le
   I-D.le-comparing-derived-identifiers:
     title: "Principles for Comparing Independently Derived Identifiers"
+    date: 2026-08-22
     seriesinfo:
       Internet-Draft: draft-le-comparing-derived-identifiers-00
     author:
@@ -122,6 +129,7 @@ informative:
         name: Thanh Le
   I-D.nobuo-scitt-protected-object-binding:
     title: "SCITT Statement Relationship and Protected Object Binding"
+    date: 2026-07-07
     seriesinfo:
       Internet-Draft: draft-nobuo-scitt-protected-object-binding-00
     author:
@@ -130,6 +138,7 @@ informative:
         organization: The Graduate University for Advanced Studies (SOKENDAI)
   I-D.rampalli-pedigree:
     title: "PEDIGREE: Provenance and Delegation Records for Digital Artifacts"
+    date: 2026-04-25
     seriesinfo:
       Internet-Draft: draft-rampalli-pedigree-00
     author:
@@ -138,6 +147,7 @@ informative:
         organization: Glyphzero, Inc.
   I-D.lee-orprg-permit-receipts:
     title: "Permit Receipts for Permit-Before-Commit Authorization of AI-Agent and Workload External Effects"
+    date: 2026-06-04
     seriesinfo:
       Internet-Draft: draft-lee-orprg-permit-receipts-00
     author:
@@ -195,18 +205,11 @@ profile-selected canonicalization and derived-identifier construction. CPB
 also supports the ordinary RFC 9943 case in which the complete statement
 content, rather than its digest, is supplied to COSE. CPB defines the binding
 mechanics and a typed-reference mechanism for citing other digests, but it
-does not define what any payload or cited artifact means. CPB is derived from
-{{I-D.mih-scitt-agent-action-capsule}} (§Conventions, §envelope, §registration,
-§identity), which first stated the construction in a SCITT context, and
-generalized at the IETF 126 hackathon in Vienna, where multiple parties
-participated in the public interop program. The public record reports four
-codebases demonstrating byte agreement in specific shared, declared contexts.
-Other frozen artifacts retained separately declared digest contexts. ORPRG
-retained its CP-JSON-2 context and was represented in the interop design through a typed reference rather
-than through an assertion of cross-profile digest equality. Digests remain
-governed by their original contexts; CPB does not relabel an ORPRG CP-JSON-2
-commitment as a CPB canonicalization algorithm's output. The provenance is
-stated here once and not repeated in subsequent sections.
+does not define what any payload or cited artifact means. CPB generalizes the
+construction first stated by {{I-D.mih-scitt-agent-action-capsule}} and
+exercised across independent implementations at the IETF 126 hackathon; the
+companion interop record preserves the detailed provenance and digest-context
+boundaries.
 
 For generic citation-binding verification, a CPB verifier can process a
 typed reference to any artifact type whose digest context it can resolve.
@@ -797,12 +800,12 @@ serialization as described in {{payload-carriage}}.
 
 A typed digest reference has the following members:
 
-| Member | Type | Req | Meaning |
+| Member | Value | Req | Meaning |
 |---|---|---|---|
-| type | string | REQUIRED | The artifact-type identifier defined by a stable specification that the consuming profile explicitly accepts. CPB does not register these values. |
-| purpose | string | CONDITIONAL | Selects one digest context for the resolved type. It is REQUIRED when that type has multiple accepted contexts and otherwise follows {{comparability}}. |
-| digest_alg | string | REQUIRED | The hash algorithm of the digest value (e.g., "SHA-256"). The canonicalization context of the cited artifact is resolved from the digest context selected by `type` and `purpose`, not from this field. |
-| digest | string or byte string | REQUIRED | The digest of the cited artifact, in the exact representation declared by the selected digest context. |
+| type | text | REQUIRED | The artifact-type identifier defined by a stable specification that the consuming profile explicitly accepts. CPB does not register these values. |
+| purpose | text | CONDITIONAL | Selects one digest context for the resolved type. It is REQUIRED when that type has multiple accepted contexts and otherwise follows {{comparability}}. |
+| digest_alg | text | REQUIRED | The hash algorithm of the digest value (e.g., "SHA-256"). The canonicalization context of the cited artifact is resolved from the digest context selected by `type` and `purpose`, not from this field. |
+| digest | digest in the context's declared representation | REQUIRED | The digest of the cited artifact, in the exact representation declared by the selected digest context. |
 
 These are the only members of the CPB information model. A payload profile
 may place profile-specific fields beside its rendering of a typed reference,
@@ -996,7 +999,7 @@ signature verification. In Hash Envelope Mode, the raw digest of the complete
 statement content is supplied instead, and the reference data are covered only
 after the verifier obtains that content and validates the hash binding as
 specified in {{hash-envelope-mode}}. Neither kind of coverage makes a typed
-reference Verified without the processing in {{comparability}}. Appendix
+reference Verified without the processing in {{comparability}}.
 {{appendix-d}} describes one profile-owned example without defining its wire
 format here. The prohibition on dual carriage in {{carriage-selection}}
 still applies.
@@ -1112,9 +1115,9 @@ payload class.
 A mutable reference — a branch name, a tag that can be moved, a content
 URL that is not a content-addressed URL — is not evidence. The moment a
 record is amended at its referent, any citation to the mutable reference
-silently refers to the new content. All citations to external artifacts MUST
-use typed digest references ({{typed-refs}}) that pin the content by its
-CANONICAL-DIGEST. Names, labels, and human-readable identifiers MAY appear
+silently refers to the new content. A payload profile that relies on CPB to
+verify a citation MUST express it as a typed digest reference ({{typed-refs}})
+that pins the content by its CANONICAL-DIGEST. Names, labels, and human-readable identifiers MAY appear
 alongside a typed reference for display purposes but carry no evidentiary
 weight.
 
@@ -1636,7 +1639,7 @@ confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero, confirmed
   appraisal and authorization. See {{I-D.lee-orprg-permit-receipts}}.
 
 * Tymofii Pidlisnyi (Agent Passport System) — the content-derived action reference pattern
-  (NFC + code-point sort + JCS) demonstrating that `jcs-n` generalizes
+  (NFC + code-point sort + JCS) demonstrating that RFC 8785 JCS generalizes
   across canonicalization styles; bidirectional cross-runs with confirmed
   byte-agreement.
 
