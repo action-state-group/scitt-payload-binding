@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cpb"
-version = "0.1.0"
+version = "0.2.0"
 description = "Canonical Payload Binding reference library — spec-pure CPB construction and verification"
 readme = "README.md"
 license = {text = "BSD-3-Clause"}
 requires-python = ">=3.10"
-dependencies = []
+dependencies = ["rfc8785>=0.1.4,<0.2"]
 
 [project.optional-dependencies]
 # The installed-package regression test builds without isolation or network

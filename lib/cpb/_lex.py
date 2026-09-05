@@ -151,11 +151,12 @@ class _Scanner:
                 # sequences are identical. RFC 8785 preserves strings "as is",
                 # so NFC-equivalent but distinct sequences remain distinct names.
                 if key in seen:
+                    rendered_key = json.dumps(key, ensure_ascii=True)
                     self.violations.append(RawViolation(
                         path=member_path,
                         code='duplicate_key',
                         detail=(
-                            f'key "{key}" appears more than once in the object at '
+                            f'key {rendered_key} appears more than once in the object at '
                             f'{path} (first occurrence at character {seen[key]})'
                         ),
                     ))

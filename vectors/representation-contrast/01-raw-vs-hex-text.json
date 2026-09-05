@@ -1,0 +1,20 @@
+{
+  "id": "representation-contrast-01",
+  "representation_contrast": true,
+  "description": "Discriminating vector for the representation boundary in §7.1. The raw SHA-256 value is 32 octets decoded from a bare-hex identifier. Encoding the 64 hexadecimal characters as ASCII produces a distinct 64-octet value. The pinned SHA-256 values below are vector self-checks only; they do not define or assume a VDS leaf-hash algorithm.",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-02 §7.1",
+  "declared_input_representation": "raw",
+  "derived_identifier_bare_hex": "1009a072df7fc0bfc6fcf49ca2f194067f6c0136c871a88d4fbd66a13361c1d1",
+  "raw_input": {
+    "construction": "bytes.fromhex(derived_identifier_bare_hex)",
+    "length_octets": 32,
+    "bytes_hex": "1009a072df7fc0bfc6fcf49ca2f194067f6c0136c871a88d4fbd66a13361c1d1",
+    "check_sha256": "3bb864554d10c141a432bd742837d7e1f3bed23afff758f64aa3693c679f5f83"
+  },
+  "ascii_hex_contrast_input": {
+    "construction": "derived_identifier_bare_hex.encode('ascii')",
+    "length_octets": 64,
+    "bytes_hex": "31303039613037326466376663306266633666636634396361326631393430363766366330313336633837316138386434666264363661313333363163316431",
+    "check_sha256": "e5adfa92f0e3df5fb9ee0592cbfa733dc896f425ab7f7a2c710e1e4831fd9113"
+  }
+}

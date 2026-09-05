@@ -2,12 +2,12 @@
   "schema_version": "1",
   "canonicalization_algorithms": {
     "jcs-n": {
-      "description": "Withdrawn \u2014 never carried to IANA (2026-08-18). RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex \u2014 the construction this entry named. See docs/audits/jcsn-withdrawal-audit-2026-08-18.md for the withdrawal rationale.",
+      "description": "Withdrawn \u2014 never carried to IANA (2026-08-18). RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; bare-hex \u2014 the construction this entry named. See docs/audits/jcsn-withdrawal-audit-2026-08-18.md for the withdrawal rationale.",
       "reference": "draft-mih-sokolov-scitt-payload-binding",
       "status": "withdrawn"
     },
     "jcs": {
-      "description": "RFC 8785 JCS over a JSON object (no normalization pass; null, empty-array, and empty-object members are retained as-is); SHA-256; lowercase hex",
+      "description": "RFC 8785 JCS over a JSON object (no normalization pass; null, empty-array, and empty-object members are retained as-is); SHA-256; bare-hex",
       "reference": "RFC 8785 \u00a73",
       "status": "standards-referenced"
     },
@@ -17,7 +17,7 @@
       "status": "withdrawn"
     },
     "as-transmitted": {
-      "description": "No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex",
+      "description": "No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; bare-hex",
       "reference": "draft-mih-sokolov-scitt-payload-binding",
       "status": "Registered"
     }
@@ -25,7 +25,7 @@
   "artifact_types": {
     "agent-action-capsule": {
       "reference": "draft-mih-scitt-agent-action-capsule",
-      "status": "Registered",
+      "status": "provisional",
       "digest_contexts": [
         {
           "purpose": "identifier",
@@ -35,7 +35,7 @@
           "exclusion_set": "{capsule_id, chain}",
           "domain_separation": "none",
           "pre_image_encoding": "JCS UTF-8 octets (per jcs-n)",
-          "representation": "64-char lowercase hex"
+          "representation": "bare-hex"
         },
         {
           "purpose": "identifier",
@@ -45,7 +45,7 @@
           "exclusion_set": "{capsule_id}",
           "domain_separation": "none",
           "pre_image_encoding": "JCS UTF-8 octets (per jcs)",
-          "representation": "64-char lowercase hex"
+          "representation": "bare-hex"
         }
       ]
     },
@@ -61,7 +61,7 @@
           "exclusion_set": "N/A (as-transmitted has no field set)",
           "domain_separation": "none",
           "pre_image_encoding": "N/A (no separate encoding step)",
-          "representation": "bare 64-char lowercase hex"
+          "representation": "bare-hex"
         },
         {
           "purpose": "equivalence",
@@ -71,12 +71,12 @@
           "exclusion_set": "none",
           "domain_separation": "none",
           "pre_image_encoding": "JCS UTF-8 octets (per jcs)",
-          "representation": "sha256: + 64-char lowercase hex, as carried in the in-document action_hash claim"
+          "representation": "sha256-prefixed"
         }
       ],
-      "discriminating_vector": "mm-fail-04-representation-confusion \u2014 pins that this type's two representations are not interchangeable (the derived identifier is bare hex; the in-document action_hash carries the sha256: prefix). agent-action-capsule, the only other registered artifact type, declares a single context in bare hex, so a verifier that accepted either form for either context would pass its cases and fail these. Cited at the commit-pinned URL below, not committed here \u2014 this entry's vectors are the owner's own published set.",
+      "discriminating_vector": "mm-fail-04-representation-confusion \u2014 pins that this type's two representations are not interchangeable (the derived identifier is bare-hex; the in-document action_hash is sha256-prefixed). agent-action-capsule, the only other registered artifact type, declares a single bare-hex context, so a verifier that accepted either form for either context would pass its cases and fail these. Cited at the commit-pinned URL below, not committed here \u2014 this entry's vectors are the owner's own published set.",
       "consuming_profile": "action-state-group/scitt-cose @ 04cf97a8d143459b7dd4193ba4d8c065c3783071 \u2014 the hosted verification surface at verify.agentactioncapsule.org. It parses and renders this type under the name machine-mandate (hosted_profiles/machine_mandate.py, PROFILE_PARSERS[\"machine-mandate\"]), against fixtures copied byte-verbatim from tyche-institute/machine-mandate@524e6a3 \u2014 the same commit this entry's Reference pins. What it does not do, stated plainly so the Designated Expert can weigh it: it detects the profile by the owner-controlled VCT URI and by pinned fixture digests, not by resolving the type through this registry, and its own module text disclaims endorsement. Whether a deployment that consumes the vocabulary without resolving the artifact type satisfies Gate B is the DE's call, not the registrant's \u2014 and the registrant is the owner, which is why it is put this way rather than asserted."
     }
   },
-  "snapshot_sha256": "e1daaceee20650a712007029d445fd3b2c1368c3e5042eb44bb021de7f09b7f2"
+  "snapshot_sha256": "e24d5a63789592480be9c2fcdfb5620a23698555f156c358b9ab4de77c6d359f"
 }

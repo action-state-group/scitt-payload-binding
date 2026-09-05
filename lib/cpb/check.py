@@ -7,7 +7,7 @@ Phase 1 scope
 -------------
 - P  Normal-form walk: no dict member (at any depth, including dicts inside
   arrays) may have value null, [] or {}.  Array elements are exempt.
-  Scope matches normalize() exactly (§3.1 step 1).
+  Scope matches historical jcs-n normalize() exactly (draft -00 §3.1 step 1).
 - R  Wire-layer: every number token must be in integer-token form
   ^(?:0|-?[1-9][0-9]*)$; no duplicate object keys; declared array order
   where the profile states one (profile-specific, not yet wired — awaits the
@@ -80,7 +80,7 @@ def check_p(value: Any, path: str = '$') -> list[Violation]:
     exempt — the restriction applies to *members of dicts*, not to elements of
     arrays regardless of their position.
 
-    The scope matches ``normalize()`` exactly (§3.1 step 1).
+    The scope matches historical ``normalize()`` exactly (draft -00 §3.1 step 1).
     """
     violations: list[Violation] = []
     _p_walk(value, path, violations)

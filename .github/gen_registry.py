@@ -8,8 +8,10 @@ Parses the two markdown tables in REGISTRY.md:
 
 Produces a content-addressed registry.json whose snapshot_sha256 field is the
 SHA-256 of the document body (all fields except snapshot_sha256 itself, keys
-sorted, compact ASCII JSON).  This makes every released snapshot self-certifying:
-a verifier can recompute the sha and detect tampering or truncation.
+sorted, compact ASCII JSON). Recomputing it checks internal consistency and
+gives the snapshot a stable content address. It is not self-authenticating: a
+verifier detects hostile replacement only by comparing it with an independently
+trusted digest (or by trusting the snapshot's distribution channel).
 
 Usage:
   python .github/gen_registry.py                 # write registry.json in-place
@@ -156,7 +158,8 @@ def _subsections(section_lines: list[str]) -> list[tuple[str, list[str]]]:
 # ---------------------------------------------------------------------------
 
 _LEGACY_ROWS_RE = re.compile(
-    r"Exactly\s+\w+ rows predate this vocabulary[^:]*:(.+?)(?:\.\s|\n\n)", re.S
+    r"Exactly\s+\w+ rows? predates? this vocabulary[^:]*:(.+?)(?:\.\s|\n\n)",
+    re.S,
 )
 
 
@@ -408,7 +411,13 @@ def _validate_structure(data: dict, legal_statuses: set[str],
             err = _status_error("artifact type", name, entry.get("status"))
             if err:
                 errors.append(err)
-            for ctx in entry.get("digest_contexts", []) or []:
+            contexts = entry.get("digest_contexts", []) or []
+            if not contexts:
+                errors.append(
+                    f"artifact type {name!r}: must declare at least one digest context"
+                )
+            purposes: set[str] = set()
+            for ctx in contexts:
                 alg = ctx.get("algorithm")
                 if alg and alg not in known_algorithms:
                     errors.append(
@@ -416,6 +425,29 @@ def _validate_structure(data: dict, legal_statuses: set[str],
                         f"is not a key in canonicalization_algorithms -- every "
                         f"digest context MUST cite a registered algorithm"
                     )
+                representation = ctx.get("representation")
+                if representation and representation not in {
+                    "bare-hex",
+                    "sha256-prefixed",
+                    "raw",
+                }:
+                    errors.append(
+                        f"artifact type {name!r}: representation {representation!r} "
+                        "is not an exact schema-v1 representation token"
+                    )
+                if entry.get("status") in {
+                    "Registered",
+                    "owner-confirmed",
+                    "third-party-documented",
+                    "standards-referenced",
+                }:
+                    purpose = ctx.get("purpose")
+                    if purpose in purposes:
+                        errors.append(
+                            f"live artifact type {name!r}: duplicate purpose "
+                            f"{purpose!r} makes type+purpose resolution ambiguous"
+                        )
+                    purposes.add(purpose)
     sha = data.get("snapshot_sha256", "")
     if not re.match(r"^[0-9a-f]{64}$", sha):
         errors.append(f"snapshot_sha256 must be 64 lowercase hex chars, got {sha!r}")

@@ -317,19 +317,6 @@ they diverge for exactly the demonstrated reason, and applying a declared
 by Rul1an as an external submission, reproduced independently against the
 reference canonicalizer.
 
-**Implementation-review clarifications.** The three SHA-256 representations
-are now defined by exact syntax and length, and the leaf rule no longer
-conflates the 32 raw digest octets with the 64 ASCII characters that encode
-them. New discriminating vectors exercise that boundary and recursive
-bottom-up removal of a nested null. The historical-`jcs-n` vintage rule now
-requires profile-defined cryptographically verifiable time evidence and
-fails closed when vintage is not established; it does not infer a date from
-source control or a payload field. The duplicate-member refusal inherited
-from RFC 8785 and I-JSON is now made explicit at the observable JSON
-construction input, before parsing or exclusions, and
-the selective-disclosure hook now states its prerequisite and its CPB-level
-unverified disposition without defining a selective-disclosure mechanism.
-
 **Conformance checker.** A grammar/wire-layer conformance checker
 (`cpb-check`) validates a record against its declared profile grammar — a
 presence-and-number-form walk and duplicate-key rejection — built around a
@@ -337,9 +324,8 @@ duplicate-preserving raw-bytes lexer, since a standard JSON parser silently
 drops duplicate keys before any rule can see them; digest recomputation and
 `canonicalization_id` resolution remain out of scope pending a later gate.
 Vector-harness fixes landed alongside it: the lexer now rejects trailing
-bytes after a JSON document ends and compares member names after JSON escape
-processing, without Unicode normalization, before duplicate-key detection;
-an inverted must-fail assertion and a `-0`/duplicate-key gap
+bytes after a JSON document ends and NFC-normalizes before duplicate-key
+detection, and an inverted must-fail assertion and a `-0`/duplicate-key gap
 that could previously let the harness certify a vector as passing for the
 wrong reason are both closed.
 
@@ -506,26 +492,16 @@ resuming use of this token.
 
 Withdrawal forecloses new declarations of `jcs-n`; it does not
 retroactively invalidate records already sealed under it. A payload class
-or typed digest reference that names `jcs-n` MUST NOT be newly declared.
-The vintage cutoff is the start of 2026-08-18 in UTC. For this rule, a
-record's pre-cutoff vintage is established only when the verifier has
-profile-defined, cryptographically verifiable evidence that binds the exact
-record (or its digest under the declared context) to a time before that
-cutoff. This document does not define a timestamp claim or infer time from a
-record field. A payload timestamp, source-control commit date, file-system
-time, transport arrival time, or other unauthenticated date MUST NOT be used
-as vintage evidence.
-
-A verifier encountering `jcs-n` with valid evidence of a time at or after
-the cutoff, or without evidence sufficient to establish a pre-cutoff
-vintage, MUST fail closed — it MUST NOT report the payload class or typed
-digest reference as verified. Only when the pre-cutoff vintage is
-established as above MAY a verifier verify the record against the withdrawn
-construction permanently recorded in
-draft-mih-sokolov-scitt-payload-binding-00, Section 3.1. Such a record is a
-historical record, not a live conformance case. A verifier that declines to
-implement the withdrawn construction MUST report the reference as
-unverified rather than as failed. A historical identifier MUST NOT be
+or typed digest reference that names `jcs-n` MUST NOT be newly declared. A
+verifier encountering `jcs-n` in a record committed on or after 2026-08-18
+MUST fail closed — MUST NOT report the payload class or typed digest
+reference as verified. A verifier encountering `jcs-n` in a record
+committed before 2026-08-18 MAY verify it against the withdrawn
+construction as that construction is permanently recorded in
+draft-mih-sokolov-scitt-payload-binding-00, Section 3.1; such a record is a
+historical record, not a live conformance case, and a verifier that
+declines to implement the withdrawn construction MUST report the reference
+as unverified rather than as failed. A historical identifier MUST NOT be
 relabelled to another algorithm token or recomputed under another
 algorithm.
 
@@ -602,16 +578,6 @@ self-referential or chain-linkage fields. The derived identifier is a
 registers; for an algorithm registered elsewhere, its representation is the
 one that algorithm's registry entry declares.
 
-For every defined algorithm this document registers (`jcs`, historical
-`jcs-n`, and `as-transmitted`), the hash value underlying that string is a
-32-octet SHA-256 value. CANONICAL-DIGEST returns the algorithm entry's
-canonical output representation — for these entries, the 64 ASCII characters
-that encode those 32 octets as lowercase hexadecimal. A field
-that carries the same hash value in another representation does so only by
-an explicit conversion declared by its payload profile ({{representation}});
-the 32 raw octets and the 64 hexadecimal characters are not the same byte
-sequence.
-
 The exclusion set MUST be declared by the payload class in its specification.
 Fields excluded are those that either contain the derived identifier itself
 (they cannot be inside the pre-image they help compute) or that reference
@@ -624,34 +590,10 @@ A verifier MUST recompute the identifier from the payload bytes and the
 declared exclusion set. If the recomputed value does not match the carried
 value, the verifier MUST treat this as a defect in the record.
 
-For a JSON construction, duplicate-member refusal is inherited from the
-input requirements of JCS. RFC 8785 Section 3.1 requires input data to be
-adapted for I-JSON and therefore forbids duplicate property names. RFC 7493
-Section 2.3 defines duplicate names as names that, after processing JSON
-escapes, are identical sequences of Unicode characters. It does not apply
-Unicode normalization; RFC 8785 requires Unicode string data to be preserved
-"as is".
-
-Accordingly, before exclusion-set removal or canonicalization, a producer
-and a verifier MUST reject any object in the input JSON text that contains
-such duplicate names. This check applies recursively, including to duplicate
-members that would later be excluded, and MUST be performed while all
-occurrences are still observable. A parser that silently keeps the first or
-last occurrence does not satisfy this inherited requirement. This applies to
-algorithms that invoke JCS (`jcs` and historical `jcs-n`), not to the opaque
-octets selected by `as-transmitted`.
-
-The selective-disclosure rule applies only when the applicable payload
-profile normatively selects a selective-disclosure mechanism, that mechanism
-defines an exact SD-encoded form, and the profile identifies that form as the
-input to this construction. In that case, the derived identifier MUST be
-computed over that SD-encoded form, not over a reconstructed plaintext
-payload. CPB does not define an SD encoding, disclosure eligibility, or a
-plaintext-to-SD transformation. If the exact SD-encoded construction input
-cannot be established under the selected mechanism and profile, a verifier
-MUST NOT guess or reconstruct it and MUST NOT report the CPB binding as
-verified. The consuming profile determines any application-level disposition
-beyond that unverified binding.
+When selective disclosure is in use, the derived identifier MUST be computed over the
+SD-encoded form of the payload, not the plaintext payload. A payload profile MUST
+declare non-eligible for selective disclosure any field that the profile's own verifier
+requires in order to evaluate the binding.
 
 ## Representation {#representation}
 
@@ -659,18 +601,13 @@ Representation is normative and MUST be declared by the payload class.
 The following representations are distinct and are not implicitly
 interchangeable:
 
-* `bare-hex`: exactly 64 lowercase hexadecimal ASCII characters encoding a
-  32-octet SHA-256 value;
-* `sha256-prefixed`: the seven ASCII characters `sha256:` followed by a
-  `bare-hex` value (71 ASCII characters in total); and
-* `raw`: exactly the 32 octets of the SHA-256 value, with no text encoding.
+* bare 64-character lowercase hexadecimal text;
+* prefixed textual representation; and
+* raw 32-byte octet sequence.
 
 A payload class MUST specify which representation it uses for each field
 containing or referencing a derived identifier. A verifier MUST NOT
-silently coerce among representations. A representation for a hash algorithm
-other than SHA-256 MUST be fully defined by the specification that registers
-that algorithm or by the applicable payload profile; the term "prefixed
-text" alone is not a representation declaration.
+silently coerce among representations.
 
 A deterministic conversion MAY be applied only where this specification or
 the applicable payload profile expressly defines both the conversion and
@@ -726,34 +663,29 @@ alone. Unknown VDS identifiers MUST be rejected.
 
 This profile imposes no leaf construction on a Verifiable Data Structure.
 Where a Transparency Service's VDS keys its log on the derived identifier,
-the SHA-256 value underlying the identifier is 32 octets and the algorithm's
-canonical output is 64-character hexadecimal text ({{representation}}). The
-VDS or applicable profile MUST state which representation is the leaf input,
-and producer and verifier MUST use that exact representation. CPB does not
-choose one on the VDS's behalf.
+the derived identifier is a 32-byte value and its hexadecimal form is a
+representation of that value ({{representation}}); a VDS or profile that
+keys on it therefore states which of the two it uses, and producer and
+verifier MUST use the same one. The following is the failure this
+requirement exists to prevent.
 
-For a VDS that declares the `raw` representation, a derived identifier whose
-canonical string D is 64-character hexadecimal text MUST be decoded to the
-32-octet leaf input:
+That is, for a derived identifier whose string value is a 64-character
+hex string D, the log leaf input MUST be the raw 32-byte value:
 
 ~~~
 leaf_input = bytes.fromhex(D)    -- correct: 32 raw bytes
 ~~~
 
-The following is incorrect for that `raw` leaf rule and MUST NOT be used in
-its place:
+The following is incorrect and MUST NOT be used:
 
 ~~~
 leaf_input = D.encode("utf-8")  -- WRONG: 64 ASCII bytes
 ~~~
 
-For a VDS that instead declares `bare-hex` text as its leaf input,
-`D.encode("ascii")` is the declared 64-octet input and `bytes.fromhex(D)` is
-the wrong substitution. A verifier constructing the leaf for proof
-verification MUST apply the representation declared by that VDS or profile.
-Failure to distinguish the raw value from its hexadecimal encoding produces a
-different leaf hash and fails inclusion verification against a correctly
-constructed log.
+A verifier constructing the leaf for proof verification MUST apply the same
+rule. Failure to distinguish the byte sequence from its hex encoding produces
+a silently wrong leaf hash that fails inclusion verification against any
+correct log.
 
 # Typed Digest References {#typed-refs}
 
@@ -1000,16 +932,12 @@ citation becomes verifiable once a conforming declaration exists.
 
 ## Tamper Evidence and Runtime Honesty
 
-The envelope signature and a verified registration Receipt provide tamper
-evidence for the record's bytes and bind registration to a state of the
-Transparency Service's VDS. They bound wall-clock timing only when the VDS or
-applicable receipt profile defines authenticated time evidence and the
-verifier validates that evidence; append-only order alone establishes order,
-not a calendar date. Neither proves the recording runtime was honest at the
-moment of recording. A producer that seals a false record produces a
-structurally valid record of a fiction. A Transparency Service's append-only
-property makes omission or substitution detectable; it does not make the
-record's content true.
+The envelope signature and the registration Receipt provide tamper evidence
+for the record's bytes and bound its timing. They do not prove the recording
+runtime was honest at the moment of recording. A producer that seals a false
+record produces a structurally valid record of a fiction. A Transparency
+Service's append-only property bounds the timing of such a record and makes
+its omission or substitution detectable; it does not make its content true.
 
 ## Long-Term Verifiability Considerations {#ltv}
 

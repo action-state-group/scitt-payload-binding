@@ -630,6 +630,18 @@ def test_violation_path_cannot_forge_another_location():
     )
 
 
+def test_duplicate_key_detail_is_log_safe():
+    """Decoded duplicate names cannot inject lines or unprintable surrogates."""
+    _, newline_violations = lex('{"a\\nb":1,"a\\nb":2}')
+    assert "\n" not in newline_violations[0].detail
+    assert "\\n" in newline_violations[0].detail
+
+    _, surrogate_violations = lex('{"\\ud800":1,"\\ud800":2}')
+    rendered = str(surrogate_violations[0])
+    assert "\\ud800" in rendered
+    rendered.encode("utf-8")
+
+
 def test_cli_exit_codes_do_not_fail_open(tmp_path):
     """`cpb-check` with nothing to check exited 0 -- and 0 is this tool's word
     for 'verified'. A CI gate whose path variable came out empty concluded the

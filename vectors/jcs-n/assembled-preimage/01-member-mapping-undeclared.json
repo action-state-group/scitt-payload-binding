@@ -14,7 +14,7 @@
     "exclusion_set": [],
     "domain_separation": "none",
     "pre_image_encoding": "JCS UTF-8 octets, per jcs-n",
-    "representation": "64-char lowercase hex"
+    "representation": "bare-hex"
     ,"_comment_member_mapping": "deliberately ABSENT -- that absence is the condition under test. Written as a missing key rather than an explicit null: null is a declaration of nothing, which the checker now rejects."
   },
   "source_object": {

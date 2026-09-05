@@ -14,9 +14,11 @@ still returns the same negative verdict is not exercised.
 Snapshot-pin: every lookup returns snapshot_sha256 via the snapshot object so
 verifiers can include it in their verdict output for traceability.
 """
+import json
 import pathlib
 import pytest
 
+from cpb import ArtifactDigestContext
 from cpb.registry import (
     VERDICT_VERIFIED,
     VERDICT_RESERVED,
@@ -67,6 +69,26 @@ def _build_snapshot(algorithms: dict, artifact_types: dict | None = None) -> dic
     }
     data["snapshot_sha256"] = compute_snapshot_sha256(data)
     return data
+
+
+def _complete_type_entry(*, status: str = "owner-confirmed") -> dict:
+    """Registry fixture with one unsupported and one executable context."""
+    return {
+        "reference": "draft-example",
+        "status": status,
+        "digest_contexts": [
+            {
+                "purpose": "identifier",
+                "algorithm": "as-transmitted",
+                "representation": "bare-hex",
+            },
+            {
+                "purpose": "equivalence",
+                "algorithm": "jcs",
+                "representation": "sha256-prefixed",
+            },
+        ],
+    }
 
 
 @pytest.fixture
@@ -157,7 +179,16 @@ class TestVerdictReserved:
         # Same gate applies to lookup_artifact_type.
         data = _build_snapshot(
             {},
-            {"reserved-type": {"description": "d", "reference": "r", "status": "Reserved"}},
+            {
+                "reserved-type": {
+                    "description": "d",
+                    "reference": "r",
+                    "status": "Reserved",
+                    "digest_contexts": [
+                        {"purpose": "identifier", "algorithm": "future-alg"}
+                    ],
+                }
+            },
         )
         snap = RegistrySnapshot.from_dict(data, verify=True)
         verdict, entry = snap.lookup_artifact_type("reserved-type")
@@ -289,6 +320,243 @@ class TestSnapshotIntegrity:
             {"jcs-n": _JCS_N_ENTRY, "as-transmitted": _AS_TRANSMITTED_ENTRY}
         )["snapshot_sha256"]
         assert sha_a != sha_b
+
+    def test_snapshot_owns_input_and_lookup_results(self):
+        artifact_types = {
+            "example": {
+                "reference": "draft-example",
+                "status": "owner-confirmed",
+                "digest_contexts": [
+                    {"purpose": "identifier", "algorithm": "jcs"}
+                ],
+            }
+        }
+        data = _build_snapshot({"jcs-n": _JCS_N_ENTRY}, artifact_types)
+        snap = RegistrySnapshot.from_dict(data)
+
+        data["artifact_types"]["example"]["digest_contexts"][0]["algorithm"] = "evil"
+        verdict, returned = snap.lookup_artifact_type("example")
+        assert verdict == VERDICT_VERIFIED
+        assert returned["digest_contexts"][0]["algorithm"] == "jcs"
+
+        returned["digest_contexts"][0]["algorithm"] = "also-evil"
+        _, returned_again = snap.lookup_artifact_type("example")
+        assert returned_again["digest_contexts"][0]["algorithm"] == "jcs"
+
+    def test_duplicate_json_member_is_rejected_before_hash_check(self, tmp_path):
+        first = {"description": "first", "reference": "r", "status": "Registered"}
+        second = {"description": "second", "reference": "r", "status": "Registered"}
+        parsed = _build_snapshot({"dup": second})
+        raw = (
+            '{"schema_version":"1","canonicalization_algorithms":'
+            f'{{"dup":{json.dumps(first)},"dup":{json.dumps(second)}}},'
+            f'"artifact_types":{{}},"snapshot_sha256":"{parsed["snapshot_sha256"]}"}}'
+        )
+        path = tmp_path / "duplicate-registry.json"
+        path.write_text(raw, encoding="utf-8")
+        with pytest.raises(SnapshotIntegrityError, match="duplicate JSON member"):
+            RegistrySnapshot.load(path)
+
+    def test_live_duplicate_purpose_contexts_are_rejected(self):
+        artifact_types = {
+            "ambiguous": {
+                "reference": "draft-example",
+                "status": "owner-confirmed",
+                "digest_contexts": [
+                    {"purpose": "identifier", "algorithm": "jcs-n"},
+                    {"purpose": "identifier", "algorithm": "jcs"},
+                ],
+            }
+        }
+        data = _build_snapshot({"jcs-n": _JCS_N_ENTRY}, artifact_types)
+        with pytest.raises(SnapshotIntegrityError, match="repeats digest-context purpose"):
+            RegistrySnapshot.from_dict(data)
+
+    def test_artifact_type_without_a_digest_context_is_rejected(self):
+        artifact_types = {
+            "empty": {
+                "reference": "draft-example",
+                "status": "owner-confirmed",
+                "digest_contexts": [],
+            }
+        }
+        data = _build_snapshot({"jcs-n": _JCS_N_ENTRY}, artifact_types)
+        with pytest.raises(SnapshotIntegrityError, match="at least one digest context"):
+            RegistrySnapshot.from_dict(data)
+
+    def test_future_schema_is_rejected(self):
+        data = _build_snapshot({"jcs-n": _JCS_N_ENTRY})
+        data["schema_version"] = "2"
+        data["snapshot_sha256"] = compute_snapshot_sha256(data)
+        with pytest.raises(SnapshotIntegrityError, match="schema_version"):
+            RegistrySnapshot.from_dict(data)
+
+    def test_external_pin_is_checked(self):
+        data = _build_snapshot({"jcs-n": _JCS_N_ENTRY})
+        with pytest.raises(SnapshotIntegrityError, match="trusted pin"):
+            RegistrySnapshot.from_dict(data, expected_sha256="0" * 64)
+        snap = RegistrySnapshot.from_dict(
+            data,
+            expected_sha256=data["snapshot_sha256"],
+        )
+        assert snap.snapshot_sha256 == data["snapshot_sha256"]
+
+    def test_unverified_builder_snapshot_cannot_resolve(self):
+        data = _build_snapshot({"jcs-n": _JCS_N_ENTRY})
+        snap = RegistrySnapshot.from_dict(data, verify=False)
+        with pytest.raises(SnapshotIntegrityError, match="has not passed"):
+            snap.lookup_algorithm("jcs-n")
+
+
+class TestArtifactTypeDefinitionResolver:
+    def test_internal_self_hash_cannot_authorize_a_definition(self):
+        data = _build_snapshot({}, {"example": _complete_type_entry()})
+        snapshot = RegistrySnapshot.from_dict(data)
+
+        with pytest.raises(SnapshotIntegrityError, match="trusted expected_sha256"):
+            snapshot.artifact_type_definition("example")
+
+    def test_pinned_snapshot_preserves_the_complete_context_set(self):
+        data = _build_snapshot({}, {"example": _complete_type_entry()})
+        snapshot = RegistrySnapshot.from_dict(
+            data,
+            expected_sha256=data["snapshot_sha256"],
+        )
+        equivalence = ArtifactDigestContext(
+            name="example",
+            algorithm="jcs",
+            purpose="equivalence",
+            representation="sha256-prefixed",
+            whole_object_exclusion_set=frozenset({"id"}),
+        )
+
+        definition = snapshot.artifact_type_definition(
+            "example",
+            implementations=[equivalence],
+        )
+
+        assert definition.verification_anchor == (
+            f"registry-snapshot-sha256:{data['snapshot_sha256']}"
+        )
+        assert [context.purpose for context in definition.contexts] == [
+            "identifier",
+            "equivalence",
+        ]
+        assert definition.contexts[0] == ArtifactDigestContext(
+            name="example",
+            algorithm="as-transmitted",
+            purpose="identifier",
+            representation="bare-hex",
+            whole_object_exclusion_set=None,
+        )
+        assert definition.contexts[1] is equivalence
+
+    @pytest.mark.parametrize(
+        ("implementation", "message"),
+        [
+            (
+                ArtifactDigestContext(
+                    name="other",
+                    algorithm="jcs",
+                    purpose="equivalence",
+                    representation="sha256-prefixed",
+                    whole_object_exclusion_set=frozenset(),
+                ),
+                "expected 'example'",
+            ),
+            (
+                ArtifactDigestContext(
+                    name="example",
+                    algorithm="jcs-n",
+                    purpose="equivalence",
+                    representation="sha256-prefixed",
+                    whole_object_exclusion_set=frozenset(),
+                ),
+                "uses algorithm",
+            ),
+            (
+                ArtifactDigestContext(
+                    name="example",
+                    algorithm="jcs",
+                    purpose="equivalence",
+                    representation="bare-hex",
+                    whole_object_exclusion_set=frozenset(),
+                ),
+                "uses representation",
+            ),
+            (
+                ArtifactDigestContext(
+                    name="example",
+                    algorithm="jcs",
+                    purpose="archival",
+                    representation="bare-hex",
+                    whole_object_exclusion_set=frozenset(),
+                ),
+                "unregistered purposes",
+            ),
+        ],
+    )
+    def test_implementation_metadata_must_match_the_pinned_entry(
+        self,
+        implementation,
+        message,
+    ):
+        data = _build_snapshot({}, {"example": _complete_type_entry()})
+        snapshot = RegistrySnapshot.from_dict(
+            data,
+            expected_sha256=data["snapshot_sha256"],
+        )
+
+        with pytest.raises(SnapshotIntegrityError, match=message):
+            snapshot.artifact_type_definition(
+                "example",
+                implementations=[implementation],
+            )
+
+    def test_duplicate_implementation_purpose_is_rejected(self):
+        data = _build_snapshot({}, {"example": _complete_type_entry()})
+        snapshot = RegistrySnapshot.from_dict(
+            data,
+            expected_sha256=data["snapshot_sha256"],
+        )
+        implementation = ArtifactDigestContext(
+            name="example",
+            algorithm="jcs",
+            purpose="equivalence",
+            representation="sha256-prefixed",
+            whole_object_exclusion_set=frozenset(),
+        )
+
+        with pytest.raises(SnapshotIntegrityError, match="multiple implementations"):
+            snapshot.artifact_type_definition(
+                "example",
+                implementations=[implementation, implementation],
+            )
+
+    def test_held_type_cannot_authorize_a_definition(self):
+        data = _build_snapshot(
+            {},
+            {"example": _complete_type_entry(status="provisional")},
+        )
+        snapshot = RegistrySnapshot.from_dict(
+            data,
+            expected_sha256=data["snapshot_sha256"],
+        )
+
+        with pytest.raises(SnapshotIntegrityError, match="not a live registration"):
+            snapshot.artifact_type_definition("example")
+
+    def test_definition_requires_an_explicit_representation(self):
+        entry = _complete_type_entry()
+        del entry["digest_contexts"][0]["representation"]
+        data = _build_snapshot({}, {"example": entry})
+        snapshot = RegistrySnapshot.from_dict(
+            data,
+            expected_sha256=data["snapshot_sha256"],
+        )
+
+        with pytest.raises(SnapshotIntegrityError, match="explicit digest representation"):
+            snapshot.artifact_type_definition("example")
 
 
 # ---------------------------------------------------------------------------

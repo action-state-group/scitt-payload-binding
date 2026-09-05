@@ -339,7 +339,7 @@ def test_legacy_rows_are_a_closed_list_read_from_registry_md():
     # closed list. jcs-n and cde-n both predate the vocabulary too but both
     # now carry the vocabulary term `withdrawn`, so neither is among the rows
     # keeping a legacy spelling.
-    assert rows == {"as-transmitted", "agent-action-capsule"}, rows
+    assert rows == {"as-transmitted"}, rows
 
 
 def test_a_new_entry_cannot_use_a_legacy_spelling():
@@ -498,6 +498,28 @@ def test_schema_still_accepts_a_well_formed_artifact_type():
     jsonschema.validate(ok, schema)  # must not raise
 
 
+def test_artifact_type_requires_at_least_one_digest_context():
+    data = {
+        "schema_version": "1",
+        "snapshot_sha256": "0" * 64,
+        "canonicalization_algorithms": {},
+        "artifact_types": {
+            "empty": {
+                "reference": "draft-example",
+                "status": "owner-confirmed",
+                "digest_contexts": [],
+            }
+        },
+    }
+    legal = gen_registry._parse_status_vocabulary(_MD_LINES)
+    errors = gen_registry._validate_structure(data, legal)
+    assert any("at least one digest context" in error for error in errors), errors
+
+    jsonschema = pytest.importorskip("jsonschema")
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(data, _load_schema())
+
+
 def test_artifact_type_algorithm_must_reference_a_registered_algorithm():
     data = {
         "schema_version": "1",
@@ -526,6 +548,58 @@ def test_committed_registry_passes_the_algorithm_cross_reference_check():
         gen_registry._parse_legacy_rows(_MD_LINES),
     )
     assert errors == [], errors
+
+
+def test_live_artifact_type_cannot_repeat_a_purpose():
+    data = {
+        "schema_version": "1",
+        "snapshot_sha256": "0" * 64,
+        "canonicalization_algorithms": {
+            "jcs": {"description": "d", "reference": "r", "status": "owner-confirmed"}
+        },
+        "artifact_types": {
+            "ambiguous": {
+                "reference": "r",
+                "status": "owner-confirmed",
+                "digest_contexts": [
+                    {"purpose": "identifier", "algorithm": "jcs"},
+                    {"purpose": "identifier", "algorithm": "jcs"},
+                ],
+            }
+        },
+    }
+    legal = gen_registry._parse_status_vocabulary(_MD_LINES)
+    errors = gen_registry._validate_structure(data, legal)
+    assert any("duplicate purpose" in error for error in errors), errors
+
+    data["artifact_types"]["ambiguous"]["status"] = "provisional"
+    errors = gen_registry._validate_structure(data, legal)
+    assert not any("duplicate purpose" in error for error in errors), errors
+
+
+def test_representation_is_an_exact_schema_token():
+    jsonschema = pytest.importorskip("jsonschema")
+    schema = _load_schema()
+    data = {
+        "schema_version": "1",
+        "snapshot_sha256": "0" * 64,
+        "canonicalization_algorithms": {},
+        "artifact_types": {
+            "example": {
+                "reference": "r",
+                "status": "provisional",
+                "digest_contexts": [
+                    {
+                        "purpose": "equivalence",
+                        "algorithm": "jcs",
+                        "representation": "sha256-prefixed, with prose",
+                    }
+                ],
+            }
+        },
+    }
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(data, schema)
 
 
 # ---------------------------------------------------------------------------

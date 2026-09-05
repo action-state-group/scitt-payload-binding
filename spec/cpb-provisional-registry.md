@@ -358,7 +358,7 @@ Digest Context (purpose: `identifier`) — as far as pinned:
 | Exclusion set | N/A pending item 1 above |
 | Domain separation | none observed in code |
 | Pre-image encoding | N/A pending item 1 above |
-| Representation | `request_digest`/`response_digest` sub-fields: bare 64-char lowercase hex (SHA-256) |
+| Representation | `request_digest`/`response_digest` sub-fields: `bare-hex` (SHA-256) |
 
 **Vocabulary (closed sets):**
 - `terminal_state` ∈ `{completed, policy_denied, request_invalid, backend_error, transport_error, client_cancelled, timed_out, evidence_unavailable}` — quoted from `mesh_record_verifier.py`
@@ -638,7 +638,7 @@ up — out of scope for this entry, which registers `root` itself:
 | Exclusion set | none — every live peak at `mmr_size` participates |
 | Domain separation | **none**, by explicit design (`core.py` module docstring: "root = bagged peaks... NO domain-separator byte") — contrast with this same module's leaf/interior hashes, which ARE domain-separated (`leaf_hash = sha256(0x00 \|\| body_digest)`; `interior_hash = sha256(be64(position+1) \|\| left \|\| right)`). The root-bagging step alone omits it |
 | Pre-image encoding | binary, not JSON/UTF-8: iterative `sha256(right \|\| left)`, popping the two rightmost peak hashes and pushing the result back, right-to-left, until one hash remains (`core.root_from_peaks()`, `core.py:141-168`) |
-| Representation | bare 64-char lowercase hex |
+| Representation | `bare-hex` |
 
 ### Identifier-construction question for the DE
 

@@ -1,17 +1,30 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""Tests for typed digest reference verification driven by the conformance vectors."""
+"""Tests for historical digest evaluation and fail-closed verification."""
+import json
+from datetime import datetime, timezone
+
 import pytest
 
 from cpb import (
+    ArtifactTypeDefinition,
     ArtifactTypeRegistryEntry,
     ContextMismatchError,
     DigestAlgorithmMismatchError,
+    DigestContextResolutionError,
+    JsonWireFormatError,
     PurposeMismatchError,
+    PurposeRequiredError,
     RepresentationMismatchError,
     TypedRef,
     TypedRefError,
+    UnsupportedDigestContextError,
+    UnsupportedRepresentationError,
+    VintageEvidenceError,
+    WithdrawnAlgorithmError,
+    evaluate_typed_ref_digest,
     hex_to_raw,
     make_typed_ref,
+    make_typed_ref_json,
     raw_to_hex,
     verify_typed_ref,
 )
@@ -20,13 +33,24 @@ from cpb.canonicalize import canonical_digest
 from .conftest import load_vectors
 
 
+def _definition(*contexts: ArtifactTypeRegistryEntry) -> ArtifactTypeDefinition:
+    # Test fixtures stand in for a profile that publishes this independently
+    # trusted complete-set pin. Production verifiers must not derive their pin
+    # from the same untrusted context sequence they are checking.
+    declared = ArtifactTypeDefinition.for_construction(contexts)
+    return ArtifactTypeDefinition.from_contexts(
+        contexts,
+        expected_context_set_sha256=declared.context_set_sha256,
+    )
+
+
 def _entry_from_cited(cited: dict) -> ArtifactTypeRegistryEntry:
     reg = cited.get("artifact_type_registry_entry") or cited.get("registry_entry") or {}
     return ArtifactTypeRegistryEntry(
         name=reg.get("name", cited.get("type", "unknown")),
         algorithm=reg.get("algorithm", "jcs-n"),
-        exclusion_set=frozenset(reg.get("exclusion_set", [])),
-        representation=reg.get("representation", "bare_hex"),
+        whole_object_exclusion_set=frozenset(reg.get("exclusion_set", [])),
+        representation=reg.get("representation", "bare-hex"),
     )
 
 
@@ -48,8 +72,8 @@ def _entry_from_vector(v: dict) -> ArtifactTypeRegistryEntry:
     return _entry_from_cited({"artifact_type_registry_entry": v.get("artifact_type_registry_entry", {})})
 
 
-def test_typed_ref_pass():
-    """PASS vectors: verify_typed_ref must succeed.
+def test_typed_ref_historical_vectors_evaluate():
+    """Historical PASS vectors retain digest agreement without claiming validity.
 
     typed-ref-cpb01-01's expected digest lives under `expected`, not
     `verification`, per that vector's own field layout (see
@@ -60,14 +84,14 @@ def test_typed_ref_pass():
         cited = v["cited_artifact"]
         entry = _entry_from_vector(v)
         ref = TypedRef(**_typed_ref_fields(v["typed_reference"]))
-        recomputed = verify_typed_ref(ref, cited["payload"], entry)
-        result = v.get("verification") or v.get("expected") or {}
+        recomputed = evaluate_typed_ref_digest(ref, cited["payload"], entry)
+        result = v.get("digest_evaluation") or v.get("expected") or {}
         expected = result["recomputed_digest"]
         assert recomputed == expected, f"{v['id']}: recomputed {recomputed!r} != {expected!r}"
 
 
-def test_typed_ref_make_then_verify():
-    """make_typed_ref produces a reference that verify_typed_ref accepts."""
+def test_typed_ref_new_jcs_n_construction_is_refused():
+    """Neither parsed nor raw construction may revive withdrawn jcs-n."""
     payload = {
         "doc_id": None,
         "subject": "WS-42",
@@ -76,17 +100,47 @@ def test_typed_ref_make_then_verify():
     }
     entry = ArtifactTypeRegistryEntry(
         name="authorization-doc",
-        exclusion_set=frozenset(["doc_id"]),
+        algorithm="jcs-n",
+        whole_object_exclusion_set=frozenset(["doc_id"]),
     )
-    ref = make_typed_ref(payload, entry)
-    assert ref.type == "authorization-doc"
-    assert ref.digest_alg == "SHA-256"
-    assert len(ref.digest) == 64
-    verify_typed_ref(ref, payload, entry)
+    with pytest.raises(TypeError, match="raw JSON"):
+        make_typed_ref(payload, entry)
+    with pytest.raises(WithdrawnAlgorithmError):
+        make_typed_ref_json(json.dumps(payload), _definition(entry))
+
+
+def test_live_jcs_typed_ref_construction_and_verification():
+    raw = (
+        b'{"doc_id":null,"subject":"WS-42","scope":"temperature-write",'
+        b'"issued_at":"2026-09-05T00:00:00Z"}'
+    )
+    entry = ArtifactTypeRegistryEntry(
+        name="authorization-doc",
+        algorithm="jcs",
+        whole_object_exclusion_set=frozenset(["doc_id"]),
+    )
+    definition = _definition(entry)
+    ref = make_typed_ref_json(raw, definition)
+    assert ref.purpose == "identifier"
+    assert verify_typed_ref(ref, raw, definition) == ref.digest
+
+
+@pytest.mark.parametrize("algorithm", ["jcs", "jcs-n"])
+def test_raw_construction_gate_rejects_duplicate_before_algorithm_use(algorithm):
+    entry = ArtifactTypeRegistryEntry(
+        name="authorization-doc",
+        algorithm=algorithm,
+        whole_object_exclusion_set=frozenset(),
+    )
+    with pytest.raises(JsonWireFormatError) as exc_info:
+        make_typed_ref_json(
+            '{"subject":"first","subject":"second"}', _definition(entry)
+        )
+    assert any(v.code == "duplicate_key" for v in exc_info.value.violations)
 
 
 def test_typed_ref_representation_mismatch():
-    """typed-ref-fail-03: sha256:-prefixed digest where bare hex is required."""
+    """typed-ref-fail-03: sha256-prefixed digest where bare-hex is required."""
     vectors = load_vectors("typed-refs/fail")
     rep_mismatch = [v for v in vectors if v.get("failure_reason") == "representation_mismatch"]
     assert rep_mismatch
@@ -95,7 +149,7 @@ def test_typed_ref_representation_mismatch():
         entry = _entry_from_cited(cited)
         ref = TypedRef(**_typed_ref_fields(v["typed_reference_with_wrong_representation"]))
         with pytest.raises(RepresentationMismatchError):
-            verify_typed_ref(ref, cited["payload"], entry)
+            evaluate_typed_ref_digest(ref, cited["payload"], entry)
 
 
 def test_typed_ref_context_mismatch():
@@ -108,7 +162,7 @@ def test_typed_ref_context_mismatch():
         entry = _entry_from_cited(cited)
         ref = TypedRef(**_typed_ref_fields(v["typed_reference_with_wrong_digest"]))
         with pytest.raises(ContextMismatchError):
-            verify_typed_ref(ref, cited["payload"], entry)
+            evaluate_typed_ref_digest(ref, cited["payload"], entry)
 
 
 def test_typed_ref_textual_equality_trap():
@@ -137,14 +191,24 @@ def test_typed_ref_textual_equality_trap():
     artifact_b = v["artifact_b"]
     entry_a = ArtifactTypeRegistryEntry(
         name="artifact-a",
-        exclusion_set=frozenset(["a_id"]),
+        algorithm="jcs-n",
+        whole_object_exclusion_set=frozenset(["a_id"]),
     )
     entry_b = ArtifactTypeRegistryEntry(
         name="artifact-b",
-        exclusion_set=frozenset(["b_id", "weight"]),
+        algorithm="jcs-n",
+        whole_object_exclusion_set=frozenset(["b_id", "weight"]),
     )
-    digest_a = canonical_digest(artifact_a["payload"], entry_a.exclusion_set)
-    digest_b = canonical_digest(artifact_b["payload"], entry_b.exclusion_set)
+    digest_a = canonical_digest(
+        artifact_a["payload"],
+        entry_a.whole_object_exclusion_set,
+        algorithm=entry_a.algorithm,
+    )
+    digest_b = canonical_digest(
+        artifact_b["payload"],
+        entry_b.whole_object_exclusion_set,
+        algorithm=entry_b.algorithm,
+    )
     common = v["common_digest"]
     assert digest_a == common, "artifact-a must produce common_digest"
     assert digest_b == common, "artifact-b must produce common_digest"
@@ -153,17 +217,17 @@ def test_typed_ref_textual_equality_trap():
     ref_a = TypedRef(type="artifact-a", digest_alg="SHA-256", digest=common)
 
     # Step 2a: correct verification — artifact-A bytes with artifact-A entry → PASS
-    verify_typed_ref(ref_a, artifact_a["payload"], entry_a)
+    evaluate_typed_ref_digest(ref_a, artifact_a["payload"], entry_a)
 
     # Step 2b: naive verifier tries artifact-B's registry entry for artifact-A reference
     # → TypedRefError because entry_b.name ('artifact-b') != ref_a.type ('artifact-a')
     with pytest.raises(TypedRefError):
-        verify_typed_ref(ref_a, artifact_b["payload"], entry_b)
+        evaluate_typed_ref_digest(ref_a, artifact_b["payload"], entry_b)
 
     # Step 3: a payload differing from artifact-A fails under artifact-A context
     different_payload = {"a_id": None, "color": "blue", "size": "99"}
     with pytest.raises(ContextMismatchError):
-        verify_typed_ref(ref_a, different_payload, entry_a)
+        evaluate_typed_ref_digest(ref_a, different_payload, entry_a)
 
 
 def test_typed_ref_recomputed_digest_mismatch_wrong_exclusion_set():
@@ -181,17 +245,18 @@ def test_typed_ref_recomputed_digest_mismatch_wrong_exclusion_set():
 
     # The vector's carried digest verifies under the CORRECT (registry) context.
     correct_entry = _entry_from_cited(cited)
-    assert verify_typed_ref(ref, cited["payload"], correct_entry) == cited["correct_derived_id"]
+    assert evaluate_typed_ref_digest(ref, cited["payload"], correct_entry) == cited["correct_derived_id"]
 
     # A verifier that applies the wrong exclusion set (per the vector's own
     # erroneous_verification.wrong_exclusion_set) must raise, not match.
     wrong_exclusion_set = frozenset(v["erroneous_verification"]["wrong_exclusion_set"])
     wrong_entry = ArtifactTypeRegistryEntry(
         name=cited["artifact_type_registry_entry"]["name"],
-        exclusion_set=wrong_exclusion_set,
+        algorithm=correct_entry.algorithm,
+        whole_object_exclusion_set=wrong_exclusion_set,
     )
     with pytest.raises(ContextMismatchError):
-        verify_typed_ref(ref, cited["payload"], wrong_entry)
+        evaluate_typed_ref_digest(ref, cited["payload"], wrong_entry)
 
 
 def test_typed_ref_digest_alg_mismatch_rejected():
@@ -208,19 +273,22 @@ def test_typed_ref_digest_alg_mismatch_rejected():
     }
     entry = ArtifactTypeRegistryEntry(
         name="authorization-doc",
-        exclusion_set=frozenset(["doc_id"]),
+        algorithm="jcs-n",
+        whole_object_exclusion_set=frozenset(["doc_id"]),
     )
-    correct_digest = canonical_digest(payload, entry.exclusion_set)
+    correct_digest = canonical_digest(
+        payload, entry.whole_object_exclusion_set, algorithm=entry.algorithm
+    )
 
     # Positive: digest_alg matching the registered algorithm's hash (SHA-256) verifies.
     ref_correct = TypedRef(type="authorization-doc", digest_alg="SHA-256", digest=correct_digest)
-    assert verify_typed_ref(ref_correct, payload, entry) == correct_digest
+    assert evaluate_typed_ref_digest(ref_correct, payload, entry) == correct_digest
 
     # Negative: a SHA-512-labeled reference to the same digest value must NOT
     # verify under a jcs-n/SHA-256 context.
     ref_mislabeled = TypedRef(type="authorization-doc", digest_alg="SHA-512", digest=correct_digest)
     with pytest.raises(DigestAlgorithmMismatchError):
-        verify_typed_ref(ref_mislabeled, payload, entry)
+        evaluate_typed_ref_digest(ref_mislabeled, payload, entry)
 
 
 def test_typed_ref_digest_algorithm_inconsistent_with_context():
@@ -235,12 +303,19 @@ def test_typed_ref_digest_algorithm_inconsistent_with_context():
 
     cited = v["cited_artifact"]
     entry = _entry_from_cited(cited)
-    assert canonical_digest(cited["payload"], entry.exclusion_set) == v["correct_recomputed_digest"]
+    assert (
+        canonical_digest(
+            cited["payload"],
+            entry.whole_object_exclusion_set,
+            algorithm=entry.algorithm,
+        )
+        == v["correct_recomputed_digest"]
+    )
 
     for example in v["typed_references_with_mislabeled_digest_alg"]:
         ref = TypedRef(type=cited["type"], digest_alg=example["digest_alg"], digest=example["digest"])
         with pytest.raises(DigestAlgorithmMismatchError):
-            verify_typed_ref(ref, cited["payload"], entry)
+            evaluate_typed_ref_digest(ref, cited["payload"], entry)
 
 
 def test_typed_ref_purpose_matches_registered_label():
@@ -255,16 +330,19 @@ def test_typed_ref_purpose_matches_registered_label():
     }
     entry = ArtifactTypeRegistryEntry(
         name="authorization-doc",
-        exclusion_set=frozenset(["doc_id"]),
+        algorithm="jcs",
+        whole_object_exclusion_set=frozenset(["doc_id"]),
     )
-    digest = canonical_digest(payload, entry.exclusion_set)
+    digest = canonical_digest(
+        payload, entry.whole_object_exclusion_set, algorithm=entry.algorithm
+    )
     ref = {
         "type": "authorization-doc",
         "purpose": "identifier",
         "digest_alg": "SHA-256",
         "digest": digest,
     }
-    assert verify_typed_ref(ref, payload, entry) == digest
+    assert evaluate_typed_ref_digest(ref, payload, entry) == digest
 
 
 def test_typed_ref_purpose_mismatch_rejected():
@@ -279,9 +357,12 @@ def test_typed_ref_purpose_mismatch_rejected():
     }
     entry = ArtifactTypeRegistryEntry(
         name="authorization-doc",
-        exclusion_set=frozenset(["doc_id"]),
+        algorithm="jcs",
+        whole_object_exclusion_set=frozenset(["doc_id"]),
     )
-    digest = canonical_digest(payload, entry.exclusion_set)
+    digest = canonical_digest(
+        payload, entry.whole_object_exclusion_set, algorithm=entry.algorithm
+    )
     ref = {
         "type": "authorization-doc",
         "purpose": "equivalence",
@@ -289,13 +370,11 @@ def test_typed_ref_purpose_mismatch_rejected():
         "digest": digest,
     }
     with pytest.raises(PurposeMismatchError):
-        verify_typed_ref(ref, payload, entry)
+        evaluate_typed_ref_digest(ref, payload, entry)
 
 
-def test_typed_ref_purpose_omitted_still_verifies():
-    """§13.2: `purpose` MAY be omitted when the type registers exactly one
-    digest context -- a reference carrying no `purpose` at all must still
-    verify (this is the existing, unchanged dict path)."""
+def test_digest_evaluation_accepts_a_pre_resolved_purpose_less_reference():
+    """The non-verifying helper receives an already-resolved context."""
     payload = {
         "doc_id": None,
         "subject": "WS-42",
@@ -304,18 +383,181 @@ def test_typed_ref_purpose_omitted_still_verifies():
     }
     entry = ArtifactTypeRegistryEntry(
         name="authorization-doc",
-        exclusion_set=frozenset(["doc_id"]),
+        algorithm="jcs",
+        whole_object_exclusion_set=frozenset(["doc_id"]),
     )
-    digest = canonical_digest(payload, entry.exclusion_set)
+    digest = canonical_digest(
+        payload,
+        entry.whole_object_exclusion_set,
+        algorithm="jcs",
+    )
     ref = {"type": "authorization-doc", "digest_alg": "SHA-256", "digest": digest}
-    assert verify_typed_ref(ref, payload, entry) == digest
+    assert evaluate_typed_ref_digest(ref, payload, entry) == digest
+
+
+def test_verification_resolves_the_complete_context_set():
+    raw = b'{"value":"x"}'
+    identifier = ArtifactTypeRegistryEntry(
+        name="example",
+        algorithm="jcs",
+        purpose="identifier",
+        whole_object_exclusion_set=frozenset(),
+    )
+    equivalence = ArtifactTypeRegistryEntry(
+        name="example",
+        algorithm="jcs",
+        purpose="equivalence",
+        whole_object_exclusion_set=frozenset(),
+    )
+    digest = canonical_digest({"value": "x"}, algorithm="jcs")
+    complete = _definition(identifier, equivalence)
+
+    with pytest.raises(TypeError, match="ArtifactTypeDefinition"):
+        verify_typed_ref(
+            TypedRef("example", "SHA-256", digest, purpose="identifier"),
+            raw,
+            identifier,
+        )
+
+    # The old API trusted any Sequence as complete. Wrapping the caller-selected
+    # row in a singleton list therefore bypassed the missing-purpose check. A
+    # bare sequence is no longer a verification input, even when it is a list.
+    with pytest.raises(TypeError, match="ArtifactTypeDefinition"):
+        verify_typed_ref(TypedRef("example", "SHA-256", digest), raw, [identifier])
+
+    with pytest.raises(PurposeRequiredError):
+        verify_typed_ref(
+            TypedRef("example", "SHA-256", digest),
+            raw,
+            complete,
+        )
+
+    # A genuinely single-context type is represented by a different, atomic
+    # definition; it may omit purpose under the wire rule.
+    assert verify_typed_ref(
+        TypedRef("example", "SHA-256", digest),
+        raw,
+        _definition(identifier),
+    ) == digest
+
+    assert verify_typed_ref(
+        TypedRef("example", "SHA-256", digest, purpose="identifier"),
+        raw,
+        complete,
+    ) == digest
+
+    # The dataclass cannot be instantiated directly to invent an anchor.
+    with pytest.raises(TypeError):
+        ArtifactTypeDefinition(
+            name="example",
+            contexts=(identifier,),
+            context_set_sha256=complete.context_set_sha256,
+        )
+
+    # Reusing the complete definition's independently trusted pin with a
+    # truncated tuple fails before a verifier can mistake it for a one-context
+    # type. Omitting a pin is not an API option either.
+    with pytest.raises(DigestContextResolutionError, match="integrity check"):
+        ArtifactTypeDefinition.from_contexts(
+            [identifier],
+            expected_context_set_sha256=complete.context_set_sha256,
+        )
+    with pytest.raises(TypeError, match="expected_context_set_sha256"):
+        ArtifactTypeDefinition.from_contexts([identifier])
+
+
+def test_construction_only_definition_cannot_authorize_verification():
+    raw = b'{"value":"x"}'
+    context = ArtifactTypeRegistryEntry(
+        name="example",
+        algorithm="jcs",
+        purpose="identifier",
+        whole_object_exclusion_set=frozenset(),
+    )
+    local_declaration = ArtifactTypeDefinition.for_construction([context])
+
+    ref = make_typed_ref_json(raw, local_declaration)
+    with pytest.raises(DigestContextResolutionError, match="independently trusted"):
+        verify_typed_ref(ref, raw, local_declaration)
+
+
+def test_verification_rejects_duplicate_purpose_contexts():
+    raw = b'{"value":"x"}'
+    digest = canonical_digest({"value": "x"}, algorithm="jcs")
+    contexts = (
+        ArtifactTypeRegistryEntry(
+            name="example",
+            algorithm="jcs",
+            purpose="identifier",
+            whole_object_exclusion_set=frozenset(),
+        ),
+        ArtifactTypeRegistryEntry(
+            name="example",
+            algorithm="jcs",
+            purpose="identifier",
+            whole_object_exclusion_set=frozenset({"value"}),
+        ),
+    )
+    definition = _definition(*contexts)
+    ref = TypedRef("example", "SHA-256", digest, purpose="identifier")
+    with pytest.raises(DigestContextResolutionError, match="duplicate"):
+        verify_typed_ref(ref, raw, definition)
+    with pytest.raises(DigestContextResolutionError, match="duplicate"):
+        make_typed_ref_json(raw, definition, purpose="identifier")
+
+
+def test_unsupported_contexts_participate_in_resolution_without_blocking_a_sibling():
+    raw = b'{"value":"x"}'
+    digest = canonical_digest({"value": "x"}, algorithm="jcs")
+    contexts = (
+        ArtifactTypeRegistryEntry(
+            name="example",
+            algorithm="as-transmitted",
+            purpose="identifier",
+        ),
+        ArtifactTypeRegistryEntry(
+            name="example",
+            algorithm="jcs",
+            purpose="equivalence",
+            whole_object_exclusion_set=frozenset(),
+        ),
+    )
+    definition = _definition(*contexts)
+    assert verify_typed_ref(
+        TypedRef("example", "SHA-256", digest, purpose="equivalence"),
+        raw,
+        definition,
+    ) == digest
+    with pytest.raises(UnsupportedDigestContextError):
+        verify_typed_ref(
+            TypedRef("example", "SHA-256", digest, purpose="identifier"),
+            raw,
+            definition,
+        )
+
+
+def test_metadata_only_field_selection_cannot_be_executed():
+    raw = b'{"action_id":"a","outcome":"ok","extra":"not-in-context"}'
+    context = ArtifactTypeRegistryEntry(
+        name="example",
+        algorithm="jcs",
+        purpose="equivalence",
+    )
+    ref = TypedRef(
+        "example",
+        "SHA-256",
+        canonical_digest({"action_id": "a", "outcome": "ok"}, algorithm="jcs"),
+        purpose="equivalence",
+    )
+    with pytest.raises(UnsupportedDigestContextError, match="field-selection"):
+        verify_typed_ref(ref, raw, _definition(context))
 
 
 def test_typed_ref_raw_representation_boundary():
     """Round-2 Blocker 2: raw octets and hex are distinct, non-interchangeable
-    representations (§4.1) -- not two spellings of one 'bare_hex' concept.
+    representations (§5.1) -- not two spellings of one 'bare-hex' concept.
     A hex string is REJECTED where 'raw' (bytes) is declared, and a bytes
-    object is REJECTED where 'bare_hex' (str) is declared, even when one is
+    object is REJECTED where 'bare-hex' (str) is declared, even when one is
     exactly the decoding of the other."""
     payload = {
         "doc_id": None,
@@ -323,36 +565,56 @@ def test_typed_ref_raw_representation_boundary():
         "scope": "temperature-write",
         "issued_at": "2026-07-24T00:00:00Z",
     }
-    hex_entry = ArtifactTypeRegistryEntry(name="authorization-doc", exclusion_set=frozenset(["doc_id"]))
-    raw_entry = ArtifactTypeRegistryEntry(
-        name="authorization-doc", exclusion_set=frozenset(["doc_id"]), representation="raw",
+    hex_entry = ArtifactTypeRegistryEntry(
+        name="authorization-doc",
+        algorithm="jcs",
+        whole_object_exclusion_set=frozenset(["doc_id"]),
     )
-    digest_hex = canonical_digest(payload, hex_entry.exclusion_set)
+    raw_entry = ArtifactTypeRegistryEntry(
+        name="authorization-doc",
+        algorithm="jcs",
+        whole_object_exclusion_set=frozenset(["doc_id"]),
+        representation="raw",
+    )
+    digest_hex = canonical_digest(
+        payload,
+        hex_entry.whole_object_exclusion_set,
+        algorithm="jcs",
+    )
     digest_raw = hex_to_raw(digest_hex)
 
     # Positive: raw bytes verify under a 'raw' registry entry.
     ref_raw = TypedRef(type="authorization-doc", digest_alg="SHA-256", digest=digest_raw)
-    assert verify_typed_ref(ref_raw, payload, raw_entry) == digest_hex
+    assert evaluate_typed_ref_digest(ref_raw, payload, raw_entry) == digest_hex
 
-    # Positive: the hex str verifies under a 'bare_hex' registry entry.
+    # Positive: the hex str agrees under a 'bare-hex' registry entry.
     ref_hex = TypedRef(type="authorization-doc", digest_alg="SHA-256", digest=digest_hex)
-    assert verify_typed_ref(ref_hex, payload, hex_entry) == digest_hex
+    assert evaluate_typed_ref_digest(ref_hex, payload, hex_entry) == digest_hex
 
     # Boundary negative: the hex str of the CORRECT digest is rejected where
     # 'raw' is declared -- content is right, representation is wrong.
     ref_hex_as_raw = TypedRef(type="authorization-doc", digest_alg="SHA-256", digest=digest_hex)
     with pytest.raises(RepresentationMismatchError):
-        verify_typed_ref(ref_hex_as_raw, payload, raw_entry)
+        evaluate_typed_ref_digest(ref_hex_as_raw, payload, raw_entry)
 
     # Boundary negative: the raw bytes of the CORRECT digest are rejected
-    # where 'bare_hex' is declared.
+    # where 'bare-hex' is declared.
     ref_raw_as_hex = TypedRef(type="authorization-doc", digest_alg="SHA-256", digest=digest_raw)
     with pytest.raises(RepresentationMismatchError):
-        verify_typed_ref(ref_raw_as_hex, payload, hex_entry)
+        evaluate_typed_ref_digest(ref_raw_as_hex, payload, hex_entry)
 
     # Explicit conversions round-trip.
     assert hex_to_raw(raw_to_hex(digest_raw)) == digest_raw
     assert raw_to_hex(hex_to_raw(digest_hex)) == digest_hex
+
+    # TypedRef itself is a JSON object whose digest member is a string. The
+    # generic raw representation has no normative encoding in that wire form,
+    # so conformance construction and verification reject it explicitly.
+    raw_json = json.dumps(payload, separators=(",", ":"))
+    with pytest.raises(UnsupportedRepresentationError, match="JSON TypedRef"):
+        make_typed_ref_json(raw_json, _definition(raw_entry))
+    with pytest.raises(UnsupportedRepresentationError, match="JSON TypedRef"):
+        verify_typed_ref(ref_raw, raw_json, _definition(raw_entry))
 
 
 @pytest.mark.parametrize(
@@ -384,7 +646,10 @@ def test_raw_to_hex_requires_exactly_32_octets(invalid):
 def test_prefixed_representation_validates_the_hex_payload_grammar():
     payload = {"value": "x"}
     entry = ArtifactTypeRegistryEntry(
-        name="example", representation="prefixed"
+        name="example",
+        algorithm="jcs",
+        representation="sha256-prefixed",
+        whole_object_exclusion_set=frozenset(),
     )
     ref = TypedRef(
         type="example",
@@ -392,7 +657,7 @@ def test_prefixed_representation_validates_the_hex_payload_grammar():
         digest="sha256:" + "z" * 64,
     )
     with pytest.raises(RepresentationMismatchError):
-        verify_typed_ref(ref, payload, entry)
+        evaluate_typed_ref_digest(ref, payload, entry)
 
 
 def test_digest_alg_comparison_is_byte_exact():
@@ -413,7 +678,7 @@ def test_digest_alg_comparison_is_byte_exact():
     fields = _typed_ref_fields(v["typed_reference"])
 
     exact = TypedRef(**fields)
-    verify_typed_ref(exact, cited["payload"], entry)  # the registered spelling verifies
+    evaluate_typed_ref_digest(exact, cited["payload"], entry)
 
     case_shifted = dict(fields)
     registered = case_shifted["digest_alg"]
@@ -423,4 +688,118 @@ def test_digest_alg_comparison_is_byte_exact():
     assert case_shifted["digest_alg"] != registered, "vector's digest_alg has no case to shift"
 
     with pytest.raises(DigestAlgorithmMismatchError):
-        verify_typed_ref(TypedRef(**case_shifted), cited["payload"], entry)
+        evaluate_typed_ref_digest(TypedRef(**case_shifted), cited["payload"], entry)
+
+
+def _historical_reference_fixture():
+    payload = {
+        "doc_id": None,
+        "subject": "WS-42",
+        "scope": "temperature-write",
+        "issued_at": "2026-07-24T00:00:00Z",
+    }
+    raw = json.dumps(payload, separators=(",", ":"))
+    entry = ArtifactTypeRegistryEntry(
+        name="authorization-doc",
+        algorithm="jcs-n",
+        whole_object_exclusion_set=frozenset(["doc_id"]),
+        representation="bare-hex",
+    )
+    digest = canonical_digest(
+        payload, entry.whole_object_exclusion_set, algorithm=entry.algorithm
+    )
+    ref = TypedRef(type=entry.name, digest_alg="SHA-256", digest=digest)
+    return payload, raw, entry, digest, ref
+
+
+def test_historical_verify_requires_authenticated_pre_cutoff_vintage():
+    _, raw, entry, digest, ref = _historical_reference_fixture()
+    evidence = {"proof": b"profile-specific-proof", "digest": digest}
+
+    def verify_evidence(candidate, recomputed):
+        assert candidate is evidence
+        assert candidate["digest"] == recomputed
+        return datetime(2026, 7, 24, tzinfo=timezone.utc)
+
+    assert verify_typed_ref(
+        ref,
+        raw,
+        _definition(entry),
+        vintage_evidence=evidence,
+        verify_vintage_evidence=verify_evidence,
+    ) == digest
+
+
+def test_historical_verify_fails_closed_without_evidence_or_verifier():
+    _, raw, entry, digest, ref = _historical_reference_fixture()
+
+    with pytest.raises(VintageEvidenceError):
+        verify_typed_ref(ref, raw, _definition(entry))
+    with pytest.raises(VintageEvidenceError):
+        verify_typed_ref(
+            ref,
+            raw,
+            _definition(entry),
+            vintage_evidence={"digest": digest},
+        )
+
+
+@pytest.mark.parametrize(
+    "authenticated_time",
+    [
+        datetime(2026, 8, 18, tzinfo=timezone.utc),
+        datetime(2026, 9, 1, tzinfo=timezone.utc),
+        datetime(2026, 7, 24),
+    ],
+)
+def test_historical_verify_rejects_post_cutoff_or_naive_time(authenticated_time):
+    _, raw, entry, digest, ref = _historical_reference_fixture()
+
+    with pytest.raises(VintageEvidenceError):
+        verify_typed_ref(
+            ref,
+            raw,
+            _definition(entry),
+            vintage_evidence={"digest": digest},
+            verify_vintage_evidence=lambda evidence, recomputed: authenticated_time,
+        )
+
+
+def test_historical_verify_rejects_unverified_payload_date():
+    """A date in the payload cannot substitute for cryptographic evidence."""
+    _, raw, entry, _, ref = _historical_reference_fixture()
+    with pytest.raises(VintageEvidenceError):
+        verify_typed_ref(ref, raw, _definition(entry))
+
+
+def test_verified_path_requires_raw_json_not_a_collapsed_mapping():
+    payload, _, entry, _, ref = _historical_reference_fixture()
+    with pytest.raises(TypeError, match="raw JSON"):
+        verify_typed_ref(
+            ref,
+            payload,
+            _definition(entry),
+            vintage_evidence=object(),
+            verify_vintage_evidence=lambda evidence, recomputed: datetime(
+                2026, 7, 24, tzinfo=timezone.utc
+            ),
+        )
+
+
+def test_verified_path_rejects_duplicate_even_when_member_is_excluded():
+    _, _, entry, digest, ref = _historical_reference_fixture()
+    duplicate_raw = (
+        '{"doc_id":"first","doc_id":"second","subject":"WS-42",'
+        '"scope":"temperature-write","issued_at":"2026-07-24T00:00:00Z"}'
+    )
+    with pytest.raises(JsonWireFormatError) as exc_info:
+        verify_typed_ref(
+            ref,
+            duplicate_raw,
+            _definition(entry),
+            vintage_evidence={"digest": digest},
+            verify_vintage_evidence=lambda evidence, recomputed: datetime(
+                2026, 7, 24, tzinfo=timezone.utc
+            ),
+        )
+    assert any(v.code == "duplicate_key" for v in exc_info.value.violations)

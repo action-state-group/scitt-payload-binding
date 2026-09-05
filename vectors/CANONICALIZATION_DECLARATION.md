@@ -37,8 +37,8 @@ field names, which may be empty):
 4. **Digest** — Compute the SHA-256 hash of the UTF-8 octet string from step 3.
 
 5. **Encoding** — Encode the 32-byte digest as 64 lowercase hexadecimal characters.
-   This is the `bare_hex` representation.  Representations are distinct and not
-   interchangeable (§4.1): `bare_hex`, `sha256:`-prefixed hex, and raw bytes are three
+   This is the `bare-hex` representation.  Representations are distinct and not
+   interchangeable (§4.1): `bare-hex`, `sha256-prefixed`, and `raw` are three
    different representations and a verifier MUST NOT silently coerce between them.
 
 **Notation:** CANONICAL-DIGEST(`jcs-n`, P, E) = lowercase_hex(SHA-256(JCS(normalize(P\E))))
@@ -222,7 +222,7 @@ A conforming test suite MUST demonstrate that each of the following inputs is re
    `stream_incomplete`.  (Vector `domain-transform-fail-01`.)
 
 5. **Representation mismatch** — A digest with trailing whitespace, surrounding spaces,
-   or a `sha256:` prefix where `bare_hex` is declared MUST be rejected.  (Vectors
+   or a `sha256:` prefix where `bare-hex` is declared MUST be rejected.  (Vectors
    `jcs-n-kat-20`, `jcs-n-kat-21`, `typed-ref-fail-03`.)
 
 6. **Negative zero (`-0`)** — The wire token `-0` MUST be rejected even though many
