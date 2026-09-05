@@ -14,6 +14,7 @@ from cpb import (
     canonical_digest_json,
     jcs_n,
     normalize,
+    raw_digest,
 )
 from .conftest import load_vectors
 
@@ -96,6 +97,56 @@ def test_jcs_n_exclusion_groups():
     by_id = {v["id"]: v for v in vectors}
     assert by_id["jcs-n-kat-08"]["digest"] == by_id["jcs-n-kat-01"]["digest"]
     assert by_id["jcs-n-kat-09"]["digest"] == by_id["jcs-n-kat-01"]["digest"]
+
+
+@pytest.mark.parametrize(
+    ("algorithm", "expected_pre_image"),
+    [
+        ("jcs", b'{"count":7,"empty":null,"subject":"WS-42"}'),
+        ("jcs-n", b'{"count":7,"subject":"WS-42"}'),
+    ],
+)
+def test_raw_digest_is_the_exact_octet_form_of_canonical_digest(
+    algorithm,
+    expected_pre_image,
+):
+    payload = {
+        "excluded": "not hashed",
+        "empty": None,
+        "subject": "WS-42",
+        "count": 7,
+    }
+    exclusions = {"excluded"}
+
+    digest_octets = raw_digest(payload, exclusions, algorithm=algorithm)
+
+    assert type(digest_octets) is bytes
+    assert len(digest_octets) == 32
+    assert digest_octets == hashlib.sha256(expected_pre_image).digest()
+    assert digest_octets.hex() == canonical_digest(
+        payload,
+        exclusions,
+        algorithm=algorithm,
+    )
+
+
+def test_raw_digest_requires_an_explicit_supported_algorithm():
+    with pytest.raises(TypeError, match="algorithm"):
+        raw_digest({"value": "x"})
+    with pytest.raises(ValueError, match="unsupported canonicalization algorithm"):
+        raw_digest({"value": "x"}, algorithm="cde-n")
+
+
+def test_as_transmitted_raw_digest_hashes_exact_octets_only():
+    selected = bytes.fromhex("846a5369676e61747572653143a101274045ff00435042")
+    expected = hashlib.sha256(selected).digest()
+
+    assert raw_digest(selected, algorithm="as-transmitted") == expected
+    assert canonical_digest(selected, algorithm="as-transmitted") == expected.hex()
+    with pytest.raises(TypeError, match="exact bytes"):
+        raw_digest(selected.hex(), algorithm="as-transmitted")
+    with pytest.raises(ValueError, match="does not permit an exclusion set"):
+        raw_digest(selected, {"field"}, algorithm="as-transmitted")
 
 
 @pytest.mark.parametrize("algorithm", ["jcs", "jcs-n"])

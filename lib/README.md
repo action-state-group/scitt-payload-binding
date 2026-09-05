@@ -1,7 +1,7 @@
 # CPB Reference Library
 
 Python reference library for **Canonical Payload Binding**
-(`draft-mih-sokolov-scitt-payload-binding-02`).
+(`draft-mih-sokolov-scitt-payload-binding-03`).
 
 Live construction uses RFC 8785 `jcs`. The older `jcs-n` algorithm was withdrawn
 on 2026-08-18: its byte construction remains for historical records, but it
@@ -9,13 +9,14 @@ cannot be used for new derived identifiers or typed references. Historical
 verification requires raw JSON plus profile-defined cryptographic evidence of a
 pre-cutoff vintage; digest equality alone is only an evaluation result.
 
-Implements three CPB mechanisms with no payload-profile semantics:
+Implements four CPB mechanisms with no payload-profile semantics:
 
 | Module | Spec section | What it implements |
 |---|---|---|
 | `cpb.canonicalize` | §4 | Live `jcs` and historical `jcs-n`, including duplicate-preserving raw-JSON paths |
 | `cpb.derive_id` | §5 | Raw-JSON identifier construction and verification, plus historical evaluation |
 | `cpb.typed_ref` | §8 | Raw-JSON typed-reference construction and verification, plus historical evaluation |
+| `cpb.cose_refs` | §8.3 | Strict protected-header decoding and structural Signed Statement validation |
 
 ## Install
 
@@ -129,11 +130,24 @@ Selecting `algorithm="jcs-n"` in `derive_id` or `make_typed_ref_json` rejects ne
 construction; `make_typed_ref` rejects every parsed construction input.
 The JSON TypedRef wire form has a string-valued `digest`, so high-level
 construction and verification reject a context whose representation is `raw`;
-raw-byte comparison remains available only through the diagnostic evaluator.
+the diagnostic evaluator does not produce a verification verdict. A reference
+decoded from CPB's CBOR protected-header carriage can instead be passed to
+`verify_cbor_typed_ref`. That entry point permits a byte-string digest only
+when the selected context in a complete, independently pinned
+`ArtifactTypeDefinition` expressly declares `representation="raw"`.
 
-## Pinned registry resolution
+`validate_cpb_signed_statement` validates COSE/CPB structure and returns the
+protected typed references. It does not validate the cryptographic signature,
+authorize the signer for the asserted issuer, fetch a cited artifact, or check
+its digest. Those are separate steps: verify the COSE signature and signer
+trust under the consuming policy, then call `verify_cbor_typed_ref` with the
+exact cited-artifact JSON bytes and the pinned artifact-type definition.
 
-When a registry snapshot is the trust source, bind its complete artifact-type
+## Legacy pinned-snapshot resolution
+
+Draft -03 uses profile-owned artifact-type declarations rather than creating a
+CPB artifact-type registry. For deployments that already use this repository's
+legacy snapshot as a configured trust source, bind its complete artifact-type
 row directly instead of flattening or preselecting one context:
 
 ```python

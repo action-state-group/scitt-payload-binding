@@ -27,11 +27,14 @@ from cpb import (
     CarriedIdMismatch,
     ContextMismatchError,
     DigestAlgorithmMismatchError,
+    JsonWireFormatError,
     RepresentationMismatchError,
     TypedRef,
     UnsafeIntegerError,
     canonical_digest,
+    canonical_digest_json,
     evaluate_typed_ref_digest,
+    raw_digest,
     verify_carried_id,
 )
 from cpb.canonicalize import FloatInDigestError
@@ -71,6 +74,25 @@ def _handle_integer_formatting_divergence(v: dict) -> None:
     excl = set(v.get("exclusion_set", []))
     with pytest.raises(UnsafeIntegerError):
         canonical_digest(v["input"], excl or None, algorithm="jcs-n")
+
+
+def _handle_jcs_duplicate_member_name(v: dict) -> None:
+    with pytest.raises(JsonWireFormatError):
+        canonical_digest_json(v["input_json"], algorithm="jcs")
+
+
+def _handle_as_transmitted_textual_hex_substitution(v: dict) -> None:
+    selected = bytes.fromhex(v["selected_bytes_hex"])
+    textual_hex = v["selected_bytes_hex"].encode("ascii")
+    nonconforming = v["nonconforming_pre_image"]
+
+    assert textual_hex == bytes.fromhex(nonconforming["bytes_hex"])
+    assert raw_digest(selected, algorithm="as-transmitted").hex() == v["digest"]
+    assert raw_digest(textual_hex, algorithm="as-transmitted").hex() == (
+        nonconforming["digest"]
+    )
+    assert v["carried_digest"] == nonconforming["digest"]
+    assert v["carried_digest"] != v["digest"]
 
 
 def _handle_carried_id_mismatch(v: dict) -> None:
@@ -457,12 +479,16 @@ def _handle_assembled_preimage_member_mapping_undeclared(v: dict) -> None:
 
 
 _HANDLERS = {
+    "as_transmitted_textual_hex_substitution": (
+        _handle_as_transmitted_textual_hex_substitution
+    ),
     "assembled_preimage_member_mapping_undeclared": (
         _handle_assembled_preimage_member_mapping_undeclared
     ),
     "float_in_digest_bearing_field": _handle_float_in_digest_bearing_field,
     "unsafe_integer_in_digest_bearing_field": _handle_unsafe_integer_in_digest_bearing_field,
     "integer_formatting_divergence": _handle_integer_formatting_divergence,
+    "jcs_duplicate_member_name": _handle_jcs_duplicate_member_name,
     "carried_id_mismatch": _handle_carried_id_mismatch,
     "recomputed_digest_mismatch": _handle_recomputed_digest_mismatch,
     "digest_context_incompatible_equal_hex_is_not_a_join": _handle_textual_equality_trap,

@@ -10,7 +10,19 @@ import pytest
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-from cpb import canonical_digest
+import cpb
+import cpb.cose_refs as carrier_api
+from cpb import (
+    ArtifactDigestContext,
+    ArtifactTypeDefinition,
+    DigestContextResolutionError,
+    RepresentationMismatchError,
+    UnsupportedRepresentationError,
+    canonical_digest,
+    raw_digest,
+    verify_cbor_typed_ref,
+    verify_typed_ref_json,
+)
 from cpb.cose_refs import (
     FULL_CONTENT_MODE,
     HASH_ENVELOPE_MODE,
@@ -36,11 +48,15 @@ CPB_REFS = -65537  # Private Use for tests; the draft's IANA value is TBD.
 VECTORS = Path(__file__).parents[2] / "vectors"
 
 
-def _reference(*, purpose: str | None = "identifier") -> dict[int, object]:
+def _reference(
+    *,
+    purpose: str | None = "identifier",
+    digest: str | bytes = bytes.fromhex("11" * 32),
+) -> dict[int, object]:
     reference: dict[int, object] = {
         1: "application/example+json",
         3: "SHA-256",
-        4: bytes.fromhex("11" * 32),
+        4: digest,
     }
     if purpose is not None:
         reference[2] = purpose
@@ -81,7 +97,12 @@ def _sign1(
     )
 
 
-def _valid_statement(mode: str, *, payload: bytes | None = None) -> bytes:
+def _valid_statement(
+    mode: str,
+    *,
+    payload: bytes | None = None,
+    reference: dict[int, object] | None = None,
+) -> bytes:
     if payload is None:
         payload = b'{"temperature":"21.5"}' if mode == FULL_CONTENT_MODE else b"\x11" * 32
     protected: dict[object, object] = {
@@ -89,7 +110,7 @@ def _valid_statement(mode: str, *, payload: bytes | None = None) -> bytes:
         2: [CPB_REFS],
         4: b"cpb-test-kid",
         15: {1: "https://issuer.example", 2: "urn:example:artifact:1"},
-        CPB_REFS: [_reference()],
+        CPB_REFS: [reference if reference is not None else _reference()],
     }
     if mode == FULL_CONTENT_MODE:
         protected[3] = "application/json"
@@ -104,6 +125,22 @@ def _valid_statement(mode: str, *, payload: bytes | None = None) -> bytes:
     )
 
 
+def _pinned_definition(
+    *contexts: ArtifactDigestContext,
+) -> ArtifactTypeDefinition:
+    declared = ArtifactTypeDefinition.for_construction(contexts)
+    return ArtifactTypeDefinition.from_contexts(
+        contexts,
+        expected_context_set_sha256=declared.context_set_sha256,
+    )
+
+
+def test_package_root_exports_complete_cose_carrier_api() -> None:
+    for name in carrier_api.__all__:
+        assert name in cpb.__all__
+        assert getattr(cpb, name) is getattr(carrier_api, name)
+
+
 def test_extracts_closed_typed_reference_from_protected_header() -> None:
     encoded = _sign1(refs=[_reference()])
     refs = extract_cpb_refs(encoded, CPB_REFS, required=True, require_critical=True)
@@ -113,6 +150,82 @@ def test_extracts_closed_typed_reference_from_protected_header() -> None:
     assert refs[0].purpose == "identifier"
     assert refs[0].digest_alg == "SHA-256"
     assert refs[0].digest == bytes.fromhex("11" * 32)
+
+
+def test_raw_cbor_reference_verifies_only_against_a_pinned_raw_context() -> None:
+    artifact_json = b'{"subject":"WS-42","scope":"temperature-write"}'
+    digest_octets = raw_digest(json.loads(artifact_json), algorithm="jcs")
+    raw_context = ArtifactDigestContext(
+        name="application/example+json",
+        algorithm="jcs",
+        representation="raw",
+        purpose="identifier",
+        whole_object_exclusion_set=frozenset(),
+    )
+    text_sibling = ArtifactDigestContext(
+        name="application/example+json",
+        algorithm="jcs",
+        representation="bare-hex",
+        purpose="equivalence",
+        whole_object_exclusion_set=frozenset(),
+    )
+    complete = _pinned_definition(raw_context, text_sibling)
+
+    cose = decode_cose_sign1(
+        _valid_statement(
+            FULL_CONTENT_MODE,
+            reference=_reference(digest=digest_octets),
+        )
+    )
+    refs = validate_cpb_signed_statement(
+        cose,
+        CPB_REFS,
+        mode=FULL_CONTENT_MODE,
+        cpb_refs_required=True,
+        cpb_refs_critical=True,
+    )
+
+    # Structural validation returns the signed bytes' reference, but deliberately
+    # makes no claim about the dummy signature, signer trust, or cited artifact.
+    assert cose.signature == b"\x22" * 64
+    assert len(refs) == 1 and refs[0].digest == digest_octets
+    assert verify_cbor_typed_ref(refs[0], artifact_json, complete) == digest_octets.hex()
+
+    # A local declaration, a bare row sequence, and a definition truncated under
+    # the complete set's trusted pin cannot authorize a verification verdict.
+    with pytest.raises(DigestContextResolutionError, match="independently trusted"):
+        verify_cbor_typed_ref(
+            refs[0],
+            artifact_json,
+            ArtifactTypeDefinition.for_construction([raw_context, text_sibling]),
+        )
+    with pytest.raises(TypeError, match="ArtifactTypeDefinition"):
+        verify_cbor_typed_ref(refs[0], artifact_json, [raw_context, text_sibling])
+    with pytest.raises(DigestContextResolutionError, match="integrity check"):
+        ArtifactTypeDefinition.from_contexts(
+            [raw_context],
+            expected_context_set_sha256=complete.context_set_sha256,
+        )
+
+    # The same correct octets are not interchangeable with a textual context,
+    # and the JSON reference path still has no byte-string representation.
+    text_context = ArtifactDigestContext(
+        name="application/example+json",
+        algorithm="jcs",
+        representation="bare-hex",
+        purpose="identifier",
+        whole_object_exclusion_set=frozenset(),
+    )
+    with pytest.raises(RepresentationMismatchError):
+        verify_cbor_typed_ref(
+            refs[0],
+            artifact_json,
+            _pinned_definition(text_context),
+        )
+    with pytest.raises(UnsupportedRepresentationError, match="JSON TypedRef"):
+        verify_typed_ref_json(refs[0], artifact_json, complete)
+    with pytest.raises(TypeError, match="strict carrier decoding"):
+        verify_cbor_typed_ref(refs[0].__dict__, artifact_json, complete)
 
 
 def test_purpose_may_be_absent_but_not_null() -> None:

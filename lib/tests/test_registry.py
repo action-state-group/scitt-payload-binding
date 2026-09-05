@@ -18,7 +18,12 @@ import json
 import pathlib
 import pytest
 
-from cpb import ArtifactDigestContext
+from cpb import (
+    ArtifactDigestContext,
+    TypedRef,
+    raw_digest,
+    verify_cbor_typed_ref,
+)
 from cpb.registry import (
     VERDICT_VERIFIED,
     VERDICT_RESERVED,
@@ -450,6 +455,56 @@ class TestArtifactTypeDefinitionResolver:
             whole_object_exclusion_set=None,
         )
         assert definition.contexts[1] is equivalence
+
+    def test_snapshot_bound_complete_set_authorizes_raw_cbor_verification(self):
+        artifact_types = {
+            "example": {
+                "reference": "draft-example",
+                "status": "owner-confirmed",
+                "digest_contexts": [
+                    {
+                        "purpose": "identifier",
+                        "algorithm": "jcs",
+                        "representation": "raw",
+                    },
+                    {
+                        "purpose": "equivalence",
+                        "algorithm": "jcs",
+                        "representation": "bare-hex",
+                    },
+                ],
+            }
+        }
+        data = _build_snapshot({}, artifact_types)
+        snapshot = RegistrySnapshot.from_dict(
+            data,
+            expected_sha256=data["snapshot_sha256"],
+        )
+        raw_context = ArtifactDigestContext(
+            name="example",
+            algorithm="jcs",
+            purpose="identifier",
+            representation="raw",
+            whole_object_exclusion_set=frozenset(),
+        )
+        definition = snapshot.artifact_type_definition(
+            "example",
+            implementations=[raw_context],
+        )
+        artifact_json = b'{"value":"x"}'
+        digest = raw_digest({"value": "x"}, algorithm="jcs")
+        ref = TypedRef(
+            type="example",
+            purpose="identifier",
+            digest_alg="SHA-256",
+            digest=digest,
+        )
+
+        assert len(definition.contexts) == 2
+        assert definition.verification_anchor == (
+            f"registry-snapshot-sha256:{data['snapshot_sha256']}"
+        )
+        assert verify_cbor_typed_ref(ref, artifact_json, definition) == digest.hex()
 
     @pytest.mark.parametrize(
         ("implementation", "message"),
