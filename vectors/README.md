@@ -1,9 +1,9 @@
 # CPB Conformance Vector Suite
 
-Conformance vectors for **draft-mih-sokolov-scitt-payload-binding-00**
-(d23a936 lineage). Implementors of the Canonical Payload Binding (CPB)
-construction MUST pass all cases not marked `must_fail: true` and MUST
-reject all cases marked `must_fail: true`.
+Conformance vectors for **draft-mih-sokolov-scitt-payload-binding-03**.
+Historical `jcs-n` vectors retain their `-00` lineage. Implementors of the
+Canonical Payload Binding (CPB) construction MUST pass all cases not marked
+`must_fail: true` and MUST reject all cases marked `must_fail: true`.
 
 The suite is spec-derived and payload-neutral. No domain vocabulary from
 any specific payload profile appears in these vectors; examples use synthetic
@@ -20,6 +20,10 @@ vectors/
   jcs-n/kats/                       Known-Answer Tests for Algorithm jcs-n (§3.1)
   jcs-n/derived-id/                 Derived identifier construction (§4)
   jcs-n/assembled-preimage/         Assembled pre-images: member mapping (§4, §13.2)
+  jcs/pass/                         Active plain-JCS algorithm — PASS
+  jcs/fail/                         Active plain-JCS algorithm — MUST-FAIL
+  as-transmitted/pass/              Exact named-production byte selection — PASS
+  as-transmitted/fail/              Raw-octet/textual-hex boundary — MUST-FAIL
   subject-binding-diff/             Plain-jcs vs historical-jcs-n discriminating pairs
   representation-contrast/          Raw 32-octet vs 64-character text boundary (§7.1)
   cpb-check/                        P/R grammar checker vectors (packaged with cpb-check)
@@ -110,6 +114,45 @@ Each vector is a self-contained JSON object. Common fields:
 | `pre_image_bytes_hex` | Hex encoding of the pre-image bytes |
 | `digest` | Expected CANONICAL-DIGEST output (64-char lowercase hex for jcs-n) |
 
+`as-transmitted` vectors use `container.bytes_hex` plus a
+`byte_boundary_selector` naming an external specification's exact production.
+Their `selected_bytes_hex` is an independently checked pin: the checker derives
+the bytes from the container and selector before hashing them, so a vector cannot
+self-certify by supplying only an asserted pre-image.
+
+Dedicated `jcs` PASS vectors use `input_json` as the authoritative JSON source
+text and MUST carry an `input_data_model` review mirror. The checker parses the
+source with duplicate-name rejection and requires the mirror to match before it
+computes JCS; the differently named field also keeps the historical jcs-n-only
+generator from accidentally normalizing an active-jcs vector.
+
+## Algorithm as-transmitted — two-sided suite
+
+| ID | Result | What it tests |
+|---|---|---|
+| as-transmitted-pass-01 | PASS | Reconstruct RFC 9052 Section 4.4 `Sig_structure` (`ToBeSigned`) from a COSE_Sign1 object, then SHA-256 the exact 23 selected octets |
+| as-transmitted-fail-01 | MUST-FAIL | Reject the concrete substitution that hashes the 46 ASCII hexadecimal characters spelling those octets |
+
+The pair uses the same container and selector, isolating the representation
+boundary. Category N in `.github/check_vectors.py` also removes the failure
+condition by replacing the bad candidate digest with the correct raw-octet
+digest; the MUST-FAIL assertion must then flip. This mutation makes the negative
+case executable rather than a descriptive pair of pinned hashes.
+
+## Algorithm jcs — two-sided suite
+
+| ID | Result | What it tests |
+|---|---|---|
+| jcs-pass-01 | PASS | Plain RFC 8785 JCS sorts member names while retaining null, empty-array, and empty-object members; pins canonical UTF-8 bytes and SHA-256 output |
+| jcs-fail-01 | MUST-FAIL | Reject two member names that both decode to `a`, even though the second is written as `\u0061` |
+
+The older `subject-binding-diff/` vectors remain valuable cross-algorithm
+evidence, but they are not themselves a two-sided `jcs` registration suite:
+their top-level records do not declare `algorithm: jcs`, and their rejection
+side is a historical `jcs-n` rejection rather than an input `jcs` must reject.
+The dedicated pair closes both gaps. Category O mutates the duplicate-name JSON
+into its unique-name data model and requires the rejection assertion to flip.
+
 ## Algorithm jcs-n — KAT summary
 
 | ID | Input | Digest |
@@ -150,7 +193,7 @@ Each vector is a self-contained JSON object. Common fields:
 | jcs-n-kat-34 | 13-field mixed-type payload | `cb6f355c...` |
 | jcs-n-kat-35 | MUST-FAIL: `-0` token rejected by the wire rule `(0|-?[1-9][0-9]*)` | — |
 | jcs-n-kat-36 | `{"count":0}` — integer zero (token `0`) is a valid wire value | `618de7d9...` |
-| jcs-n-kat-37 | MUST-FAIL: duplicate key `a` after NFC normalization | — |
+| jcs-n-kat-37 | MUST-FAIL: duplicate decoded Unicode member name `a` after JSON escape processing; no NFC normalization is applied | — |
 | jcs-n-kat-38 | Control characters ESC (U+001B) and HT (U+0009) escaped as `\u001b` / `\t` | `d149a22a...` |
 
 **E3 boundary group** (KATs 02–07): null, empty array, empty object, absent

@@ -1,0 +1,22 @@
+{
+  "id": "as-transmitted-pass-01",
+  "algorithm": "as-transmitted",
+  "description": "PASS: compute the digest over the exact RFC 9052 Sig_structure (ToBeSigned) octets reconstructed from this COSE_Sign1 object. The payload contains 0xff and 0x00 so the selected bytes cannot be mistaken for UTF-8 text, and no canonicalization or textual re-encoding is applied.",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-03, Algorithm as-transmitted; RFC 9052 Section 4.4",
+  "must_fail": false,
+  "container": {
+    "format": "COSE_Sign1",
+    "bytes_hex": "d28443a10127a045ff004350425840bf677421861df4923d00eab2c290d98fd7f35cd975bcdee2995284d32090166cf25a01a0fa1373a23c7960f67be99d2af5c8795a6039fbe0ce07cb110bbe4a0d"
+  },
+  "byte_boundary_selector": {
+    "normative_reference": "RFC 9052 Section 4.4",
+    "named_production": "Sig_structure (ToBeSigned)",
+    "context": "Signature1",
+    "external_aad_bytes_hex": ""
+  },
+  "selected_bytes_hex": "846a5369676e61747572653143a101274045ff00435042",
+  "selected_length_octets": 23,
+  "digest_alg": "SHA-256",
+  "digest_representation": "lowercase-hex",
+  "digest": "12dfd0e052395cfe91d00136371028348507a072963ad16764366f51503b8657"
+}
