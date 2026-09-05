@@ -692,6 +692,42 @@ def test_full_content_requires_protected_well_typed_content_type() -> None:
 
 
 @pytest.mark.parametrize(
+    "content_type",
+    [
+        "not a media type",
+        " text/plain ",
+        "text/",
+        "/plain",
+        "text/plain/extra",
+        "tëxt/plain",
+        "text/pl@in",
+    ],
+)
+def test_full_content_rejects_invalid_media_type_text(content_type: str) -> None:
+    cose = decode_cose_sign1(_valid_statement(FULL_CONTENT_MODE))
+    protected = dict(cose.protected.pairs)
+    protected[3] = content_type
+    malformed = decode_cose_sign1(
+        _sign1(critical=False, protected_extra=protected, payload=cose.payload)
+    )
+
+    with pytest.raises(SignedStatementError, match="RFC 6838"):
+        validate_cpb_signed_statement(malformed, CPB_REFS, mode=FULL_CONTENT_MODE)
+
+
+def test_rfc9943_rejects_text_valued_protected_algorithm() -> None:
+    cose = decode_cose_sign1(_valid_statement(FULL_CONTENT_MODE))
+    protected = dict(cose.protected.pairs)
+    protected[1] = "EdDSA"
+    malformed = decode_cose_sign1(
+        _sign1(critical=False, protected_extra=protected, payload=cose.payload)
+    )
+
+    with pytest.raises(SignedStatementError, match="alg.*integer"):
+        validate_cpb_signed_statement(malformed, CPB_REFS, mode=FULL_CONTENT_MODE)
+
+
+@pytest.mark.parametrize(
     "removed_label, message",
     [
         (258, "requires payload-hash-alg"),
@@ -770,6 +806,21 @@ def test_hash_envelope_rejects_wrong_parameter_types(
         _sign1(critical=False, protected_extra=protected, payload=cose.payload)
     )
     with pytest.raises(SignedStatementError, match=message):
+        validate_cpb_signed_statement(malformed, CPB_REFS, mode=HASH_ENVELOPE_MODE)
+
+
+@pytest.mark.parametrize("content_type", ["not a media type", " application/json"])
+def test_hash_envelope_rejects_invalid_preimage_media_type_text(
+    content_type: str,
+) -> None:
+    cose = decode_cose_sign1(_valid_statement(HASH_ENVELOPE_MODE))
+    protected = dict(cose.protected.pairs)
+    protected[259] = content_type
+    malformed = decode_cose_sign1(
+        _sign1(critical=False, protected_extra=protected, payload=cose.payload)
+    )
+
+    with pytest.raises(SignedStatementError, match="RFC 6838"):
         validate_cpb_signed_statement(malformed, CPB_REFS, mode=HASH_ENVELOPE_MODE)
 
 

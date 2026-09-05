@@ -58,6 +58,7 @@ HASH_ENVELOPE_MODE = "rfc9995-hash-envelope"
 StatementMode = Literal["rfc9943-full-content", "rfc9995-hash-envelope"]
 
 COSE_CRIT = 2
+COSE_ALG = 1
 COSE_CONTENT_TYPE = 3
 COSE_KID = 4
 COSE_CWT_CLAIMS = 15
@@ -552,10 +553,37 @@ def validate_critical_headers(
     return critical
 
 
-def _require_uint_or_text(value: Any, name: str) -> None:
+_MEDIA_TYPE_NAME_CHARS = frozenset(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$&-^_.+"
+)
+
+
+def _is_media_type_name(value: str) -> bool:
+    """Apply RFC 6838 Section 4.2's ``restricted-name`` production."""
+
+    return (
+        1 <= len(value) <= 127
+        and value[0].isascii()
+        and value[0].isalnum()
+        and all(character in _MEDIA_TYPE_NAME_CHARS for character in value)
+    )
+
+
+def _require_content_type(value: Any, name: str) -> None:
+    """Validate RFC 9052 content-format integers or media-type strings."""
+
     if isinstance(value, str):
-        if not value:
-            raise SignedStatementError(f"{name} must not be an empty text string")
+        type_name, separator, subtype_name = value.partition("/")
+        if (
+            not separator
+            or "/" in subtype_name
+            or not _is_media_type_name(type_name)
+            or not _is_media_type_name(subtype_name)
+        ):
+            raise SignedStatementError(
+                f"{name} text value must use RFC 6838 type-name/subtype-name syntax "
+                "without leading or trailing whitespace"
+            )
         return
     if type(value) is int and value >= 0:
         return
@@ -757,6 +785,10 @@ def validate_rfc9943_baseline(cose: CoseSign1) -> None:
     ``kid``, build a certification path, or make a cryptographic trust decision.
     """
 
+    if COSE_ALG in cose.protected and type(cose.protected.get(COSE_ALG)) is not int:
+        raise SignedStatementError(
+            "RFC 9943 protected alg (label 1) must be an integer"
+        )
     if COSE_CWT_CLAIMS not in cose.protected:
         raise SignedStatementError(
             "RFC 9943 Signed Statement requires CWT Claims (label 15) in the protected header"
@@ -859,7 +891,7 @@ def validate_cpb_statement_mode(
             raise SignedStatementError(
                 "Full-Content Mode content_type (label 3) MUST NOT be unprotected"
             )
-        _require_uint_or_text(
+        _require_content_type(
             cose.protected.get(COSE_CONTENT_TYPE),
             "content_type (label 3)",
         )
@@ -907,7 +939,7 @@ def validate_cpb_statement_mode(
         raise SignedStatementError(
             "CPB Hash Envelope Mode requires preimage-content-type (label 259) in the protected header"
         )
-    _require_uint_or_text(
+    _require_content_type(
         cose.protected.get(COSE_PREIMAGE_CONTENT_TYPE),
         "preimage-content-type (label 259)",
     )
