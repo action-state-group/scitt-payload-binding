@@ -30,6 +30,27 @@ _POS_ONLY_PRE_IMAGE = '{"a":"y","b":"x"}'
 _POS_ONLY_DIGEST = "7951deff61d4304af5863a13c2ef570ffc96f1d8df5fb3214743dc9953b8aeea"
 
 
+def _committed_representation_vector() -> dict:
+    path = _HERE.parent / "vectors" / "representation-contrast" / "01-raw-vs-hex-text.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_representation_vector_exercises_raw_vs_ascii_boundary():
+    vector = _committed_representation_vector()
+    ok, errors = check_vectors._exercise_representation_contrast(vector, vector["id"])
+    assert ok, errors
+
+
+def test_representation_vector_rejects_a_mutated_check_hash():
+    vector = _committed_representation_vector()
+    vector["raw_input"]["check_sha256"] = "0" * 64
+    ok, errors = check_vectors._exercise_representation_contrast(
+        vector, "representation-mutant"
+    )
+    assert not ok
+    assert any("raw_input.check_sha256 mismatch" in error for error in errors)
+
+
 def _write_pos_only_vector(root: pathlib.Path, name: str = "pos-only-alg") -> None:
     (root / "one-direction-only").mkdir(parents=True, exist_ok=True)
     vector = {

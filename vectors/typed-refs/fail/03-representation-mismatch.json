@@ -1,6 +1,6 @@
 {
   "id": "typed-ref-fail-03",
-  "description": "MUST-FAIL: representation mismatch. The artifact type registry declares representation as 64-char lowercase hex, but the typed reference carries a sha256:-prefixed string. These are not the same representation and MUST NOT be treated as equivalent.",
+  "description": "MUST-FAIL: representation mismatch. The artifact type registry declares `bare-hex`, but the typed reference carries a `sha256-prefixed` string. These are not the same representation and MUST NOT be treated as equivalent.",
   "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §4.1 ('Representation is normative and must be declared by the payload class. The following representations are distinct and not interchangeable: Bare 64-character lowercase hex string; Prefixed text string (e.g., sha256:...); Raw 32-byte octet sequence.')",
   "must_fail": true,
   "failure_reason": "representation_mismatch",
@@ -24,12 +24,12 @@
   },
   "erroneous_verification": {
     "mistake": "Verifier strips 'sha256:' prefix and compares the remainder to the recomputed bare hex. Treating the prefixed form as the bare form.",
-    "why_wrong": "The registry declares bare 64-char lowercase hex. The carried value 'sha256:0c837d01...' is a different representation. The verifier MUST NOT strip the prefix; it MUST report that the identifier carried by the reference is inconsistent with the established context.",
+    "why_wrong": "The registry declares `bare-hex`. The carried value 'sha256:0c837d01...' is `sha256-prefixed`, a different representation. The verifier MUST NOT strip the prefix; it MUST report that the identifier carried by the reference is inconsistent with the established context.",
     "result": "FAIL"
   },
   "correct_handling": {
-    "step_1": "Resolve type 'authorization-doc' from registry: representation is bare 64-char lowercase hex",
-    "step_2": "Typed reference carries 'sha256:0c837d01...' which is not bare hex — it is prefixed",
+    "step_1": "Resolve type 'authorization-doc' from registry: representation is `bare-hex`",
+    "step_2": "Typed reference carries 'sha256:0c837d01...' which is not `bare-hex` — it is `sha256-prefixed`",
     "step_3": "Verifier MUST detect that the carried identifier is inconsistent with the established context",
     "step_4": "Verifier MUST NOT report this typed reference as verified"
   }

@@ -522,38 +522,25 @@ class TestLex:
         value = _mutant_no_trailing_check(b'{"a":1}{"a":2}')
         assert value == {'a': 1}  # silently ignores the second object
 
-    # --- duplicate-key detection is NFC-normalized ---
+    # --- duplicate-key detection follows RFC 7493 §2.3 ---
 
-    def test_nfc_nfd_keys_are_duplicates(self) -> None:
-        """A key encoded as precomposed NFC and a second member using the
-        NFD-decomposed form of the same identifier are the same wire-layer
-        key and must be flagged as a duplicate — otherwise a record could
-        smuggle two 'different' keys that a downstream NFC-normalizing
-        consumer collapses into one, silently overwriting a value."""
+    def test_nfc_nfd_keys_are_distinct(self) -> None:
+        """JCS preserves strings as-is, so NFC-equivalent but distinct
+        Unicode sequences are not duplicate member names."""
         nfc_key = "\u00c5"   # LATIN CAPITAL LETTER A WITH RING ABOVE (precomposed)
         nfd_key = "A\u030a"  # 'A' + COMBINING RING ABOVE (decomposed)
         assert nfc_key != nfd_key  # distinct code point sequences
         raw = ('{"' + nfc_key + '":1,"' + nfd_key + '":2}').encode('utf-8')
-        _, violations = lex(raw)
+        value, violations = lex(raw)
+        assert violations == []
+        assert value == {nfc_key: 1, nfd_key: 2}
+
+    def test_escape_equivalent_keys_are_duplicates(self) -> None:
+        """Escaped spellings that decode to the same Unicode sequence are
+        duplicates under RFC 7493 §2.3 and must be caught before parsing."""
+        _, violations = lex(b'{"a":1,"\\u0061":2}')
         assert len(violations) == 1
         assert violations[0].code == 'duplicate_key'
-
-    def test_nfc_duplicate_mutant_accepts(self) -> None:
-        """MUTANT: duplicate detection compares raw (non-NFC-normalized) keys --
-        the pre-fix behavior.  Walks the same parsed key list the real checker
-        sees but compares with plain string equality, showing an NFC/NFD pair
-        is missed."""
-        nfc_key = "\u00c5"   # LATIN CAPITAL LETTER A WITH RING ABOVE (precomposed)
-        nfd_key = "A\u030a"  # 'A' + COMBINING RING ABOVE (decomposed)
-        keys = [nfc_key, nfd_key]
-        seen: set[str] = set()
-        dup_found = False
-        for key in keys:
-            if key in seen:              # MUTANT: no NFC normalization
-                dup_found = True
-            else:
-                seen.add(key)
-        assert not dup_found  # mutant treats the NFC/NFD pair as distinct keys
 
     # --- nesting depth is bounded ---
 
@@ -641,6 +628,18 @@ def test_violation_path_cannot_forge_another_location():
     assert all('\n' not in v.path for v in newline.violations), (
         f"a raw newline reached the rendered path: {[v.path for v in newline.violations]}"
     )
+
+
+def test_duplicate_key_detail_is_log_safe():
+    """Decoded duplicate names cannot inject lines or unprintable surrogates."""
+    _, newline_violations = lex('{"a\\nb":1,"a\\nb":2}')
+    assert "\n" not in newline_violations[0].detail
+    assert "\\n" in newline_violations[0].detail
+
+    _, surrogate_violations = lex('{"\\ud800":1,"\\ud800":2}')
+    rendered = str(surrogate_violations[0])
+    assert "\\ud800" in rendered
+    rendered.encode("utf-8")
 
 
 def test_cli_exit_codes_do_not_fail_open(tmp_path):

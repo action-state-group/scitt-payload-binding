@@ -20,6 +20,9 @@ vectors/
   jcs-n/kats/                       Known-Answer Tests for Algorithm jcs-n (§3.1)
   jcs-n/derived-id/                 Derived identifier construction (§4)
   jcs-n/assembled-preimage/         Assembled pre-images: member mapping (§4, §13.2)
+  subject-binding-diff/             Plain-jcs vs historical-jcs-n discriminating pairs
+  representation-contrast/          Raw 32-octet vs 64-character text boundary (§7.1)
+  cpb-check/                        P/R grammar checker vectors (packaged with cpb-check)
   typed-refs/pass/                  Typed digest reference verification — PASS cases (§6)
   typed-refs/fail/                  Typed digest reference verification — MUST-FAIL cases (§6)
   profile-independence/pass/        Profile independence — conforming cases (§8)
@@ -216,14 +219,20 @@ rule.
 
 | ID | Result | What it tests |
 |---|---|---|
-| typed-ref-pass-01 | PASS | Matching digest under declared context |
+| typed-ref-pass-01 | HISTORICAL EVALUATION PASS | Matching jcs-n digest under the declared context; no authenticated vintage claim |
 | typed-ref-fail-01 | MUST-FAIL | Digest context mismatch (wrong exclusion set) |
 | typed-ref-fail-02 | MUST-FAIL | Textual equality trap (same hex, incompatible contexts) |
-| typed-ref-fail-03 | MUST-FAIL | Representation mismatch (prefixed vs bare hex) |
+| typed-ref-fail-03 | MUST-FAIL | Representation mismatch (`sha256-prefixed` vs `bare-hex`) |
 | typed-ref-fail-04 | MUST-FAIL | Identifier inconsistent with context (digest produced without exclusion set) |
 | typed-ref-fail-05 | MUST-FAIL | digest_alg inconsistent with the registered context (-01 §7.1) — SHA-512, MD5, an unregistered name, and the empty string, each carrying the otherwise-correct digest |
-| typed-ref-cpb01-01 | PASS | ARP conformance baseline (-01 §7, §7.1) — folded byte-for-byte from Joel Hillier's `arp-typed-ref-cpb01-v0.1.json` (`88153dd1…673d`), vector 1 of 5 |
+| typed-ref-cpb01-01 | HISTORICAL EVALUATION PASS | ARP byte-agreement baseline (-01 §7, §7.1) — folded from Joel Hillier's `arp-typed-ref-cpb01-v0.1.json` (`88153dd1…673d`), vector 1 of 5; no authenticated vintage claim |
 | typed-ref-cpb01-02 | MUST-FAIL | digest_alg inconsistent with the registered context (-01 §7.1) — ARP's independent exercise of the same gap as typed-ref-fail-05; folded byte-for-byte from the same source, vector 2 of 5. Vectors 3 (specification question, withdrawn per PM ruling), 4 (not applicable — this library constructs no log leaf) and 5 (ARP/CAID-side, not a CPB finding) were not folded |
+
+## Representation contrast summary
+
+| ID | Result | What it tests |
+|---|---|---|
+| representation-contrast-01 | PASS/discriminating pair | `bytes.fromhex(D)` is 32 octets; `D.encode("ascii")` is a distinct 64-octet input. Pinned SHA-256 values are vector self-checks, not a VDS leaf-hash definition |
 
 ## Profile independence summary
 

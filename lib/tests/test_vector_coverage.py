@@ -31,8 +31,8 @@ from cpb import (
     TypedRef,
     UnsafeIntegerError,
     canonical_digest,
+    evaluate_typed_ref_digest,
     verify_carried_id,
-    verify_typed_ref,
 )
 from cpb.canonicalize import FloatInDigestError
 
@@ -43,8 +43,8 @@ def _entry_from_registry_entry(reg: dict, fallback_name: str) -> ArtifactTypeReg
     return ArtifactTypeRegistryEntry(
         name=reg.get("name", fallback_name),
         algorithm=reg.get("algorithm", "jcs-n"),
-        exclusion_set=frozenset(reg.get("exclusion_set", [])),
-        representation=reg.get("representation", "bare_hex"),
+        whole_object_exclusion_set=frozenset(reg.get("exclusion_set", [])),
+        representation=reg.get("representation", "bare-hex"),
     )
 
 
@@ -56,13 +56,13 @@ def _entry_from_registry_entry(reg: dict, fallback_name: str) -> ArtifactTypeReg
 def _handle_float_in_digest_bearing_field(v: dict) -> None:
     excl = set(v.get("exclusion_set", []))
     with pytest.raises(FloatInDigestError):
-        canonical_digest(v["input"], excl or None)
+        canonical_digest(v["input"], excl or None, algorithm="jcs-n")
 
 
 def _handle_unsafe_integer_in_digest_bearing_field(v: dict) -> None:
     excl = set(v.get("exclusion_set", []))
     with pytest.raises(UnsafeIntegerError):
-        canonical_digest(v["input"], excl or None)
+        canonical_digest(v["input"], excl or None, algorithm="jcs-n")
 
 
 def _handle_integer_formatting_divergence(v: dict) -> None:
@@ -70,13 +70,18 @@ def _handle_integer_formatting_divergence(v: dict) -> None:
     # single bound (§3.1) rejects it via the same UnsafeIntegerError path.
     excl = set(v.get("exclusion_set", []))
     with pytest.raises(UnsafeIntegerError):
-        canonical_digest(v["input"], excl or None)
+        canonical_digest(v["input"], excl or None, algorithm="jcs-n")
 
 
 def _handle_carried_id_mismatch(v: dict) -> None:
     excl = set(v.get("exclusion_set", []))
     with pytest.raises(CarriedIdMismatch):
-        verify_carried_id(v["full_payload"], carried_field="record_id", exclusion_set=excl or None)
+        verify_carried_id(
+            json.dumps(v["full_payload"]),
+            carried_field="record_id",
+            exclusion_set=excl or None,
+            algorithm="jcs-n",
+        )
 
 
 def _handle_recomputed_digest_mismatch(v: dict) -> None:
@@ -85,19 +90,26 @@ def _handle_recomputed_digest_mismatch(v: dict) -> None:
     ref = TypedRef(**{k: v["typed_reference"][k] for k in ("type", "digest_alg", "digest")})
     wrong_entry = ArtifactTypeRegistryEntry(
         name=cited["artifact_type_registry_entry"]["name"],
-        exclusion_set=frozenset(v["erroneous_verification"]["wrong_exclusion_set"]),
+        algorithm="jcs-n",
+        whole_object_exclusion_set=frozenset(
+            v["erroneous_verification"]["wrong_exclusion_set"]
+        ),
     )
     with pytest.raises(ContextMismatchError):
-        verify_typed_ref(ref, cited["payload"], wrong_entry)
+        evaluate_typed_ref_digest(ref, cited["payload"], wrong_entry)
 
 
 def _handle_textual_equality_trap(v: dict) -> None:
     """typed-ref-fail-02: equal-looking hex under incompatible contexts is not a join."""
-    entry_a = ArtifactTypeRegistryEntry(name="artifact-a", exclusion_set=frozenset(["a_id"]))
+    entry_a = ArtifactTypeRegistryEntry(
+        name="artifact-a",
+        algorithm="jcs-n",
+        whole_object_exclusion_set=frozenset(["a_id"]),
+    )
     ref_a = TypedRef(type="artifact-a", digest_alg="SHA-256", digest=v["common_digest"])
     different_payload = {"a_id": None, "color": "blue", "size": "99"}
     with pytest.raises(ContextMismatchError):
-        verify_typed_ref(ref_a, different_payload, entry_a)
+        evaluate_typed_ref_digest(ref_a, different_payload, entry_a)
 
 
 def _cited_registry_entry(cited: dict) -> dict:
@@ -115,7 +127,7 @@ def _handle_representation_mismatch(v: dict) -> None:
         **{k: v["typed_reference_with_wrong_representation"][k] for k in ("type", "digest_alg", "digest")}
     )
     with pytest.raises(RepresentationMismatchError):
-        verify_typed_ref(ref, cited["payload"], entry)
+        evaluate_typed_ref_digest(ref, cited["payload"], entry)
 
 
 def _handle_identifier_inconsistent_with_context(v: dict) -> None:
@@ -126,7 +138,7 @@ def _handle_identifier_inconsistent_with_context(v: dict) -> None:
         **{k: v["typed_reference_with_wrong_digest"][k] for k in ("type", "digest_alg", "digest")}
     )
     with pytest.raises(ContextMismatchError):
-        verify_typed_ref(ref, cited["payload"], entry)
+        evaluate_typed_ref_digest(ref, cited["payload"], entry)
 
 
 def _handle_digest_algorithm_inconsistent_with_context(v: dict) -> None:
@@ -139,12 +151,12 @@ def _handle_digest_algorithm_inconsistent_with_context(v: dict) -> None:
     entry = ArtifactTypeRegistryEntry(
         name=reg["name"],
         algorithm=reg["algorithm"],
-        exclusion_set=frozenset(reg["exclusion_set"]),
+        whole_object_exclusion_set=frozenset(reg["exclusion_set"]),
     )
     for example in v["typed_references_with_mislabeled_digest_alg"]:
         ref = TypedRef(type=cited["type"], digest_alg=example["digest_alg"], digest=example["digest"])
         with pytest.raises(DigestAlgorithmMismatchError):
-            verify_typed_ref(ref, cited["payload"], entry)
+            evaluate_typed_ref_digest(ref, cited["payload"], entry)
 
 
 def _handle_digest_alg_inconsistent_with_registered_context(v: dict) -> None:
@@ -157,13 +169,13 @@ def _handle_digest_alg_inconsistent_with_registered_context(v: dict) -> None:
     entry = ArtifactTypeRegistryEntry(
         name=reg["name"],
         algorithm=reg["algorithm"],
-        exclusion_set=frozenset(reg["exclusion_set"]),
-        representation=reg.get("representation", "bare_hex"),
+        whole_object_exclusion_set=frozenset(reg["exclusion_set"]),
+        representation=reg.get("representation", "bare-hex"),
     )
     cited = v["cited_artifact"]
     ref = TypedRef(**{k: v["typed_reference"][k] for k in ("type", "digest_alg", "digest")})
     with pytest.raises(DigestAlgorithmMismatchError):
-        verify_typed_ref(ref, cited["payload"], entry)
+        evaluate_typed_ref_digest(ref, cited["payload"], entry)
 
 
 def _handle_representation_mismatch_identifier_whitespace(v: dict) -> None:
@@ -176,7 +188,7 @@ def _handle_representation_mismatch_identifier_whitespace(v: dict) -> None:
     entry = ArtifactTypeRegistryEntry(
         name=reg["name"],
         algorithm=reg["algorithm"],
-        exclusion_set=frozenset(reg["exclusion_set"]),
+        whole_object_exclusion_set=frozenset(reg["exclusion_set"]),
         representation=reg["representation"],
     )
     ref = TypedRef(
@@ -185,7 +197,7 @@ def _handle_representation_mismatch_identifier_whitespace(v: dict) -> None:
         digest=v["typed_reference_with_wrong_representation"]["digest"],
     )
     with pytest.raises(RepresentationMismatchError):
-        verify_typed_ref(ref, cited["payload"], entry)
+        evaluate_typed_ref_digest(ref, cited["payload"], entry)
 
 
 def _handle_nfc_normalisation_deviation(v: dict) -> None:
@@ -193,7 +205,7 @@ def _handle_nfc_normalisation_deviation(v: dict) -> None:
     library's actual output must land on the non-normalising (correct) side,
     never the nfc_contrast (would-be-normalised) side."""
     excl = set(v.get("exclusion_set", []))
-    digest = canonical_digest(v["input"], excl or None)
+    digest = canonical_digest(v["input"], excl or None, algorithm="jcs-n")
     assert digest == v["jcs_n_correct_digest"]
     assert digest != v["nfc_contrast_digest"]
 
@@ -204,7 +216,7 @@ def _handle_string_escape_uppercase_hex(v: dict) -> None:
     pre-image (jcs_n_correct_digest) and MUST NOT produce the uppercase-hex
     pre-image (uppercase_contrast_digest)."""
     excl = set(v.get("exclusion_set", []))
-    digest = canonical_digest(v["input"], excl or None)
+    digest = canonical_digest(v["input"], excl or None, algorithm="jcs-n")
     assert digest == v["jcs_n_correct_digest"]
     assert digest != v["uppercase_contrast_digest"]
 
@@ -215,7 +227,7 @@ def _handle_string_escape_long_form_for_named_char(v: dict) -> None:
     Asserts correct digest (jcs_n_correct_digest) and not the long-form digest
     (long_form_contrast_digest)."""
     excl = set(v.get("exclusion_set", []))
-    digest = canonical_digest(v["input"], excl or None)
+    digest = canonical_digest(v["input"], excl or None, algorithm="jcs-n")
     assert digest == v["jcs_n_correct_digest"]
     assert digest != v["long_form_contrast_digest"]
 
@@ -227,7 +239,7 @@ def _handle_key_sort_by_escaped_bytes_not_code_units(v: dict) -> None:
     pre-image (jcs_n_correct_digest) and MUST NOT produce the escaped-sort
     pre-image (escaped_sort_contrast_digest)."""
     excl = set(v.get("exclusion_set", []))
-    digest = canonical_digest(v["input"], excl or None)
+    digest = canonical_digest(v["input"], excl or None, algorithm="jcs-n")
     assert digest == v["jcs_n_correct_digest"]
     assert digest != v["escaped_sort_contrast_digest"]
 
@@ -272,8 +284,12 @@ def _handle_profile_independence_violation(v: dict) -> None:
     ref = TypedRef(
         type=ref_fields["type"], digest_alg=ref_fields["digest_alg"], digest=ref_fields["digest"]
     )
-    entry = ArtifactTypeRegistryEntry(name="authorization-doc", exclusion_set=frozenset(["doc_id"]))
-    recomputed = verify_typed_ref(ref, auth_doc["payload"], entry)
+    entry = ArtifactTypeRegistryEntry(
+        name="authorization-doc",
+        algorithm="jcs-n",
+        whole_object_exclusion_set=frozenset(["doc_id"]),
+    )
+    recomputed = evaluate_typed_ref_digest(ref, auth_doc["payload"], entry)
     assert recomputed == auth_doc["derived_id"]
 
 
@@ -317,21 +333,18 @@ def _handle_invalid_wire_number_token(v: dict) -> None:
 
 def _handle_duplicate_key(v: dict) -> None:
     """jcs-n-kat-37 (was kat-30 pre-renumber): duplicate keys must be
-    rejected after NFC normalization.  The cpb library operates on
+    rejected after JSON escapes are processed.  The cpb library operates on
     already-parsed Python objects (where duplicate keys are lost to
     last-wins); rejection must occur at the wire level using
     object_pairs_hook.  We verify that the raw vector text fails the strict
     duplicate-key check."""
-    import unicodedata as _ud
-
     def _no_dup_keys(pairs):
         seen = {}
         result = {}
         for k, val in pairs:
-            nfc = _ud.normalize('NFC', k)
-            if nfc in seen:
-                raise ValueError(f"duplicate key after NFC normalization: {k!r}")
-            seen[nfc] = True
+            if k in seen:
+                raise ValueError(f"duplicate key after JSON escape processing: {k!r}")
+            seen[k] = True
             result[k] = val
         return result
 
@@ -391,7 +404,7 @@ def _handle_assembled_preimage_member_mapping_undeclared(v: dict) -> None:
         assert sorted(_canon(m) for m in assembled.values()) == selected, (
             f"{side} is not a conforming reading of the declared field set"
         )
-        got = canonical_digest(assembled)
+        got = canonical_digest(assembled, algorithm="jcs-n")
         assert got == v[side]["digest"], (
             f"{side} digest drifted from the pinned value: {got} != {v[side]['digest']}"
         )

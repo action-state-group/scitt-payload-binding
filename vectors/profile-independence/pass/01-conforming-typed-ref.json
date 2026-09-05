@@ -1,6 +1,6 @@
 {
   "id": "profile-independence-pass-01",
-  "description": "PASS: Profile A cites Profile B artifacts only through a typed digest reference. Profile A verifier resolves the reference using the artifact type registry; it does not read inside Profile B internal fields. Decomposable verification holds.",
+  "description": "HISTORICAL EVALUATION PASS: Profile A cites Profile B artifacts only through a typed digest reference. Digest evaluation resolves the reference using the artifact type registry; it does not read inside Profile B internal fields. The fixture establishes decomposable byte agreement, not verified jcs-n vintage.",
   "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §8 ('A payload profile MUST NOT impose requirements on the internal structure or field values of another payload profile. Relationships between artifacts of different types are expressed solely through typed references.')",
   "profile_a": {
     "name": "decision-record",
@@ -28,13 +28,13 @@
     },
     "derived_id": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
   },
-  "conforming_verification": {
+  "conforming_digest_evaluation": {
     "step_1": "Profile-A verifier validates decision-record binding independently",
     "step_2": "Profile-A verifier encounters typed reference to 'authorization-doc'",
     "step_3": "Profile-A verifier resolves 'authorization-doc' from artifact type registry to get digest context",
     "step_4": "Profile-A verifier obtains authorization-doc bytes and recomputes digest under authorization-doc context",
     "step_5": "Profile-A verifier compares recomputed digest to typed_reference.digest — MATCH",
     "what_profile_a_verifier_does_NOT_do": "Does NOT read the 'subject', 'scope', or 'issued_at' fields of the authorization-doc to evaluate the decision-record binding. Those belong to the authorization-doc profile semantics.",
-    "result": "PASS — content binding verified; appraisal of the authorization-doc semantics is a separate step per §6.2"
+    "result": "DIGEST AGREEMENT ONLY — authenticated historical vintage is not carried; semantic appraisal remains separate"
   }
 }

@@ -4,15 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cpb"
-version = "0.1.0"
+version = "0.2.0"
 description = "Canonical Payload Binding reference library — spec-pure CPB construction and verification"
 readme = "README.md"
 license = {text = "BSD-3-Clause"}
 requires-python = ">=3.10"
-dependencies = []
+dependencies = ["rfc8785>=0.1.4,<0.2"]
 
 [project.optional-dependencies]
-dev = ["pytest>=7"]
+# The installed-package regression test builds without isolation or network
+# access, so its active development environment must provide the build backend.
+dev = ["pytest>=7", "setuptools>=61"]
 
 [project.scripts]
 cpb-check = "cpb._cli:main"
@@ -20,6 +22,12 @@ cpb-check = "cpb._cli:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["cpb*"]
+
+[tool.setuptools.package-data]
+cpb = [
+  "_vectors/cpb-check/conforming/*.json",
+  "_vectors/cpb-check/non-conforming/*.json",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
