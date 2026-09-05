@@ -255,7 +255,8 @@ formats and makes their wire and verification behavior explicit:
   stable normative reference the artifact-type and digest-context
   declarations it accepts.
 * Reference processing now distinguishes Malformed, Unresolved, Failed, and
-  Verified outcomes from validation of the enclosing COSE signature.
+  Verified outcomes and keeps them separate from validation of the enclosing
+  COSE signature and issuer authentication.
 * {{envelope}} separates RFC 9943 Full-Content Mode from RFC 9995 Hash
   Envelope Mode and retains every applicable RFC 9943 requirement in both.
 * A Signed Statement uses at most one typed-reference carrier. The CDDL,
@@ -453,16 +454,51 @@ algorithm.
 Algorithm `jcs-n` is withdrawn (2026-08-18) -- terminal marking, never
 deletion: the token stays bound, the definition it once carried is not
 reassigned, and it is never carried forward as an active IANA algorithm.
-That is a terminal
-marking that `cde-n` ({{algo-cde-n}}) also carries, though on different
+That is a terminal marking that `cde-n` ({{algo-cde-n}}) also carries, though on different
 facts: `cde-n` never acquired a definition, while `jcs-n` did and its
-records remain verifiable by vintage. `jcs-n` applied JCS {{RFC8785}} to an
-absent-field-normalized JSON object -- the normalization step removed,
-bottom-up and recursively, every member whose value was JSON null, an empty
-array, or an empty object, before JCS serialization. The full original
-construction is the permanent record in
-draft-mih-sokolov-scitt-payload-binding-00, Section 3.1, and is not restated
-here.
+records remain eligible for verification by vintage.
+
+For historical evaluation, the complete `jcs-n` construction is as follows.
+Let P be the JSON object supplied by the applicable payload or artifact-type
+profile, and let E be that profile's set of top-level member names to exclude:
+
+1. Before converting the input JSON text to a data model, reject a duplicate
+   member name in any object, including a duplicate that would later be
+   excluded. Equality is tested on decoded Unicode member-name strings after
+   JSON escape processing, with no Unicode normalization. NFC-equivalent but
+   distinct strings are not duplicate names, and `jcs-n` applies no Unicode
+   normalization.
+
+2. Reject a JSON number token unless it has the integer form
+   `0|-?[1-9][0-9]*` and its value is in the inclusive range
+   `[-(2^53-1), 2^53-1]`. In particular, a decimal point, exponent notation,
+   leading zero, or `-0` is prohibited. A non-integer quantity, and an integer
+   outside that range, has to be represented as an exact JSON string if the
+   applicable profile permits it.
+
+3. Remove from P each top-level member whose name is in E. A same-named member
+   nested below the top level is retained.
+
+4. Normalize the remaining value bottom-up and recursively. In each object,
+   remove every member whose normalized value is JSON null, an empty array, or
+   an empty object. Array elements are not object members and are not removed,
+   but values inside an array are recursively normalized before their
+   containing object is considered.
+
+5. Apply JCS {{RFC8785}} to the normalized object to produce canonical UTF-8
+   octets, compute SHA-256 over those octets, and encode the 32-octet digest as
+   exactly 64 lowercase hexadecimal ASCII characters.
+
+Thus, for historical `jcs-n` evaluation:
+
+~~~
+CANONICAL-DIGEST(jcs-n, P, E) =
+    lowercase_hex(SHA-256(JCS(normalize(P minus E))))
+~~~
+
+These steps define digest evaluation only. Evaluating the construction and
+obtaining matching bytes does not by itself establish an eligible vintage or
+produce a Verified typed-reference outcome.
 
 The withdrawal followed from an implementer census (the reference
 implementation was the only implementer of the normalization step), a byte
@@ -478,19 +514,24 @@ resuming use of this token.
 
 Withdrawal forecloses new declarations of `jcs-n`; it does not
 retroactively invalidate records already sealed under it. A payload class
-or typed digest reference that names `jcs-n` MUST NOT be newly declared. A
-verifier encountering `jcs-n` in a record committed on or after 2026-08-18
-MUST fail closed — MUST NOT report the payload class or typed digest
-reference as verified; a typed reference has the Failed outcome. A verifier
-encountering `jcs-n` in a record
-committed before 2026-08-18 MAY verify it against the withdrawn
-construction as that construction is permanently recorded in
-draft-mih-sokolov-scitt-payload-binding-00, Section 3.1; such a record is a
-historical record, not a live conformance case, and a verifier that
-declines to implement the withdrawn construction MUST report a typed
-reference as Unresolved rather than Failed. A historical identifier MUST NOT be
-relabelled to another algorithm token or recomputed under another
-algorithm.
+or typed digest reference that names `jcs-n` MUST NOT be newly declared. The
+vintage cutoff is the start of 2026-08-18 UTC. Pre-cutoff vintage is
+established only by profile-defined, cryptographically verifiable evidence
+that binds the exact record, or its digest under the declared context, to a
+time before that cutoff. A payload timestamp, source-control commit date,
+file-system time, transport arrival time, or other unauthenticated date MUST
+NOT be used as vintage evidence.
+
+A verifier encountering `jcs-n` with evidence of a time at or after the
+cutoff, or without sufficient evidence of a pre-cutoff vintage, MUST fail
+closed and MUST NOT report the payload class or typed digest reference as
+verified; a typed reference has the Failed outcome. Only after establishing
+pre-cutoff vintage MAY a verifier apply the historical construction above.
+If the construction is available, its ordinary digest comparison determines
+whether the typed reference is Verified or Failed. A verifier that lacks an
+implementation of the otherwise eligible historical construction reports the
+typed reference as Unresolved. A historical identifier MUST NOT be relabelled
+to another algorithm token or recomputed under another algorithm.
 
 ## Algorithm cde-n (Withdrawn) {#algo-cde-n}
 
@@ -947,9 +988,12 @@ defines — as part of the payload bytes that the derived identifier is
 computed over. This document does not define that serialization: a
 payload profile that carries references this way states its own field names,
 container structure, extension behavior, and any profile-specific
-requiredness beyond {{typed-refs}}'s information model. The reference data
-are covered directly by the COSE signature in Full-Content Mode or by the
-verified raw digest in Hash Envelope Mode. Neither kind of coverage makes a
+requiredness beyond {{typed-refs}}'s information model. In Full-Content Mode,
+the serialized reference data are part of the content supplied to COSE
+signature verification. In Hash Envelope Mode, the raw digest of the complete
+statement content is supplied instead, and the reference data are covered only
+after the verifier obtains that content and validates the hash binding as
+specified in {{hash-envelope-mode}}. Neither kind of coverage makes a typed
 reference Verified without the processing in {{comparability}}. Appendix
 {{appendix-d}} describes one profile-owned example without defining its wire
 format here. The prohibition on dual carriage in {{carriage-selection}}
@@ -1199,12 +1243,20 @@ Initial contents:
 The preimage construction for each active entry is defined in
 {{algorithms}}.
 
-| Name | Status | Hash / token | COSE | Output | Reference |
-|---|---|---|---|---|---|
-| jcs | Active | SHA-256 / `SHA-256` | -16 | 64-char lowerhex | This document |
-| jcs-n | Withdrawn | SHA-256 / `SHA-256` | -16 | 64-char lowerhex | This document |
-| cde-n | Withdrawn | N/A | N/A | N/A | This document |
-| as-transmitted | Active | SHA-256 / `SHA-256` | -16 | 64-char lowerhex | This document |
+| Name | Status | Hash / token | COSE | Output | Test Vectors | Reference |
+|---|---|---|---|---|---|---|
+| jcs | Active | SHA-256 / `SHA-256` | -16 | 64-char lowerhex | {{test-vector-locations}} | This document |
+| jcs-n | Withdrawn | SHA-256 / `SHA-256` | -16 | 64-char lowerhex | {{test-vector-locations}} | This document |
+| cde-n | Withdrawn | N/A | N/A | N/A | N/A -- no definition exists | This document |
+| as-transmitted | Active | SHA-256 / `SHA-256` | -16 | 64-char lowerhex | {{test-vector-locations}} | This document |
+
+### Test Vector Locations {#test-vector-locations}
+
+The public vector locations named by the initial registrations are:
+
+* `jcs`: https://github.com/action-state-group/scitt-payload-binding/tree/main/vectors/jcs
+* historical `jcs-n`: https://github.com/action-state-group/scitt-payload-binding/tree/main/vectors/jcs-n
+* `as-transmitted`: https://github.com/action-state-group/scitt-payload-binding/tree/main/vectors/as-transmitted
 
 A payload class or typed digest reference naming `cde-n` MUST NOT be
 treated as verifiable under any vintage: the token was bound by a reserved
