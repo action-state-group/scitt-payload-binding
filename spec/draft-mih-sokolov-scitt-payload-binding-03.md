@@ -7,7 +7,7 @@ category: std
 submissiontype: IETF
 ipr: trust200902
 area: "Security"
-workgroup: "Network Working Group"
+workgroup: "SCITT"
 keyword:
  - SCITT
  - canonicalization
