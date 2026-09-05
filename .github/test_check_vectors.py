@@ -199,3 +199,181 @@ def test_candidate_mode_grades_the_directory_it_is_given_not_the_checkout_root(
     out = capsys.readouterr().out
     assert rc == 1, "checker did not read the directory it was given"
     assert "1 FAILED" in out
+
+
+def _write_category_m_vector(root: pathlib.Path, vector: dict | None = None) -> pathlib.Path:
+    target = root / "typed-refs" / "fail"
+    target.mkdir(parents=True, exist_ok=True)
+    path = target / "category-m.json"
+    path.write_text(
+        json.dumps(vector or check_vectors._category_m_self_test_vector()),
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_category_m_executes_the_carried_protected_header(tmp_path, capsys):
+    """Category M is live before draft-03's vector lands on this branch."""
+    _write_category_m_vector(tmp_path)
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "1 pass/exercised" in out
+    assert "0 FAILED" in out
+
+
+def test_category_m_rejects_a_descriptive_mirror_without_carried_bytes(
+    tmp_path, capsys
+):
+    vector = check_vectors._category_m_self_test_vector()
+    del vector["protected_header"]
+    del vector["cose_sign1_bytes_hex"]
+    _write_category_m_vector(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "Category M requires protected_header object" in out
+
+
+def test_category_m_requires_cose_wrapper_to_prove_protected_location(
+    tmp_path, capsys
+):
+    vector = check_vectors._category_m_self_test_vector()
+    del vector["cose_sign1_bytes_hex"]
+    _write_category_m_vector(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "requires cose_sign1_bytes_hex to prove cpb-refs is protected" in out
+
+
+def test_category_m_preserves_duplicate_purpose_entries_and_fails_closed():
+    contexts = [
+        {"purpose": "identifier", "algorithm": "jcs-n"},
+        {"purpose": "identifier", "algorithm": "jcs-n-v2"},
+    ]
+    entries = check_vectors._digest_context_entries(contexts)
+    assert entries == contexts
+    assert len(entries) == 2
+    with pytest.raises(ValueError, match="matches 2"):
+        check_vectors._resolve_digest_context("identifier", contexts)
+
+
+def test_category_m_vector_rejects_duplicate_purpose_ambiguity(tmp_path, capsys):
+    vector = check_vectors._category_m_self_test_vector()
+    contexts = vector["artifact_type_registry_entry"]["digest_contexts"]
+    contexts[1]["purpose"] = contexts[0]["purpose"]
+    _write_category_m_vector(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "duplicate purpose labels make the registry entry itself ambiguous" in out
+
+
+def test_category_m_rejects_cose_protected_bstr_mismatch(tmp_path, capsys):
+    vector = check_vectors._category_m_self_test_vector()
+    mismatched = check_vectors._CborTag(18, [b"", {}, None, b""])
+    vector["cose_sign1_bytes_hex"] = check_vectors._encode_cbor_deterministic(
+        mismatched
+    ).hex()
+    _write_category_m_vector(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "COSE_Sign1 protected bstr does not match" in out
+
+
+def test_category_m_mutant_changes_the_carried_map_and_wrapper():
+    vector = check_vectors._category_m_self_test_vector()
+    original_protected = vector["protected_header"]["bytes_hex"]
+    original_cose = vector["cose_sign1_bytes_hex"]
+
+    mutant = check_vectors._mutant_M(vector)
+    assert mutant is not None
+    _, _, _, carried, protected = check_vectors._decode_cpb_carrier(mutant)
+    cose_parts, _ = check_vectors._cose_sign1_parts(
+        bytes.fromhex(mutant["cose_sign1_bytes_hex"])
+    )
+
+    assert carried[2] == "identifier"
+    assert protected.hex() != original_protected
+    assert mutant["cose_sign1_bytes_hex"] != original_cose
+    assert cose_parts[0] == protected
+    assert mutant["cbor_map_entry"]["2"] == "identifier"
+    assert mutant["typed_reference"]["purpose"] == "identifier"
+
+    ok, errors = check_vectors._exercise_must_fail(
+        mutant, "category-m-purpose-present", [], _probe_mutants=False
+    )
+    assert not ok
+    assert any("contains key 2" in error for error in errors)
+
+
+def _replace_category_m_protected(vector: dict, header: object) -> None:
+    protected = check_vectors._encode_cbor_deterministic(header)
+    vector["protected_header"]["bytes_hex"] = protected.hex()
+    parts, _ = check_vectors._cose_sign1_parts(
+        bytes.fromhex(vector["cose_sign1_bytes_hex"])
+    )
+    parts[0] = protected
+    vector["cose_sign1_bytes_hex"] = check_vectors._encode_cbor_deterministic(
+        check_vectors._CborTag(18, parts)
+    ).hex()
+
+
+def test_category_m_rejects_unknown_carried_member_keys(tmp_path, capsys):
+    vector = check_vectors._category_m_self_test_vector()
+    header, refs, _, carried, _ = check_vectors._decode_cpb_carrier(vector)
+    refs[0] = check_vectors._CborMap((*carried.pairs, (5, "extension")))
+    _replace_category_m_protected(vector, header)
+    del vector["cbor_map_entry"]
+    del vector["typed_reference"]
+    _write_category_m_vector(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "unknown cpb-refs member key" in out
+
+
+def test_category_m_rejects_unprotected_cpb_refs(tmp_path, capsys):
+    vector = check_vectors._category_m_self_test_vector()
+    parts, _ = check_vectors._cose_sign1_parts(
+        bytes.fromhex(vector["cose_sign1_bytes_hex"])
+    )
+    label = vector["protected_header"]["cpb_refs_label"]
+    parts[1] = check_vectors._CborMap(((label, []),))
+    vector["cose_sign1_bytes_hex"] = check_vectors._encode_cbor_deterministic(
+        check_vectors._CborTag(18, parts)
+    ).hex()
+    _write_category_m_vector(tmp_path, vector)
+
+    rc = check_vectors.check_vectors(tmp_path)
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "must not also appear in COSE unprotected headers" in out
+
+
+def test_category_m_enforces_carrier_value_limits():
+    overlong_type = check_vectors._CborMap(
+        ((1, "x" * 256), (3, "SHA-256"), (4, b"digest"))
+    )
+    with pytest.raises(ValueError, match="exceeds 255"):
+        check_vectors._validate_cpb_ref_map(overlong_type)
+
+
+@pytest.mark.parametrize(
+    "encoded, message",
+    [
+        ("a201010102", "duplicate CBOR map key"),
+        ("a202000100", "deterministic order"),
+        ("9f01ff", "indefinite-length"),
+    ],
+)
+def test_category_m_strict_cbor_rejects_ambiguous_encodings(encoded, message):
+    with pytest.raises(ValueError, match=message):
+        check_vectors.decode_strict_cbor(bytes.fromhex(encoded))
