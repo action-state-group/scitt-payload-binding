@@ -346,9 +346,39 @@ Independently reproduced byte-for-byte, including condition-removed
 mutants confirming each of the five negatives discriminates rather than
 pattern-matches (PR #4 thread, 2026-08-11).
 
+### `haltseal-public-resolve-receipt`
+
+**Owner:** Meridian Verity Group LLC
+**Reference:** `meridianverity/haltseal` @ `6e1e4c1fabf97cf057cc3299dafb09c2ffe182c3`,
+`docs/public-resolve/RECEIPT_PROFILE.md`
+**Status:** owner-confirmed
+
+**Vectors:** `meridianverity/haltseal` @ `c82b8cacb984a5a0f2280ddb982b21103c3f7855`,
+`examples/cpb/haltseal-public-resolve-receipt-v1.json`; executable owner recomputation:
+`tools/public_resolve/verify_cpb_identifier_vectors.py`. The pinned set contains four
+positive known-answer tests and four negative cases over the published receipt fixtures.
+
+**Discriminating-vector:** `hs-cpb-id-fail-01-full-jws-boundary` in the vector set above —
+pins the RFC 7515 §5.1 JWS Signing Input boundary. For the published
+`accept-exact.receipt.jws`, the registered pre-image (`protected-header.payload`) hashes to
+`1a5d717a4238e53fa0d2f53c070eb7846af4f933943d9a1cc1ebf0078aa662ff`; hashing the full
+compact JWS including the signature instead produces
+`565a8e7f0a57c592d7c4843e9d7c4e699e50c6461a1984dd20dd21909465fa7f` and MUST NOT verify
+as this identifier context. The vector is not applicable to `agent-action-capsule`'s `jcs-n`
+object digest context and does not satisfy `machine-mandate`'s issuer-signed SD-JWT component
+selector; conversely, `mm-fail-04-representation-confusion` does not exercise HALTSEAL's
+single bare-hex identifier context.
+
+**Consuming-profile:** [DE REVIEW — Gate B pending]
+
+| Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
+|---|---|---|---|---|---|---|---|
+| `identifier` | `haltseal-public-resolve-1` | `as-transmitted` | byte-boundary selector — RFC 7515 §5.1 JWS Signing Input (`BASE64URL(protected header) \|\| "." \|\| BASE64URL(payload)`) of the compact-JWS receipt | N/A (`as-transmitted` has no field set) | none | N/A (no separate encoding step) | bare 64-character lowercase hex |
+
+The CPB-derived identifier is distinct from, and does not replace, the receipt payload's application-level `jti`.
+
 Proposed Artifact Type entries awaiting their owners' confirmation are listed in
 [`spec/cpb-provisional-registry.md`](spec/cpb-provisional-registry.md).
-
 
 ---
 
