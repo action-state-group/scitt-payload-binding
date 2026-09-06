@@ -123,31 +123,32 @@ Internet-Draft          Canonical Payload Binding         September 2026
      12.1.  Preimages Are Bytes, Not Renderings  . . . . . . . . . .  25
      12.2.  Low-Entropy Fields . . . . . . . . . . . . . . . . . . .  25
      12.3.  Float Values and Digest Reproducibility  . . . . . . . .  26
-     12.4.  Immutable Coordinates  . . . . . . . . . . . . . . . . .  26
-     12.5.  Tamper Evidence and Runtime Honesty  . . . . . . . . . .  27
-     12.6.  Long-Term Verifiability Considerations . . . . . . . . .  27
-   13. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  27
-   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  28
-     14.1.  Canonicalization Algorithm Registry  . . . . . . . . . .  28
-       14.1.1.  Test Vector Locations  . . . . . . . . . . . . . . .  30
-     14.2.  COSE Header Parameters Registration  . . . . . . . . . .  31
+     12.4.  Strict-Tier Verification . . . . . . . . . . . . . . . .  26
+     12.5.  Immutable Coordinates  . . . . . . . . . . . . . . . . .  27
+     12.6.  Tamper Evidence and Runtime Honesty  . . . . . . . . . .  27
+     12.7.  Long-Term Verifiability Considerations . . . . . . . . .  28
+   13. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  28
+   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  29
+     14.1.  Canonicalization Algorithm Registry  . . . . . . . . . .  29
+       14.1.1.  Test Vector Locations  . . . . . . . . . . . . . . .  31
+     14.2.  COSE Header Parameters Registration  . . . . . . . . . .  32
    15. Related Work  . . . . . . . . . . . . . . . . . . . . . . . .  32
    16. References  . . . . . . . . . . . . . . . . . . . . . . . . .  33
-     16.1.  Normative References . . . . . . . . . . . . . . . . . .  33
-     16.2.  Informative References . . . . . . . . . . . . . . . . .  34
-   Appendix A.  Synthetic Registration Walkthrough . . . . . . . . .  36
-   Appendix B.  Synthetic Two-Slot Composition . . . . . . . . . . .  38
-   Appendix C.  Field-Verified Instances . . . . . . . . . . . . . .  39
-     C.1.  Deep Mechanism Instances  . . . . . . . . . . . . . . . .  39
-       C.1.1.  Glyphzero Byte-Agreement — Algorithm Determinism  . .  39
-       C.1.2.  GAR Session Block — Leaf Construction Rule  . . . . .  40
+     16.1.  Normative References . . . . . . . . . . . . . . . . . .  34
+     16.2.  Informative References . . . . . . . . . . . . . . . . .  35
+   Appendix A.  Synthetic Registration Walkthrough . . . . . . . . .  37
+   Appendix B.  Synthetic Two-Slot Composition . . . . . . . . . . .  39
+   Appendix C.  Field-Verified Instances . . . . . . . . . . . . . .  40
+     C.1.  Deep Mechanism Instances  . . . . . . . . . . . . . . . .  40
+       C.1.1.  Glyphzero Byte-Agreement — Algorithm Determinism  . .  40
+       C.1.2.  GAR Session Block — Leaf Construction Rule  . . . . .  41
        C.1.3.  A2A Boundary Seal — Derived Identifier as Protocol
-               Gate  . . . . . . . . . . . . . . . . . . . . . . . .  40
-     C.2.  Field Table — IETF 126 Participants . . . . . . . . . . .  41
-     C.3.  Agreed and Scheduled  . . . . . . . . . . . . . . . . . .  43
-   Appendix D.  Profile-Owned Payload Carriage Example . . . . . . .  43
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  43
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  44
+               Gate  . . . . . . . . . . . . . . . . . . . . . . . .  41
+     C.2.  Field Table — IETF 126 Participants . . . . . . . . . . .  42
+     C.3.  Agreed and Scheduled  . . . . . . . . . . . . . . . . . .  44
+   Appendix D.  Profile-Owned Payload Carriage Example . . . . . . .  44
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  44
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  45
 
 1.  Introduction
 
@@ -160,7 +161,6 @@ Internet-Draft          Canonical Payload Binding         September 2026
    bind a receipt, cite externals by digest — but they have been
    restated independently in every profile that needed them, with small
    variations that defeat interoperability.
-
 
 
 
@@ -1424,7 +1424,59 @@ Internet-Draft          Canonical Payload Binding         September 2026
    constraint is a payload-profile decision, not a requirement this
    document imposes on every payload class.
 
-12.4.  Immutable Coordinates
+12.4.  Strict-Tier Verification
+
+   A verifier operates in one of two tiers.  The value-rule tier is
+   normative and mandatory: every conforming verifier evaluates only the
+   parsed value, rejecting a candidate that contains a raw JSON float
+   (Section 12.3) and otherwise comparing the parsed value's digest
+   against the carried digest.  A verifier MAY additionally implement a
+   strict tier: an opt-in check of the original serialized bytes, run in
+   addition to the value rule, that catches token-level ambiguities the
+   value rule cannot see because parsing has already collapsed them.
+   Four such ambiguities form the strict-tier KAT (Known-Answer Test)
+   class:
+
+   *  an alternate float token form for the same numeric value (for
+      example 1e2 and 100);
+
+   *  an object with a duplicate key, where a parser silently retains
+      only one value;
+
+   *  the negative-zero integer token -0, indistinguishable after
+      parsing from 0; and
+
+   *  a non-canonical integer token carrying a leading zero (for example
+      01).
+
+
+
+
+
+Mih & Sokolov             Expires 9 March 2027                 [Page 26]
+
+Internet-Draft          Canonical Payload Binding         September 2026
+
+
+   Public positive and negative vectors covering this class are
+   maintained at https://github.com/action-state-group/scitt-payload-
+   binding/tree/main/vectors/cpb-check.
+
+   The strict tier is accept/reject only, and this is the load-bearing
+   property of this section: a strict-tier check MUST run, and MUST be
+   able to reject, only _before_ the digest of the candidate is computed
+   or compared.  A strict verifier MUST NOT alter, substitute,
+   normalize, or otherwise derive a different value to digest as a
+   consequence of a strict-tier check.  Because of this, a candidate the
+   strict tier accepts MUST produce a digest byte-identical to the
+   digest a value-rule-only (lenient) verifier would produce for that
+   same candidate; the two tiers can disagree only on whether to accept
+   a candidate, never on what a shared, accepted candidate digests to.
+   A strict tier that could alter what gets digested would reintroduce,
+   at the verifier, the numeric-representation coercion that the wire
+   rule in Section 12.3 exists to keep out of the digest pre-image.
+
+12.5.  Immutable Coordinates
 
    A mutable reference — a branch name, a tag that can be moved, a
    content URL that is not a content-addressed URL — is not evidence.
@@ -1443,22 +1495,7 @@ Internet-Draft          Canonical Payload Binding         September 2026
    reinterpret an existing type token to make an earlier citation
    verifiable.
 
-
-
-
-
-
-
-
-
-
-
-Mih & Sokolov             Expires 9 March 2027                 [Page 26]
-
-Internet-Draft          Canonical Payload Binding         September 2026
-
-
-12.5.  Tamper Evidence and Runtime Honesty
+12.6.  Tamper Evidence and Runtime Honesty
 
    The envelope signature and the registration Receipt provide tamper
    evidence for the record's bytes and bound its timing.  They do not
@@ -1468,7 +1505,16 @@ Internet-Draft          Canonical Payload Binding         September 2026
    bounds the timing of such a record and makes its omission or
    substitution detectable; it does not make its content true.
 
-12.6.  Long-Term Verifiability Considerations
+
+
+
+
+Mih & Sokolov             Expires 9 March 2027                 [Page 27]
+
+Internet-Draft          Canonical Payload Binding         September 2026
+
+
+12.7.  Long-Term Verifiability Considerations
 
    Artifacts bound under this specification may need to remain
    verifiable over periods considerably longer than the lifetime of any
@@ -1500,20 +1546,6 @@ Internet-Draft          Canonical Payload Binding         September 2026
    citation-graph structure.  These values can enable correlation across
    records and dictionary attacks against low-entropy artifacts.
 
-
-
-
-
-
-
-
-
-
-Mih & Sokolov             Expires 9 March 2027                 [Page 27]
-
-Internet-Draft          Canonical Payload Binding         September 2026
-
-
    A producer SHOULD omit cpb-refs or use a profile-defined confidential
    payload carrier when public header visibility is inappropriate.  A
    consuming profile MUST analyze whether its type and purpose values,
@@ -1528,6 +1560,15 @@ Internet-Draft          Canonical Payload Binding         September 2026
    changes the digest context and MUST be explicitly declared by the
    applicable profile.  A verifier MUST NOT introduce such a
    transformation implicitly.
+
+
+
+
+
+Mih & Sokolov             Expires 9 March 2027                 [Page 28]
+
+Internet-Draft          Canonical Payload Binding         September 2026
+
 
    An anchored record cannot be retracted: a Transparency Service's log
    is append-only and a registered record persists.  Payload classes
@@ -1561,15 +1602,6 @@ Internet-Draft          Canonical Payload Binding         September 2026
    This registry records the canonicalization algorithms that may be
    used to compute CANONICAL-DIGEST values.
 
-
-
-
-
-Mih & Sokolov             Expires 9 March 2027                 [Page 28]
-
-Internet-Draft          Canonical Payload Binding         September 2026
-
-
    Each entry pins its canonicalization steps, its hash function, and
    its output representation together as a single immutable triple, so
    that changing any one of the three requires registering a new token
@@ -1586,6 +1618,13 @@ Internet-Draft          Canonical Payload Binding         September 2026
    *  Preimage construction: A normative description sufficient to
       implement the canonicalization or byte-selection operation
       deterministically.
+
+
+
+Mih & Sokolov             Expires 9 March 2027                 [Page 29]
+
+Internet-Draft          Canonical Payload Binding         September 2026
+
 
    *  Hash function and typed-reference token: The hash function and the
       exact digest_alg string used by a digest context based on this
@@ -1614,18 +1653,6 @@ Internet-Draft          Canonical Payload Binding         September 2026
    for historical verification.  A Withdrawn name MUST NOT be
    reassigned.
 
-
-
-
-
-
-
-
-Mih & Sokolov             Expires 9 March 2027                 [Page 29]
-
-Internet-Draft          Canonical Payload Binding         September 2026
-
-
    The Designated Expert MUST verify that each required field is
    unambiguous, the cited specification and vectors are publicly
    available for an active entry, and the requested registration or
@@ -1636,6 +1663,24 @@ Internet-Draft          Canonical Payload Binding         September 2026
 
    The preimage construction for each active entry is defined in
    Section 4.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih & Sokolov             Expires 9 March 2027                 [Page 30]
+
+Internet-Draft          Canonical Payload Binding         September 2026
+
 
    +==============+=========+=======+====+========+==========+=========+
    |Name          |Status   |Hash / |COSE|Output  |Test      |Reference|
@@ -1673,15 +1718,6 @@ Internet-Draft          Canonical Payload Binding         September 2026
    *  as-transmitted: https://github.com/action-state-group/scitt-
       payload-binding/tree/main/vectors/as-transmitted
 
-
-
-
-
-Mih & Sokolov             Expires 9 March 2027                 [Page 30]
-
-Internet-Draft          Canonical Payload Binding         September 2026
-
-
    A payload class or typed digest reference naming cde-n MUST NOT be
    treated as verifiable under any vintage: the token was bound by a
    reserved entry but never assigned a definition, so no construction
@@ -1692,6 +1728,15 @@ Internet-Draft          Canonical Payload Binding         September 2026
    by the vintage rule in Section 4.2.  Both withdrawals are recorded
    terminal states, not deletions: the tokens stay bound and are never
    assigned or reassigned.  See Section 4.3 and Section 4.2.
+
+
+
+
+
+Mih & Sokolov             Expires 9 March 2027                 [Page 31]
+
+Internet-Draft          Canonical Payload Binding         September 2026
+
 
    An artifact type MUST NOT declare as-transmitted without a byte-
    boundary selector that cites a named production in the container
@@ -1728,16 +1773,6 @@ Internet-Draft          Canonical Payload Binding         September 2026
    distinction among signature coverage, authentication, and reference
    verification are specified in Section 8.3.
 
-
-
-
-
-
-Mih & Sokolov             Expires 9 March 2027                 [Page 31]
-
-Internet-Draft          Canonical Payload Binding         September 2026
-
-
 15.  Related Work
 
    [RFC9995] defines the protected parameters and COSE payload semantics
@@ -1748,6 +1783,16 @@ Internet-Draft          Canonical Payload Binding         September 2026
    [RFC9942] defines generic COSE Receipts.  The CCF Receipt Profile
    [I-D.ietf-scitt-receipts-ccf-profile] defines one VDS-specific
    Receipt profile.  CPB does not alter either format.
+
+
+
+
+
+
+Mih & Sokolov             Expires 9 March 2027                 [Page 32]
+
+Internet-Draft          Canonical Payload Binding         September 2026
+
 
    [I-D.hillier-scitt-arp] independently derives a similar canonical
    claim construction in its Sections 3 and 4.1.  Its Claim Hash uses
@@ -1787,13 +1832,6 @@ Internet-Draft          Canonical Payload Binding         September 2026
    structured-content preimage and digest context used for its bindings
    but defines no URI syntax or resolution protocol.
 
-
-
-Mih & Sokolov             Expires 9 March 2027                 [Page 32]
-
-Internet-Draft          Canonical Payload Binding         September 2026
-
-
    [I-D.sokolov-rats-aep-composition] addresses the complementary
    problem in the RATS domain: composing application-layer action
    evidence with remote attestation.
@@ -1803,6 +1841,14 @@ Internet-Draft          Canonical Payload Binding         September 2026
    neutral binding rules; CPB does not import their payload semantics.
 
 16.  References
+
+
+
+
+Mih & Sokolov             Expires 9 March 2027                 [Page 33]
+
+Internet-Draft          Canonical Payload Binding         September 2026
+
 
 16.1.  Normative References
 
@@ -1841,15 +1887,6 @@ Internet-Draft          Canonical Payload Binding         September 2026
               DOI 10.17487/RFC8785, June 2020,
               <https://www.rfc-editor.org/rfc/rfc8785>.
 
-
-
-
-
-Mih & Sokolov             Expires 9 March 2027                 [Page 33]
-
-Internet-Draft          Canonical Payload Binding         September 2026
-
-
    [RFC8949]  Bormann, C. and P. Hoffman, "Concise Binary Object
               Representation (CBOR)", STD 94, RFC 8949,
               DOI 10.17487/RFC8949, December 2020,
@@ -1859,6 +1896,15 @@ Internet-Draft          Canonical Payload Binding         September 2026
               Structures and Process", STD 96, RFC 9052,
               DOI 10.17487/RFC9052, August 2022,
               <https://www.rfc-editor.org/rfc/rfc9052>.
+
+
+
+
+
+Mih & Sokolov             Expires 9 March 2027                 [Page 34]
+
+Internet-Draft          Canonical Payload Binding         September 2026
+
 
    [RFC9942]  Steele, O., Birkholz, H., Delignat-Lavaud, A., and C.
               Fournet, "CBOR Object Signing and Encryption (COSE)
@@ -1899,19 +1945,22 @@ Internet-Draft          Canonical Payload Binding         September 2026
               <https://datatracker.ietf.org/doc/html/draft-ietf-scitt-
               receipts-ccf-profile-04>.
 
-
-
-Mih & Sokolov             Expires 9 March 2027                 [Page 34]
-
-Internet-Draft          Canonical Payload Binding         September 2026
-
-
    [I-D.le-comparing-derived-identifiers]
               Le, T., "Principles for Comparing Independently Derived
               Identifiers", Work in Progress, Internet-Draft, draft-le-
               comparing-derived-identifiers-00, 22 August 2026,
               <https://datatracker.ietf.org/doc/html/draft-le-comparing-
               derived-identifiers-00>.
+
+
+
+
+
+
+Mih & Sokolov             Expires 9 March 2027                 [Page 35]
+
+Internet-Draft          Canonical Payload Binding         September 2026
+
 
    [I-D.le-scitt-derived-subjects]
               Le, T., "SCITT Profile for Independently Derived
@@ -1950,24 +1999,24 @@ Internet-Draft          Canonical Payload Binding         September 2026
               <https://datatracker.ietf.org/doc/html/draft-nobuo-scitt-
               protected-object-binding-00>.
 
-
-
-
-
-
-
-
-Mih & Sokolov             Expires 9 March 2027                 [Page 35]
-
-Internet-Draft          Canonical Payload Binding         September 2026
-
-
    [I-D.rampalli-pedigree]
               Rampalli, K., "PEDIGREE: Provenance and Delegation Records
               for Digital Artifacts", Work in Progress, Internet-Draft,
               draft-rampalli-pedigree-00, 25 April 2026,
               <https://datatracker.ietf.org/doc/html/draft-rampalli-
               pedigree-00>.
+
+
+
+
+
+
+
+
+Mih & Sokolov             Expires 9 March 2027                 [Page 36]
+
+Internet-Draft          Canonical Payload Binding         September 2026
+
 
    [I-D.sokolov-rats-aep-composition]
               Sokolov, A., "Composing Application-Layer Action Evidence
@@ -2011,19 +2060,19 @@ Appendix A.  Synthetic Registration Walkthrough
 
    *Step 1 — Construct the payload:*
 
-
-
-Mih & Sokolov             Expires 9 March 2027                 [Page 36]
-
-Internet-Draft          Canonical Payload Binding         September 2026
-
-
    {
      "station_id": "WS-42",
      "timestamp": "2026-07-24T00:00:00Z",
      "celsius": "21.3",
      "record_id": null
    }
+
+
+
+Mih & Sokolov             Expires 9 March 2027                 [Page 37]
+
+Internet-Draft          Canonical Payload Binding         September 2026
+
 
    *Step 2 — Apply the exclusion set:*
 
@@ -2065,20 +2114,21 @@ Internet-Draft          Canonical Payload Binding         September 2026
 
    *Step 5 — Register and receive a Receipt:*
 
-
-
-
-
-Mih & Sokolov             Expires 9 March 2027                 [Page 37]
-
-Internet-Draft          Canonical Payload Binding         September 2026
-
-
    Submit the Signed Statement to a SCITT Transparency Service.  Attach
    the returned Receipt to the unprotected header.  The Transparent
    Statement is now suitable for distribution to verifiers.
 
    *Step 6 — Verify:*
+
+
+
+
+
+
+Mih & Sokolov             Expires 9 March 2027                 [Page 38]
+
+Internet-Draft          Canonical Payload Binding         September 2026
+
 
    A verifier validates the Signed Statement signature and RFC 9943
    headers, extracts the payload, strips record_id, applies JCS,
@@ -2115,21 +2165,6 @@ Appendix B.  Synthetic Two-Slot Composition
    exactly one digest context, using jcs, the SHA-256 token, and
    lowercase hexadecimal output. purpose is therefore omitted.
 
-
-
-
-
-
-
-
-
-
-
-Mih & Sokolov             Expires 9 March 2027                 [Page 38]
-
-Internet-Draft          Canonical Payload Binding         September 2026
-
-
    {
      "record_id": null,
      "action": "write",
@@ -2139,6 +2174,17 @@ Internet-Draft          Canonical Payload Binding         September 2026
        "digest": "ab12cd34..."
      }
    }
+
+
+
+
+
+
+
+Mih & Sokolov             Expires 9 March 2027                 [Page 39]
+
+Internet-Draft          Canonical Payload Binding         September 2026
+
 
    The typed reference authorization cites the authorization doc by its
    artifact type and derived identifier.  A verifier can confirm the doc
@@ -2179,13 +2225,6 @@ C.1.1.  Glyphzero Byte-Agreement — Algorithm Determinism
    Public record: Glyphzero PEDIGREE delegation record, IETF 126
    hackathon.
 
-
-
-Mih & Sokolov             Expires 9 March 2027                 [Page 39]
-
-Internet-Draft          Canonical Payload Binding         September 2026
-
-
    *What ran:* Two independently written RFC 8785 JCS implementations —
    Glyphzero's (Rampalli), used to produce its PEDIGREE delegation
    records [I-D.rampalli-pedigree], and the AAC reference implementation
@@ -2195,6 +2234,13 @@ Internet-Draft          Canonical Payload Binding         September 2026
    empty-object member, so the absent-field normalization pass jcs-n
    added to JCS did not apply to it; the agreement is an agreement about
    RFC 8785 JCS, which is the part jcs (Section 4.1) carries forward.
+
+
+
+Mih & Sokolov             Expires 9 March 2027                 [Page 40]
+
+Internet-Draft          Canonical Payload Binding         September 2026
+
 
    *Mechanism illustrated:* Section 4.1.  RFC 8785 JCS is reproducible
    across separately written implementations.  The agreement was not
@@ -2234,14 +2280,6 @@ C.1.3.  A2A Boundary Seal — Derived Identifier as Protocol Gate
    SCITT Transparency Service and used the derived identifier as a
    protocol-layer gate (capsule.digest / capsule.resolve).  The receipt
    was verified offline using a conforming SCITT verifier (scitt-cose
-
-
-
-Mih & Sokolov             Expires 9 March 2027                 [Page 40]
-
-Internet-Draft          Canonical Payload Binding         September 2026
-
-
    verify_receipt → ok=True), and the Merkle inclusion proof
    (verify_inclusion) folded to the anchored root.  A DENY negative case
    was also demonstrated: a fabricated derived identifier not present in
@@ -2251,6 +2289,14 @@ Internet-Draft          Canonical Payload Binding         September 2026
    independently reproduced.  The read-only resolve path (/anchor/
    inclusion-proof-ct) is live at anchor.agentactioncapsule.org; a
    networked cross-machine close is pending counterparty schedule.
+
+
+
+
+Mih & Sokolov             Expires 9 March 2027                 [Page 41]
+
+Internet-Draft          Canonical Payload Binding         September 2026
+
 
    *Mechanism illustrated:* Section 5 and Section 7 applied at a
    protocol boundary: the derived identifier is stable across network
@@ -2293,7 +2339,17 @@ C.2.  Field Table — IETF 126 Participants
 
 
 
-Mih & Sokolov             Expires 9 March 2027                 [Page 41]
+
+
+
+
+
+
+
+
+
+
+Mih & Sokolov             Expires 9 March 2027                 [Page 42]
 
 Internet-Draft          Canonical Payload Binding         September 2026
 
@@ -2349,7 +2405,7 @@ Internet-Draft          Canonical Payload Binding         September 2026
 
 
 
-Mih & Sokolov             Expires 9 March 2027                 [Page 42]
+Mih & Sokolov             Expires 9 March 2027                 [Page 43]
 
 Internet-Draft          Canonical Payload Binding         September 2026
 
@@ -2405,7 +2461,7 @@ Acknowledgments
 
 
 
-Mih & Sokolov             Expires 9 March 2027                 [Page 43]
+Mih & Sokolov             Expires 9 March 2027                 [Page 44]
 
 Internet-Draft          Canonical Payload Binding         September 2026
 
@@ -2461,7 +2517,7 @@ Authors' Addresses
 
 
 
-Mih & Sokolov             Expires 9 March 2027                 [Page 44]
+Mih & Sokolov             Expires 9 March 2027                 [Page 45]
 
 Internet-Draft          Canonical Payload Binding         September 2026
 
@@ -2517,4 +2573,4 @@ Internet-Draft          Canonical Payload Binding         September 2026
 
 
 
-Mih & Sokolov             Expires 9 March 2027                 [Page 45]
+Mih & Sokolov             Expires 9 March 2027                 [Page 46]

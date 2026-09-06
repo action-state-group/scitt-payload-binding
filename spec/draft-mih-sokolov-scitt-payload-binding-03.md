@@ -1110,6 +1110,42 @@ JSON numbers, in the fields it selects for digesting; such a constraint is a
 payload-profile decision, not a requirement this document imposes on every
 payload class.
 
+## Strict-Tier Verification {#strict-tier}
+
+A verifier operates in one of two tiers. The value-rule tier is normative
+and mandatory: every conforming verifier evaluates only the parsed value,
+rejecting a candidate that contains a raw JSON float
+({{floats}}) and otherwise comparing the parsed value's digest against the
+carried digest. A verifier MAY additionally implement a strict tier: an
+opt-in check of the original serialized bytes, run in addition to the value
+rule, that catches token-level ambiguities the value rule cannot see because
+parsing has already collapsed them. Four such ambiguities form the
+strict-tier KAT (Known-Answer Test) class:
+
+* an alternate float token form for the same numeric value (for example
+  `1e2` and `100`);
+* an object with a duplicate key, where a parser silently retains only one
+  value;
+* the negative-zero integer token `-0`, indistinguishable after parsing from
+  `0`; and
+* a non-canonical integer token carrying a leading zero (for example `01`).
+
+Public positive and negative vectors covering this class are maintained at
+https://github.com/action-state-group/scitt-payload-binding/tree/main/vectors/cpb-check.
+
+The strict tier is accept/reject only, and this is the load-bearing property
+of this section: a strict-tier check MUST run, and MUST be able to reject,
+only *before* the digest of the candidate is computed or compared. A strict
+verifier MUST NOT alter, substitute, normalize, or otherwise derive a
+different value to digest as a consequence of a strict-tier check. Because
+of this, a candidate the strict tier accepts MUST produce a digest
+byte-identical to the digest a value-rule-only (lenient) verifier would
+produce for that same candidate; the two tiers can disagree only on whether
+to accept a candidate, never on what a shared, accepted candidate digests
+to. A strict tier that could alter what gets digested would reintroduce, at
+the verifier, the numeric-representation coercion that the wire rule in
+{{floats}} exists to keep out of the digest pre-image.
+
 ## Immutable Coordinates {#immutable-coordinates}
 
 A mutable reference — a branch name, a tag that can be moved, a content
