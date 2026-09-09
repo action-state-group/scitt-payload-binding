@@ -1,8 +1,8 @@
 ---
 title: "Canonical Payload Binding: A Signed Statement Construction Profile"
 abbrev: "Canonical Payload Binding"
-docname: draft-mih-sokolov-scitt-payload-binding-03
-date: 2026-09-05
+docname: draft-mih-sokolov-scitt-payload-binding-04
+date: 2026-09-09
 category: std
 submissiontype: IETF
 ipr: trust200902
@@ -98,6 +98,15 @@ informative:
       - ins: A. Sokolov
         name: Anton Sokolov
         organization: Tyche Institute
+  I-D.schrock-ep-authorization-receipts:
+    title: "Authorization Receipts for High-Risk Agent Actions"
+    date: 2026-08-16
+    seriesinfo:
+      Internet-Draft: draft-schrock-ep-authorization-receipts-12
+    author:
+      - ins: I. Schrock
+        name: Iman Schrock
+        organization: EMILIA Protocol, Inc.
   I-D.birkholz-verifiable-agent-conversations:
     title: "Verifiable Agent Conversation Records"
     date: 2026-08-31
@@ -246,28 +255,20 @@ This document does not define:
 * Transports — how registration requests or retrieval queries travel between
   producers, Transparency Services, or verifiers.
 
-# Changes from -02 {#changes-02}
+# Changes from -03 {#changes-03}
 
-This revision separates the payload-neutral CPB mechanisms from payload
-formats and makes their wire and verification behavior explicit:
+This revision is editorial and changes no normative text. It carries three
+items requested by a named contributor on 2026-09-07:
 
-* {{typed-refs}} is an abstract four-member information model. Payload
-  profiles own any payload-level serialization. CPB defines one optional,
-  closed CBOR encoding in the protected `cpb-refs` header.
-* CPB creates no artifact-type registry. A consuming profile identifies by
-  stable normative reference the artifact-type and digest-context
-  declarations it accepts.
-* Reference processing now distinguishes Malformed, Unresolved, Failed, and
-  Verified outcomes and keeps them separate from validation of the enclosing
-  COSE signature and issuer authentication.
-* {{envelope}} separates RFC 9943 Full-Content Mode from RFC 9995 Hash
-  Envelope Mode and retains every applicable RFC 9943 requirement in both.
-* A Signed Statement uses at most one typed-reference carrier. The CDDL,
-  duplicate and unknown-key behavior, `crit` handling, and resource limits
-  for `cpb-refs` are now normative.
+* {{I-D.schrock-ep-authorization-receipts}} is added as an informative
+  reference and cited in {{related}}.
+* {{appendix-c2}} cites the frozen composition vector set by its merged
+  commit rather than by an unlocatable description, and states what that set
+  does and does not carry.
+* The acknowledgment for that instance is narrowed, at the contributor's
+  request, to the evidence the cited set contains.
 
-The -01-to-02 correction that withdrew `jcs-n` and registered `jcs` remains
-unchanged.
+The substantive changes that produced -03 from -02 are recorded in -03.
 
 # Conventions and Definitions {#conventions}
 
@@ -1342,6 +1343,13 @@ and associated registries. CPB defines the structured-content preimage and
 digest context used for its bindings but defines no URI syntax or resolution
 protocol.
 
+{{I-D.schrock-ep-authorization-receipts}} defines an authorization receipt
+that binds an enrolled approver key to one action before execution, and states
+that the receipt establishes only the guarantees of the verification profile
+it selects. CPB defines no approver enrolment and no authorization semantics:
+a Signed Statement constructed under this document carries no claim that the
+action it describes was authorized.
+
 {{I-D.sokolov-rats-aep-composition}} addresses the complementary problem in
 the RATS domain: composing application-layer action evidence with remote
 attestation. {{I-D.mih-sato-agent-accountability-composition}} defines
@@ -1571,11 +1579,22 @@ order carries no ranking.
 | Party | Record type | What ran | Public record |
 |---|---|---|---|
 | Agent Passport System (Pidlisnyi) | Decision record | Content-derived action reference; NFC + code-point sort + JCS; bidirectional cross-runs 6/6 + 24/24 | draft-pidlisnyi-aps + hackathon coordinates |
-| EP (Schrock) | Named-human approval | Three independent codebases produced `8cf0c36e...`; three-computation single-digest | EMILIA/EP hackathon record |
+| EP (Schrock) | Named-human approval | Three independent codebases produced `8cf0c36e...`; three-computation single-digest | agent-action-capsule PR #40 |
 | GAR (Sato) | Kernel session block | Sealed as record; CT leaf = SHA-256(raw bytes of id); leaf 166 verified | gar-core.ts commit fe18f24 |
 | Glyphzero (Rampalli) | Delegation record | Two independent JCS implementations; `subject_digest` `0b4da06b...` | Glyphzero PEDIGREE hackathon record |
 | Microsoft (Chamayou) | Two-TS statement | One payload, two receipt profiles (ccf.v1 + RFC9162_SHA256) in conjunction | scitt-ccf-ledger PR #424 |
 | Sokolov (Tyche) | Boundary-seal | A2A gate; derived-id as resolve key; DENY negative; offline Receipt verify | capsule-emit issue #29 |
+
+The composition vector set behind the EP row is public and hash-pinned:
+`action-state-group/agent-action-capsule` pull request #40, merged as commit
+`ff6edfedb6f9c72dd65b8eb870d38958421d35bc`, directory
+`interop-vectors/composition`, with a `SHA256SUMS` manifest fixing the
+seventeen files it lists. What that set carries is the capsule producer's and
+the receipt producer's independent computations of `8cf0c36e...`. It does not
+carry a third computation of that digest; its reserved third-attestor case is
+a placeholder for a separate attestor's claim over the same subject and is not
+runnable. A reader comparing the two should note that the row above reports
+what the parties ran in July, and this set was frozen afterwards.
 
 ## Agreed and Scheduled {#appendix-c3}
 
@@ -1651,9 +1670,12 @@ confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero, confirmed
   byte-agreement on `subject_digest` `0b4da06b...`, demonstrating that
   RFC 8785 JCS is reproducible across separately written implementations.
 
-* Iman Schrock (EMILIA/EP) — confirmed 2026-07-24 — the three-computation single-digest instance
-  (`8cf0c36e...`) demonstrating byte-agreement across three independent
-  codebases.
+* Iman Schrock (EMILIA/EP) — confirmed 2026-07-24; wording narrowed at the
+  contributor's request 2026-09-07 — the single-digest composition instance
+  (`8cf0c36e...`), in which an authorization receipt
+  {{I-D.schrock-ep-authorization-receipts}} and an action record produced by
+  different implementations carry the same action digest. The vector set cited
+  in {{appendix-c2}} contains those two computations.
 
 **Acknowledged** \[Amaury Chamayou confirmed 2026-07-24 (email)\]:
 
