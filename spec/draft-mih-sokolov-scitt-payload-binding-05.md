@@ -1,8 +1,8 @@
 ---
 title: "Canonical Payload Binding: A Signed Statement Construction Profile"
 abbrev: "Canonical Payload Binding"
-docname: draft-mih-sokolov-scitt-payload-binding-04
-date: 2026-09-09
+docname: draft-mih-sokolov-scitt-payload-binding-05
+date: 2026-09-11
 category: std
 submissiontype: IETF
 ipr: trust200902
