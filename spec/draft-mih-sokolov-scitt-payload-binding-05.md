@@ -1,6 +1,6 @@
 ---
-title: "Canonical Payload Binding: A Signed Statement Construction Profile"
-abbrev: "Canonical Payload Binding"
+title: "Canonicalization Declaration for SCITT Signed Statements"
+abbrev: "SCITT Canonicalization Declaration"
 docname: draft-mih-sokolov-scitt-payload-binding-05
 date: 2026-09-11
 category: std
@@ -170,15 +170,17 @@ Independently written systems that anchor records to a SCITT Transparency
 Service repeatedly need the same construction: a canonical form of structured
 content, a content-addressed identifier derived from that form, binding to a
 SCITT Signed Statement and Receipt, and references that cite external artifacts
-by digest. This document defines that construction as the Canonical Payload
-Binding (CPB). A payload profile declares its canonicalization algorithm and
-exclusion set and thereby obtains a reproducible derived identifier. A CPB
+by digest. This document, referred to as CPB, specifies that construction as
+declarations rather than as a payload format. A payload profile declares its
+canonicalization algorithm and exclusion set and thereby obtains a
+reproducible derived identifier. A CPB
 Signed Statement carries either the complete statement content as specified by
 RFC 9943 or a digest of content held elsewhere using the COSE Hash Envelope of
 RFC 9995. CPB also defines an abstract typed digest reference information model
 and one optional protected-header encoding, `cpb-refs`; a payload profile may
-instead define its own reference serialization. An IANA registry governs CPB
-canonicalization algorithms. CPB does not define payload content formats,
+instead define its own reference serialization. An IANA registry assigns the
+canonicalization algorithm identifiers that these declarations name. CPB does
+not define payload content formats,
 establish or require a universal artifact-type registry, or require either
 typed-reference carrier.
 
@@ -187,8 +189,14 @@ typed-reference carrier.
 This document is an individual submission. The intended venue is the SCITT
 Working Group (scitt@ietf.org). Named acknowledgments in this document were
 individually confirmed in writing by the named parties.
-The short name "Canonical Payload Binding" and the document title are
-expected to be settled by the adopting working group.
+
+Revision -05 changes the title, which was "Canonical Payload Binding: A
+Signed Statement Construction Profile", so that it names what the document
+defines: how a Signed Statement declares the construction behind the digests
+it carries, rather than the payload those digests cover. The draft name and
+the short name CPB are unchanged. CPB remains the working short name, used by
+the `cpb-refs` header parameter and by the companion registry record and code,
+until the adopting working group settles the short name and the title.
 
 The source of this document and the companion interop record are maintained
 at: https://github.com/action-state-group/scitt-payload-binding
@@ -197,28 +205,62 @@ at: https://github.com/action-state-group/scitt-payload-binding
 
 # Introduction {#intro}
 
-Systems that anchor structured content to a SCITT Transparency Service
-{{RFC9943}} face a common sub-problem: how does a producer turn a JSON or
-CBOR object into a content-addressed Signed Statement whose identifier
-survives serialization, and how does a verifier check that the identifier
-in hand matches the bytes in hand? Each answer involves the same four
-moves — canonicalize, derive an identifier, bind a receipt, cite externals
-by digest — but they have been restated independently in every profile that
-needed them, with small variations that defeat interoperability.
+A SCITT Signed Statement {{RFC9943}} frequently carries a digest in place of
+the content it stands for: the digest of statement content held elsewhere
+({{RFC9995}}), an identifier derived from that content, or the digest of
+another artifact that the statement cites. For structured content, such a
+digest depends on how the content was serialized before it was hashed, and
+more than one serialization is in use. The question this document answers is
+how a Signed Statement declares which derivation produced the digest it
+carries, so that a verifier need not guess. Where nothing declares it,
+independent implementations agree only by convention, and a verifier that
+computes a different digest cannot tell a different derivation from
+different content. Profiles that needed such digests have each restated
+their own derivation, with small variations that defeat interoperability.
 
-This document extracts those four moves into a single reusable profile
-called the Canonical Payload Binding (CPB). The COSE Hash Envelope
-{{RFC9995}} identifies a hash function and carries the resulting digest; when
-structured content needs a deterministic preimage, CPB supplies the
-profile-selected canonicalization and derived-identifier construction. CPB
-also supports the ordinary RFC 9943 case in which the complete statement
-content, rather than its digest, is supplied to COSE. CPB defines the binding
-mechanics and a typed-reference mechanism for citing other digests, but it
-does not define what any payload or cited artifact means. CPB generalizes the
-construction first stated by {{I-D.mih-scitt-agent-action-capsule}} and
-exercised across independent implementations at the IETF 126 hackathon; the
-companion interop record preserves the detailed provenance and digest-context
-boundaries.
+The question arises first in the software supply chain, which SCITT is
+chartered to serve. Supply chain Signed Statements carry, or cite by digest,
+structured documents such as software bills of materials, build records, and
+attestations about software artifacts ({{RFC9943}}). When the digest of such a
+document is computed over a serialization that nothing in the signed object
+names, two conforming implementations can bind the same document to
+different digests, and a verifier cannot select the construction that would
+reproduce either.
+
+Records of automated and agent actions raise the same question. The agent
+action capsule profile {{I-D.mih-scitt-agent-action-capsule}} is one profile
+that uses CPB: the construction this document generalizes was first stated
+there and exercised across independent implementations at the IETF 126
+hackathon ({{appendix-c}}), and the companion interop record preserves the
+detailed provenance and digest-context boundaries.
+
+This document, referred to as CPB, answers the question with declarations
+rather than with a payload format. At its core are three things. First, the
+Canonicalization Algorithm Registry ({{iana-alg}}), whose entries are names:
+each active entry assigns an identifier to a construction specified
+elsewhere, such as the JSON Canonicalization Scheme {{RFC8785}}, or to a rule
+selecting octets that a container format already fixes, and pins the hash
+function and output representation applied to the result ({{algorithms}}).
+Second, the declaration: a payload class declares exactly one registered
+identifier, and a typed digest reference, which CPB can carry in the
+protected header ({{envelope-carriage}}), selects a declared digest context
+that names one for the artifact it cites ({{comparability}}). Third, verifier
+rules under which the declared construction is used and never inferred,
+whether from the shape of a payload or from a header parameter that
+identifies only a hash function ({{hash-envelope-mode}}). The same rule,
+declare rather than infer, governs the other choices a verifier would
+otherwise guess: which Verifiable Data Structure a Receipt uses
+({{receipt-binding}}), and whether a log leaf is built from raw digest octets
+or from their hexadecimal text ({{leaf-rule}}).
+
+The COSE Hash Envelope {{RFC9995}} identifies a hash function and carries the
+resulting digest; when structured content needs a deterministic preimage, CPB
+names the profile-selected canonicalization and defines how the derived
+identifier is computed with it ({{derived-id}}). CPB also supports the
+ordinary RFC 9943 case in which the complete statement content, rather than
+its digest, is supplied to COSE. CPB defines the binding mechanics and a
+typed-reference mechanism for citing other digests, but it does not define
+what any payload or cited artifact means, or how either is serialized.
 
 For generic citation-binding verification, a CPB verifier can process a
 typed reference to any artifact type whose digest context it can resolve.
@@ -234,6 +276,14 @@ require consuming-profile integration and artifact-specific appraisal.
 ## Out of Scope {#outofscope}
 
 This document does not define:
+
+* Payload formats — any payload format, payload serialization, or required
+  payload structure. CPB's normative surface is the protected header, the
+  Canonicalization Algorithm Registry ({{iana-alg}}), and producer and
+  verifier behavior when computing and checking declared digests. What CPB
+  asks of a payload profile is declarations, such as which registered
+  identifier, exclusion set, and representation apply, not a structure for
+  the payload to take.
 
 * Payload semantics — what fields a payload contains, what their values mean,
   or what verdicts or decisions are carried. Those belong to payload profiles
@@ -255,20 +305,31 @@ This document does not define:
 * Transports — how registration requests or retrieval queries travel between
   producers, Transparency Services, or verifiers.
 
-# Changes from -03 {#changes-03}
+# Changes from -04 {#changes-04}
 
-This revision is editorial and changes no normative text. It carries three
-items requested by a named contributor on 2026-09-07:
+This revision changes framing, placement, and wording only. It makes no
+normative change: no requirement is added, removed, or changed in force, no
+registry entry changes, and the vectors at the locations in
+{{test-vector-locations}} are unchanged. It reframes the document around what
+it defines, a declaration of the construction behind a digest, rather than
+the payload that digest covers:
 
-* {{I-D.schrock-ep-authorization-receipts}} is added as an informative
-  reference and cited in {{related}}.
-* {{appendix-c2}} cites the frozen composition vector set by its merged
-  commit rather than by an unlocatable description, and states what that set
-  does and does not carry.
-* The acknowledgment for that instance is narrowed, at the contributor's
-  request, to the evidence the cited set contains.
+* The title is now "Canonicalization Declaration for SCITT Signed
+  Statements". CPB remains the working short name.
+* {{algorithms}} is retitled "Canonicalization Algorithm Registrations". The
+  active entries, `jcs` and `as-transmitted`, are restated as registrations
+  (identifier, normative reference, digest context, declaration rule) rather
+  than as procedures. The withdrawn entries are unchanged.
+* {{outofscope}} names payload formats, payload serialization, and payload
+  structure, not only payload semantics.
+* {{intro}} opens on how a Signed Statement declares which derivation
+  produced a digest it carries, adds the software supply chain as a
+  motivating setting, and presents the agent action capsule as one profile
+  that uses CPB.
+* Throughout, the text says that CPB names a canonicalization rather than
+  supplying one.
 
-The substantive changes that produced -03 from -02 are recorded in -03.
+The editorial changes that produced -04 from -03 are recorded in -04.
 
 # Conventions and Definitions {#conventions}
 
@@ -318,7 +379,7 @@ CANONICAL-DIGEST:
   CANONICAL-DIGEST(A, v) = ENCODE_A(RAW-DIGEST(A, v)), where ENCODE_A is
   the output encoding
   declared by A's entry in the Canonicalization Algorithm Registry
-  ({{iana-alg}}). Every algorithm definition supplied by this document
+  ({{iana-alg}}). Every construction registered by this document
   declares SHA-256 and 64-character lowercase hexadecimal; an entry
   registered by a later
   document MAY declare another digest function or encoding, and a verifier
@@ -384,15 +445,21 @@ Verifier:
 : Any party that validates a record from its bytes, without trusting the
   producer.
 
-# Payload Canonicalization Algorithms {#algorithms}
+# Canonicalization Algorithm Registrations {#algorithms}
 
-A canonicalization algorithm specifies how to produce a canonical octet string
-from a structured value. The canonical octet string is the pre-image to
-CANONICAL-DIGEST. A payload class declares exactly one canonicalization
-algorithm; verifiers MUST NOT guess the algorithm from the payload shape.
+Each entry in this section is a registration in the Canonicalization
+Algorithm Registry ({{iana-alg}}). A registration assigns an identifier to a
+construction that produces a canonical octet string from a structured value,
+or to a rule that selects octets a container format already fixes, and pins
+the hash function and output representation applied to the result. The
+resulting octet string is the pre-image to CANONICAL-DIGEST. Where the
+construction is specified elsewhere, the entry cites that specification
+rather than restating it. A payload class declares exactly one
+canonicalization algorithm; verifiers MUST NOT guess the algorithm from the
+payload shape.
 
-The algorithms defined in this document and registered in the Canonicalization
-Algorithm Registry ({{iana-alg}}) are:
+The identifiers registered by this document in the Canonicalization Algorithm
+Registry ({{iana-alg}}) are:
 
 | Name | Summary | Reference |
 |---|---|---|
@@ -415,43 +482,45 @@ never by reinterpreting an existing one.
 
 ## Algorithm jcs {#algo-jcs}
 
-Algorithm `jcs` is the JSON Canonicalization Scheme {{RFC8785}} applied
-directly to the payload, with no normalization pass: no member is removed
-because its value is JSON null, an empty array, or an empty object.
+Identifier:
+: `jcs`
 
-Pre-image construction:
+Normative reference:
+: The JSON Canonicalization Scheme (JCS) {{RFC8785}}, applied directly to the
+  octets supplied to the algorithm, with no normalization pass: no member is
+  removed because its value is JSON null, an empty array, or an empty object.
+  `jcs` places no additional restriction on JSON numbers beyond RFC 8785 itself:
+  a JSON floating-point number is permitted and is serialized per the
+  canonical ECMAScript-based number-to-string procedure RFC 8785 {{RFC8785}}
+  Section 3.2.2.3 defines for IEEE 754 double-precision values. Two conforming
+  implementations that parse the same numeric literal into the same
+  double-precision value therefore produce byte-identical output; see
+  {{floats}}.
 
-1. Apply JCS {{RFC8785}} to the octets supplied to the algorithm, to
-   produce the canonical UTF-8 octet string. Exclusion-set removal is not
-   part of this algorithm: the derived identifier construction
-   ({{derived-id}}) removes the payload class's declared exclusion set
-   before invoking the algorithm.
+Digest context:
+: This entry fixes the canonicalization, the hash function, and the output
+  representation of any digest context that names it; the field set and the
+  exclusion set belong to the profile that declares that context. The
+  pre-image is the canonical UTF-8 octet string that JCS produces. The hash
+  function is SHA-256, computed over that octet string. The output
+  representation is the digest encoded as lowercase hexadecimal, a
+  64-character ASCII string. For the value P supplied to the algorithm:
 
-2. Compute SHA-256 over those octets.
+  ~~~
+  CANONICAL-DIGEST(jcs, P) =
+      lowercase_hex(SHA-256(JCS(P)))
+  ~~~
 
-3. Encode the digest as lowercase hexadecimal. The output is a 64-character
-   ASCII string.
-
-The CANONICAL-DIGEST of a payload P using `jcs` is therefore:
-
-~~~
-CANONICAL-DIGEST(jcs, P) =
-    lowercase_hex(SHA-256(JCS(P)))
-~~~
-
-The exclusion set is matched against the top-level member names of P only;
-a member of the same name nested inside a member's value is not removed.
-
-`jcs` places no additional restriction on JSON numbers beyond RFC 8785 itself:
-a JSON floating-point number is permitted and is serialized per the
-canonical ECMAScript-based number-to-string procedure RFC 8785 {{RFC8785}}
-Section 3.2.2.3 defines for IEEE 754 double-precision values. Two conforming
-implementations that parse the same numeric literal into the same
-double-precision value therefore produce byte-identical output; see
-{{floats}}. A payload profile MAY still declare its own stricter constraint
-(for example, requiring monetary fields to be exact decimal strings) — such a
-constraint is a payload-profile decision, not a requirement of this
-algorithm.
+Declaration rule:
+: A payload class or digest context selects this construction by naming
+  `jcs`. Exclusion-set removal is not part of this algorithm: the derived
+  identifier construction ({{derived-id}}) removes the payload class's declared
+  exclusion set before invoking the algorithm. The exclusion set is matched
+  against the top-level member names of the payload only; a member of the same
+  name nested inside a member's value is not removed. A payload profile MAY
+  still declare its own stricter constraint (for example, requiring monetary
+  fields to be exact decimal strings) — such a constraint is a payload-profile
+  decision, not a requirement of this algorithm.
 
 ## Algorithm jcs-n (Withdrawn) {#algo-jcs-n}
 
@@ -556,7 +625,8 @@ outcome is Failed because the selected token has no algorithm definition.
 
 ## Algorithm as-transmitted {#algo-as-transmitted}
 
-Algorithm `as-transmitted` applies no canonicalization. The digest pre-image
+Algorithm `as-transmitted` is a rule about which octets are digested, not a
+transformation of them. It applies no canonicalization. The digest pre-image
 is the exact octet sequence already fixed by the container format or
 cryptographic envelope carrying the payload -- for example, the signing input
 over which a signature was computed. The signature (or other format-defined
@@ -564,37 +634,49 @@ byte-fixing) is what makes those bytes authoritative; re-canonicalizing them
 would be redundant at best and would break the very binding that makes the
 bytes authoritative at worst.
 
-Because there is no canonicalization step, `as-transmitted` has no field set
-and no exclusion set. A profile-owned artifact-type declaration that selects
-`as-transmitted` for a digest context MUST instead state a byte-boundary
-selector in place of a field set: a normative reference plus the name that
-referenced specification gives to the exact byte sequence in question. Two
-examples of a valid selector:
+Identifier:
+: `as-transmitted`
 
-* {{RFC7515}}, Section 5.1, `JWS Signing Input` -- the octets a JWS signature is
-  computed over.
-* `RFC 9052 §4.4, ToBeSigned` -- the octets a COSE_Sign1 signature is
-  computed over.
+Normative reference:
+: None of its own. The octets are named by the container specification that
+  the declaring digest context cites in its byte-boundary selector, as the
+  declaration rule below requires.
 
-A selector that is not a cited named production is prose, not a selector.
-This named-production rule eliminates that ambiguity: a digest-context
-declaration MUST NOT select `as-transmitted` on the strength of an uncited
-description such as "the payload bytes." If the container specification
-carrying the artifact does not itself name the exact byte sequence as a
-discrete production, the declaration MUST NOT use `as-transmitted`; it must
-select another registered canonicalization algorithm whose definition
-constructs the pre-image from first principles.
+Digest context:
+: This entry fixes the hash function and the output representation of any
+  digest context that names it; in place of a field set, an exclusion set,
+  and a canonicalization, that context states a byte-boundary selector. The
+  hash function is SHA-256 and the output representation is 64-character
+  lowercase hex, matching `jcs`. These are stated explicitly here as part of
+  this entry, not inherited silently from the generic CANONICAL-DIGEST
+  definition ({{conventions}}). For a byte sequence B identified by the
+  declared byte-boundary selector:
 
-The CANONICAL-DIGEST of a byte sequence B identified by the declared
-byte-boundary selector is:
+  ~~~
+  CANONICAL-DIGEST(as-transmitted, B) = lowercase_hex(SHA-256(B))
+  ~~~
 
-~~~
-CANONICAL-DIGEST(as-transmitted, B) = lowercase_hex(SHA-256(B))
-~~~
+Declaration rule:
+: Because there is no canonicalization step, `as-transmitted` has no field set
+  and no exclusion set. A profile-owned artifact-type declaration that selects
+  `as-transmitted` for a digest context MUST instead state a byte-boundary
+  selector in place of a field set: a normative reference plus the name that
+  referenced specification gives to the exact byte sequence in question. Two
+  examples of a valid selector:
 
-Digest: SHA-256, 64-character lowercase hex, matching `jcs`. These are
-stated explicitly here as part of this entry, not inherited silently from
-the generic CANONICAL-DIGEST definition ({{conventions}}).
+  * {{RFC7515}}, Section 5.1, `JWS Signing Input` -- the octets a JWS
+    signature is computed over.
+  * `RFC 9052 §4.4, ToBeSigned` -- the octets a COSE_Sign1 signature is
+    computed over.
+
+  A selector that is not a cited named production is prose, not a selector.
+  This named-production rule eliminates that ambiguity: a digest-context
+  declaration MUST NOT select `as-transmitted` on the strength of an uncited
+  description such as "the payload bytes." If the container specification
+  carrying the artifact does not itself name the exact byte sequence as a
+  discrete production, the declaration MUST NOT use `as-transmitted`; it must
+  select another registered canonicalization algorithm whose definition
+  constructs the pre-image from first principles.
 
 # The Derived Identifier {#derived-id}
 
@@ -607,7 +689,8 @@ id = CANONICAL-DIGEST(A, payload minus exclusion_set)
 where A is the canonicalization algorithm declared by the payload class and
 the exclusion set is the set of fields declared by the payload class as
 self-referential or chain-linkage fields. The derived identifier is a
-64-character lowercase hex string for every algorithm this document defines.
+64-character lowercase hex string for every construction this document
+registers.
 A reserved or never-defined token has no derived-identifier representation.
 For an algorithm registered elsewhere, its representation is the one that
 algorithm's registry entry declares.
@@ -760,8 +843,8 @@ alone. Unknown VDS identifiers MUST be rejected.
 
 This profile imposes no leaf construction on a Verifiable Data Structure.
 Where a Transparency Service's VDS keys its log on a digest associated with
-the derived identifier, the algorithms defined in this document produce a
-32-byte RAW-DIGEST and a 64-character hexadecimal CANONICAL-DIGEST
+the derived identifier, the constructions registered by this document produce
+a 32-byte RAW-DIGEST and a 64-character hexadecimal CANONICAL-DIGEST
 representation of that value ({{representation}}). The VDS or an applicable
 profile MUST state which one is its leaf input, and producer and verifier MUST
 use that same representation. Algorithms registered later may have different
@@ -1208,8 +1291,8 @@ is only the requested initial registry contents.
 This registry records the canonicalization algorithms that may be used to
 compute CANONICAL-DIGEST values.
 
-Each entry pins its canonicalization steps, its hash function, and its
-output representation together as a single immutable triple, so that
+Each entry pins the pre-image construction it names, its hash function, and
+its output representation together as a single immutable triple, so that
 changing any one of the three requires registering a new token rather than
 reinterpreting an existing one — otherwise a token such as `jcs` would
 silently come to mean more than its name states.
@@ -1246,7 +1329,7 @@ of an existing active or withdrawn definition.
 
 Initial contents:
 
-The preimage construction for each active entry is defined in
+The preimage construction for each active entry is given in
 {{algorithms}}.
 
 | Name | Status | Hash / token | COSE | Output | Test Vectors | Reference |
@@ -1301,8 +1384,9 @@ in {{envelope-carriage}}.
 
 {{RFC9995}} defines the protected parameters and COSE payload semantics for
 signing a hash rather than its preimage. CPB Hash Envelope Mode
-({{hash-envelope-mode}}) uses that format and adds the profile-selected
-canonicalization step that precedes the registered hash function.
+({{hash-envelope-mode}}) uses that format and names, through the applicable
+payload profile, the canonicalization that precedes the registered hash
+function.
 
 {{RFC9942}} defines generic COSE Receipts. The CCF Receipt Profile
 {{I-D.ietf-scitt-receipts-ccf-profile}} defines one VDS-specific Receipt
@@ -1334,13 +1418,13 @@ its narrower Statement-content and typed-reference mechanisms.
 
 {{I-D.nobuo-scitt-protected-object-binding}} defines protected-object and
 Statement-reference models, relationship vocabulary, and an optional graph
-manifest. It does not define CPB's canonicalization algorithms, derived-
-identifier procedure, or `cpb-refs` carrier; CPB does not import its graph
-semantics.
+manifest. It does not define CPB's canonicalization algorithm registry,
+derived-identifier procedure, or `cpb-refs` carrier; CPB does not import its
+graph semantics.
 
 {{RFC6920}} defines hash-based `ni` and `nih` names, URI/URL representations,
-and associated registries. CPB defines the structured-content preimage and
-digest context used for its bindings but defines no URI syntax or resolution
+and associated registries. CPB names the preimage construction and digest
+context used for its bindings but defines no URI syntax or resolution
 protocol.
 
 {{I-D.schrock-ep-authorization-receipts}} defines an authorization receipt
