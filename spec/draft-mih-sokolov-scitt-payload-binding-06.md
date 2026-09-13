@@ -1,8 +1,8 @@
 ---
 title: "Canonicalization Declaration for SCITT Signed Statements"
 abbrev: "SCITT Canonicalization Declaration"
-docname: draft-mih-sokolov-scitt-payload-binding-05
-date: 2026-09-11
+docname: draft-mih-sokolov-scitt-payload-binding-06
+date: 2026-09-13
 category: std
 submissiontype: IETF
 ipr: trust200902
