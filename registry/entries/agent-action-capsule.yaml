@@ -1,0 +1,123 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Conforms the existing LIVE REGISTRY.md entry for `agent-action-capsule`
+# (Artifact Type Registry) to the registry/entry.schema.json template. This
+# is a MIRROR of already-ratified content, not a new registration event: it
+# changes nothing about the entry's registered behavior. REGISTRY.md remains
+# the normative record; if the two ever disagree, REGISTRY.md wins and this
+# file has drifted.
+name: agent-action-capsule
+target_registry: artifact_types
+rung: owner_authored
+status: owner-confirmed
+reference: draft-mih-scitt-agent-action-capsule
+owner:
+  name: Steven Mih
+  affiliation: Action State Group, Inc.
+  github: StevenMih
+
+# Carried verbatim from REGISTRY.md's disclosure line on this entry. Note the
+# residual nuance flagged in open_questions below: this is one of the two
+# entries whose Status predates the current vocabulary (REGISTRY.md's
+# "legacy spellings" closed list) and is read through the Legacy Mapping
+# (Registered -> owner-confirmed) rather than through an explicit post-hoc
+# owner confirmation event.
+disclosure: >
+  The registrant (Anton Sokolov) is a co-author of the CPB draft and a
+  co-editor of this registry, and is not the owner of this artifact type.
+  The first digest context (jcs-n, vintage) is a third-party reading of the
+  owner's own specification text.
+
+de_reviewer: "N/A — legacy live entry, not currently under DE review"
+
+open_questions:
+  - >
+    Historical nuance, not a promotion blocker: REGISTRY.md's own text on
+    this entry says the vintage (jcs-n) digest-context row was "added by
+    Anton Sokolov" as a third-party reading, "pending owner confirmation
+    before it is treated as owner-confirmed" — yet the entry's Status line
+    reads "Registered", which the Entry Status Vocabulary's Legacy Mapping
+    maps to owner-confirmed. Both statements are in the live document
+    today; this file mirrors that as-is rather than resolving it. If a
+    reader needs a single answer, that is a question for Steven (the
+    draft's own author) or a CPB editor, not something this filing decides.
+
+seven_questions:
+  digest_input_bytes: >
+    All capsule fields. Two digest contexts exist with different exclusion
+    sets — see digest_contexts[] below for the field-set-minus-exclusions
+    detail per context.
+  exclusion_set: >
+    {capsule_id, chain} under the vintage jcs-n context; {capsule_id} only
+    under the live jcs (profile version -04) context — see digest_contexts[].
+  canonicalization_profile: >
+    jcs-n (vintage — withdrawn 2026-08-18; retained as a historical
+    verification path for records committed under it, verifies nothing new)
+    and jcs (profile version -04, the live context) — see digest_contexts[].
+  hash_algorithm: "SHA-256 (pinned by both jcs-n and jcs)"
+  representation: "64-char lowercase hex (both contexts)"
+  composite_or_not:
+    is_composite: true
+    statement: >
+      The capsule's `chain` block carries prior/parent capsule linkage by
+      typed digest reference, never by inlining a prior capsule's full
+      payload bytes. The composition companion's `references[]` field
+      likewise carries other artifacts' payloads by {type, digest_alg,
+      digest} reference only — never a copy of the referenced bytes.
+  cross_language_parity:
+    statement: >
+      Demonstrated for the vintage jcs-n context by the vectors/jcs-n/
+      conformance suite committed in this repo (executed in CI on every
+      push — see fixtures.vectors_dir below). The live jcs (-04) context's
+      own discriminating vector
+      (test-vectors/pos-v4-jcs-chain-committed/) lives in the artifact
+      type's own repository (action-state-group/agent-action-capsule) and
+      is cited there, not committed here — same pattern REGISTRY.md uses
+      for machine-mandate. A Vienna SCITT hackathon record (Jul 2026)
+      reported multiple independent implementations reaching byte-identical
+      jcs-n digests; the exact count was under reconfirmation as of
+      2026-08-05 (action-state-strategy/docs/outbound/manu-libp2p-followup-2026-08-05.md,
+      item 5) and is not restated here as a specific figure until confirmed.
+    implementations: []
+
+digest_contexts:
+  - purpose: identifier
+    profile_version: "N/A (no versioned profile registered yet)"
+    algorithm: jcs-n
+    field_set: all capsule fields
+    exclusion_set: "{capsule_id, chain}"
+    domain_separation: none
+    pre_image_encoding: "JCS UTF-8 octets (per jcs-n)"
+    representation: 64-char lowercase hex
+  - purpose: identifier
+    profile_version: draft-mih-scitt-agent-action-capsule-04
+    algorithm: jcs
+    field_set: all capsule fields
+    exclusion_set: "{capsule_id}"
+    domain_separation: none
+    pre_image_encoding: "JCS UTF-8 octets (per jcs)"
+    representation: 64-char lowercase hex
+
+fixtures:
+  # Covers the vintage jcs-n identifier context: KATs, derived-identifier
+  # construction, and assembled-preimage cases, executed via check_vectors.py.
+  vectors_dir: vectors/jcs-n
+
+discriminating_vector: >
+  test-vectors/pos-v4-jcs-chain-committed/ (in the artifact type's own
+  repository) — "Format 4 plain JCS commits the chain block and a present
+  empty array to capsule_id"; recomputed identifier
+  862024869f00481bb4f59d9528a45c2d4885f64c5222a9324a38ac2c2cd119f2, which
+  the vintage {capsule_id, chain} exclusion set does NOT reproduce
+  (1164b5696cf27d9c13965de1929b8e2b14097b7824f25e63f9ac7e954369d886 instead)
+  — see REGISTRY.md's full worked comparison table for this entry.
+
+consuming_profile: >
+  See REGISTRY.md — no separate consuming-profile citation is recorded on
+  this legacy row beyond the artifact type's own specification.
+
+notes: >
+  Mirrors REGISTRY.md's `agent-action-capsule` Artifact Type Registry entry
+  as of this filing. Do not hand-edit this file's registered behavior
+  independently of REGISTRY.md — REGISTRY.md is normative; this is a
+  conformance mirror.

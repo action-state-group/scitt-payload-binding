@@ -1,0 +1,248 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CPB Registry Entry",
+  "description": "Machine-checkable shape for one CPB registry submission (Payload Canonicalization Algorithm Registry or Artifact Type Registry). Fill in registry/entries/TEMPLATE.yaml, save it as registry/entries/<name>.yaml, and open a PR — .github/validate_registry_entries.py validates every file under registry/entries/ against this schema and, for any entry that declares in-repo vectors, executes them and rejects the entry if they do not run clean. This schema is the machine-checkable half of the fill-in template; REGISTRY.md's Entry Template section remains the normative prose description of every field. The seven questions this schema exists to force an answer to (construction-as-data: digest-input bytes, exclusions, canonicalization profile, hash, representation; composite-or-not; cross-language parity proven by vectors) are asked verbatim as property descriptions on `seven_questions` below.",
+  "type": "object",
+  "required": ["name", "target_registry", "rung", "status", "reference", "owner", "open_questions"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "The controlled identifier this entry registers — the token that will appear in a `type` field (Artifact Type Registry) or as an algorithm id (Payload Canonicalization Algorithm Registry). Lowercase, hyphen-separated."
+    },
+    "target_registry": {
+      "type": "string",
+      "enum": ["artifact_types", "canonicalization_algorithms"],
+      "description": "Which of CPB's two registries (draft §13.1 / §13.2) this entry targets."
+    },
+    "rung": {
+      "type": "string",
+      "enum": ["owner_authored", "third_party_documented", "provisional", "reserved"],
+      "description": "Registration Ladder rung (REGISTRY.md). 'reserved' is the pre-registration name hold described there — not a lifecycle status — and is the only rung that may omit seven_questions/digest_contexts/fixtures entirely."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["owner-confirmed", "third-party-documented", "provisional", "standards-referenced", "withdrawn", "reserved"],
+      "description": "REGISTRY.md Entry Status Vocabulary term, used verbatim. Must be consistent with `rung` (owner_authored -> owner-confirmed; third_party_documented -> third-party-documented; provisional -> provisional; reserved -> reserved)."
+    },
+    "reference": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Publicly available specification: Internet-Draft, RFC, or a repository reference. A repository reference MUST include a commit hash — a branch or tag alone is not a pin."
+    },
+    "owner": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": true,
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "affiliation": {"type": "string"},
+        "github": {"type": "string"}
+      },
+      "description": "The artifact/algorithm owner. For a `provisional` entry filed ahead of owner confirmation, name the owner anyway (e.g. the org whose spec is being read) so the record shows who is being asked to confirm."
+    },
+    "registrant": {
+      "type": "object",
+      "required": ["name", "self_attestation"],
+      "additionalProperties": true,
+      "properties": {
+        "name": {"type": "string"},
+        "affiliation": {"type": "string"},
+        "self_attestation": {
+          "type": "string",
+          "description": "Third-Party Registration Rule 2: \"Registered by X from Y at commit Z.\""
+        }
+      },
+      "description": "Required when rung is third_party_documented. Omit for owner_authored, provisional, and reserved entries."
+    },
+    "disclosure": {
+      "type": "string",
+      "description": "Required prose statement when the owner or confirmer also holds a CPB editor or draft co-author role (REGISTRY.md Required Fields table). No CI check can detect when this applies — that is a human/DE judgment call, stated here so the schema does not imply otherwise."
+    },
+    "de_reviewer": {
+      "type": "string",
+      "description": "Designated Expert assigned to this entry, or the literal string 'TBD' with a one-line reason (e.g. awaiting the third designated-expert appointment)."
+    },
+    "open_questions": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Explicit unresolved items a Designated Expert or the owner must settle before this entry can promote. Required key (may be an empty array for a fully-settled owner-confirmed entry) so a reviewer never has to infer whether something was simply forgotten versus deliberately left open. CPB editors MUST NOT resolve one of these on the owner's/DE's behalf — see REGISTRY.md's 'CPB editors MUST NOT fill in owner-supplied fields' rule."
+    },
+    "seven_questions": {
+      "type": "object",
+      "description": "The registration template's core content, in the form the questions were put to registrants: construction-as-data (five parts), composite-or-not, and cross-language parity. Required for every rung except 'reserved'.",
+      "required": [
+        "digest_input_bytes", "exclusion_set", "canonicalization_profile",
+        "hash_algorithm", "representation", "composite_or_not", "cross_language_parity"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "digest_input_bytes": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Q1 — What exact bytes is the digest computed over? Name the field set (or, under as-transmitted, the cited named production / byte-boundary selector), not just the containing message."
+        },
+        "exclusion_set": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Q2 — Which fields (if any) are excluded from that byte sequence before digesting? Write 'none' explicitly rather than leaving this blank — blank and 'none' are not the same claim."
+        },
+        "canonicalization_profile": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Q3 — Which canonicalization profile applies? Name a token already in the Payload Canonicalization Algorithm Registry (registry.json / REGISTRY.md §Payload Canonicalization Algorithm Registry), or state 'TBD — new algorithm token proposed: <name>' / 'TBD — Designated Expert must choose' if none fits yet. Naming an algorithm family (\"JCS\") is not an answer; the answer names one registered token."
+        },
+        "hash_algorithm": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Q4 — What hash function? Normally pinned by the canonicalization-profile token itself (e.g. every currently registered token is SHA-256) — state it anyway so this entry is self-contained and a mismatch with the named profile is visible on inspection."
+        },
+        "representation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Q5 — How is the digest output represented? e.g. '64-char lowercase hex', 'sha256: + 64-char lowercase hex', 'raw 32 octets'. Two representations of the same bytes are not interchangeable (see REGISTRY.md's machine-mandate discriminating vector) — state the exact one."
+        },
+        "composite_or_not": {
+          "type": "object",
+          "required": ["is_composite", "statement"],
+          "additionalProperties": false,
+          "properties": {
+            "is_composite": {
+              "type": "boolean",
+              "description": "Q6a — Does this artifact type embed other registered artifact types or CPB-digested payloads inside itself?"
+            },
+            "statement": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Q6b — Composite payloads are NEVER inlined verbatim inside a signed record; a composite member is carried as a typed digest REFERENCE (CPB §6-style {type, digest_alg, digest}) inside the signed record, never a copy of the referenced bytes. If is_composite is true, state which field(s) carry the reference and confirm no member field embeds another artifact's payload bytes directly. If is_composite is false, a one-line confirmation that this type carries no other registered artifact type by reference or by value is sufficient."
+            }
+          }
+        },
+        "cross_language_parity": {
+          "type": "object",
+          "required": ["statement"],
+          "additionalProperties": false,
+          "properties": {
+            "statement": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Q7 — Cross-language/cross-implementation parity is demonstrated by VECTORS producing byte-identical pre-images and digests across independent implementations, never by one implementer reading another's source. State how many independent implementations this entry's vectors have been run against, or 'not yet demonstrated — N/A, single implementation to date' if only one exists."
+            },
+            "implementations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "language"],
+                "properties": {
+                  "name": {"type": "string"},
+                  "language": {"type": "string"},
+                  "reference": {"type": "string"}
+                }
+              },
+              "description": "Independent implementations the parity statement above is claiming agreement across, if any."
+            }
+          }
+        }
+      }
+    },
+    "digest_contexts": {
+      "type": "array",
+      "description": "Optional richer breakdown for an entry with more than one digest context (purpose identifier/equivalence, multiple profile versions, etc — see the agent-action-capsule and machine-mandate entries in REGISTRY.md for worked examples). When present, seven_questions may say 'see digest_contexts[]' instead of repeating per-context detail. Shape matches registry.json's own digest_contexts (registry_schema.json) so a promoted entry's data does not need reshaping.",
+      "items": {
+        "type": "object",
+        "required": ["purpose", "algorithm"],
+        "properties": {
+          "purpose": {"type": "string", "minLength": 1},
+          "profile_version": {"type": "string"},
+          "algorithm": {"type": "string", "minLength": 1},
+          "field_set": {"type": "string"},
+          "exclusion_set": {"type": "string"},
+          "domain_separation": {"type": "string"},
+          "pre_image_encoding": {"type": "string"},
+          "representation": {"type": "string"}
+        }
+      }
+    },
+    "fixtures": {
+      "type": "object",
+      "description": "Required conformance vector set (Registration Rule 2: positive AND negative, both directions). Required for owner_authored and third_party_documented rungs. A provisional entry MAY omit this entirely (that incompleteness is exactly what keeps it at Rung 3) — but if it declares vectors_dir anyway, those vectors are still mechanically checked.",
+      "additionalProperties": false,
+      "properties": {
+        "vectors_dir": {
+          "type": "string",
+          "pattern": "^vectors/",
+          "description": "Path, relative to the repository root, to this entry's vectors IN THIS REPO. If present, .github/validate_registry_entries.py runs .github/check_vectors.py against it and REJECTS the entry if any vector fails to execute cleanly (nonzero FAILED count) or is not two-sided (no positive or no must_fail case), unless external_vector_set below applies instead."
+        },
+        "positive": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Vector case ids or file paths carrying pinned expected values."
+        },
+        "boundary": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Vector case ids or file paths at the construction's edge cases (e.g. empty field set, smallest legal instance)."
+        },
+        "negative": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "MUST-FAIL vector case ids or file paths. Registration Rule 2: positives-only cannot detect an implementation that is too permissive."
+        },
+        "external_vector_set": {
+          "type": "object",
+          "description": "Third-Party Registration Rule 4: cite the owner's own published vector set rather than fabricating one. Exempts this entry from local in-repo execution (validate_registry_entries.py cannot run another repository's test suite) but the citation must be commit-pinned.",
+          "required": ["repository", "commit", "path"],
+          "properties": {
+            "repository": {"type": "string"},
+            "commit": {"type": "string", "pattern": "^[0-9a-f]{7,40}$"},
+            "path": {"type": "string"}
+          }
+        }
+      }
+    },
+    "discriminating_vector": {
+      "type": "string",
+      "description": "Gate A: a conformance case (positive or MUST-FAIL) that distinguishes this entry from every currently registered neighbour in the same registry table, both directions. See REGISTRY.md Designated Expert Admission Checklist, Gate A."
+    },
+    "consuming_profile": {
+      "type": "string",
+      "description": "Gate B: at least one spec-revision-pinned reference to a specification or deployment that uses this registered name normatively. The entry's own specification does not count."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-text notes for the CPB editor — non-normative."
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"rung": {"const": "reserved"}}, "required": ["rung"]},
+      "then": {
+        "properties": {"status": {"const": "reserved"}},
+        "not": {
+          "anyOf": [
+            {"required": ["seven_questions"]},
+            {"required": ["fixtures"]},
+            {"required": ["digest_contexts"]}
+          ]
+        }
+      },
+      "else": {"required": ["seven_questions"]}
+    },
+    {
+      "if": {"properties": {"rung": {"const": "owner_authored"}}, "required": ["rung"]},
+      "then": {"required": ["fixtures"], "properties": {"status": {"const": "owner-confirmed"}}}
+    },
+    {
+      "if": {"properties": {"rung": {"const": "third_party_documented"}}, "required": ["rung"]},
+      "then": {
+        "required": ["registrant", "fixtures"],
+        "properties": {"status": {"const": "third-party-documented"}}
+      }
+    },
+    {
+      "if": {"properties": {"rung": {"const": "provisional"}}, "required": ["rung"]},
+      "then": {"properties": {"status": {"const": "provisional"}}}
+    }
+  ]
+}

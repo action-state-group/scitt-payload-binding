@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# RESERVED placeholder only. The full `vto` artifact-type entry and its
+# CBOR canonicalization-profile entry are a SEPARATE sibling filing
+# ([cpb-vto-provisional-entries]) — this row exists so the name is held and
+# the pointer is visible from registry/entries/, not to author VTO here.
+# Per REGISTRY.md: "Reserved is NOT a lifecycle status. It marks a
+# pre-registration hold on a name whose definition is deferred to a
+# subsequent revision" — it does not transition along the Entry Lifecycle
+# until it is registered as a live filing.
+name: vto
+target_registry: artifact_types
+rung: reserved
+status: reserved
+reference: >
+  Sibling task [cpb-vto-provisional-entries]: draft entries from
+  seetadev/libp2p-vto-spec @ aee5e46 — (a) a deterministic-CBOR
+  canonicalization-profile registry row, (b) the `vto` artifact-type entry
+  itself. Both blocked on the libp2p/VTO team's schema (CDDL), one real
+  encoded instance, and the float-bearing-fields list (see
+  action-state-strategy/docs/outbound/manu-libp2p-followup-2026-08-05.md
+  §1) — and on resolving the key-ordering ambiguity (raw-UTF-8
+  lexicographic vs RFC 8949 core-deterministic CBOR-encoded-key-bytes
+  ordering, which differ for mixed-length keys) before promotion.
+owner:
+  name: Manu Sheel Gupta, Johana (libp2p / VTO team)
+de_reviewer: "TBD — not yet assigned; entry not yet filed"
+open_questions:
+  - >
+    Not filed here by design — see [cpb-vto-provisional-entries] for the
+    actual entry drafts and their own open questions (key-ordering
+    ambiguity, CBOR digest-context float handling). This row only holds
+    the name and points at that sibling task so a reader of
+    registry/entries/ knows VTO is accounted for rather than forgotten.
+notes: >
+  Do not fill in seven_questions/fixtures/digest_contexts on this file —
+  the schema (registry/entry.schema.json) forbids it for rung=reserved.
+  When the sibling task files the real entry, this file is either replaced
+  by it (same name) or deleted in favor of it — whichever the CPB editor
+  handling that filing prefers.

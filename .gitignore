@@ -5,3 +5,4 @@ __pycache__/
 # pytest / ruff
 .pytest_cache/
 .ruff_cache/
+site/dist/

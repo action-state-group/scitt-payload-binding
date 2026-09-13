@@ -1,0 +1,77 @@
+# SPDX-License-Identifier: Apache-2.0
+# Validate registry/entries/*.yaml against registry/entry.schema.json, and
+# mechanically execute any vectors an entry declares. See registry/README.md
+# for what this buys a registrant, and .github/validate_registry_entries.py
+# for exactly what is and isn't checked.
+#
+# Reuses the fork-safe pull_request_target discipline from candidate-validate.yml
+# -- READ THAT FILE'S "WHY pull_request_target" comment before editing this one;
+# the reasoning is not repeated in full here. Short version: a fork PR supplies
+# its own copy of registry/entries/*.yaml AND could supply its own weakened copy
+# of the validator or schema in the same PR. pull_request_target always runs the
+# workflow and the scripts it invokes from the BASE branch, so the checker and
+# schema a registrant is graded against are never the PR's own.
+#
+# Same safety properties as candidate-validate.yml / neutrality.yml apply and
+# must be preserved:
+#   1. This workflow, validate_registry_entries.py, entry.schema.json, and
+#      check_vectors.py always come from the base branch.
+#   2. The PR's files are checked out into ./pr as INERT DATA -- read only as
+#      YAML/JSON, never executed.
+#   3. No step runs, builds, or installs anything from ./pr.
+#   4. persist-credentials: false on both checkouts.
+#   5. permissions: contents: read -- the job can do nothing else.
+#
+# >>> IF YOU ADD A STEP THAT RUNS, BUILDS, OR INSTALLS ANYTHING FROM ./pr,
+# >>> STOP. See neutrality.yml and candidate-validate.yml.
+name: registry-entries
+
+on:
+  push:
+    paths: ["registry/**", ".github/validate_registry_entries.py", ".github/test_validate_registry_entries.py", ".github/workflows/registry-entries.yml"]
+  pull_request_target:
+    paths: ["registry/**", "vectors/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      # Base repo — TRUSTED. Supplies the validator, schema, and check_vectors.py.
+      - name: Checkout base (trusted — provides validator + schema)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # PR head — UNTRUSTED, checked out as data only. Never executed.
+      - name: Checkout pull request head into ./pr (inert data — never executed)
+        if: github.event_name == 'pull_request_target'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          persist-credentials: false
+          allow-unsafe-pr-checkout: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: install validator dependencies
+        run: pip install "jsonschema>=4" "pyyaml>=6" "pytest>=7"
+
+      - name: validator self-tests (mutation-tested — see test_validate_registry_entries.py)
+        if: github.event_name != 'pull_request_target'
+        run: python3 -m pytest .github/test_validate_registry_entries.py -v
+
+      - name: validate registry/entries (push / same-repo)
+        if: github.event_name != 'pull_request_target'
+        run: python3 .github/validate_registry_entries.py registry/entries
+
+      - name: validate registry/entries (fork PR — graded against base checker)
+        if: github.event_name == 'pull_request_target'
+        run: python3 .github/validate_registry_entries.py pr/registry/entries
