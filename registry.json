@@ -2,12 +2,12 @@
   "schema_version": "1",
   "canonicalization_algorithms": {
     "jcs-n": {
-      "description": "Withdrawn \u2014 never carried to IANA (2026-08-18). RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex \u2014 the construction this entry named. See docs/audits/jcsn-withdrawal-audit-2026-08-18.md for the withdrawal rationale.",
+      "description": "Withdrawn \u2014 never carried to IANA (2026-08-18). RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; bare-hex \u2014 the construction this entry named. See docs/audits/jcsn-withdrawal-audit-2026-08-18.md for the withdrawal rationale.",
       "reference": "draft-mih-sokolov-scitt-payload-binding",
       "status": "withdrawn"
     },
     "jcs": {
-      "description": "RFC 8785 JCS over a JSON object (no normalization pass; null, empty-array, and empty-object members are retained as-is); SHA-256; lowercase hex",
+      "description": "RFC 8785 JCS over a JSON object (no normalization pass; null, empty-array, and empty-object members are retained as-is); SHA-256; bare-hex",
       "reference": "RFC 8785 \u00a73",
       "status": "standards-referenced"
     },
@@ -17,7 +17,7 @@
       "status": "withdrawn"
     },
     "as-transmitted": {
-      "description": "No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex",
+      "description": "No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); a profile-owned artifact-type declaration using this algorithm states a byte-boundary selector in place of a field set; SHA-256; bare-hex",
       "reference": "draft-mih-sokolov-scitt-payload-binding",
       "status": "Registered"
     }
@@ -25,7 +25,7 @@
   "artifact_types": {
     "agent-action-capsule": {
       "reference": "draft-mih-scitt-agent-action-capsule",
-      "status": "Registered",
+      "status": "provisional",
       "digest_contexts": [
         {
           "purpose": "identifier",
@@ -35,7 +35,7 @@
           "exclusion_set": "{capsule_id, chain}",
           "domain_separation": "none",
           "pre_image_encoding": "JCS UTF-8 octets (per jcs-n)",
-          "representation": "64-char lowercase hex"
+          "representation": "bare-hex"
         },
         {
           "purpose": "identifier",
@@ -45,7 +45,7 @@
           "exclusion_set": "{capsule_id}",
           "domain_separation": "none",
           "pre_image_encoding": "JCS UTF-8 octets (per jcs)",
-          "representation": "64-char lowercase hex"
+          "representation": "bare-hex"
         }
       ]
     },
@@ -61,7 +61,7 @@
           "exclusion_set": "N/A (as-transmitted has no field set)",
           "domain_separation": "none",
           "pre_image_encoding": "N/A (no separate encoding step)",
-          "representation": "bare 64-char lowercase hex"
+          "representation": "bare-hex"
         },
         {
           "purpose": "equivalence",
@@ -71,10 +71,10 @@
           "exclusion_set": "none",
           "domain_separation": "none",
           "pre_image_encoding": "JCS UTF-8 octets (per jcs)",
-          "representation": "sha256: + 64-char lowercase hex, as carried in the in-document action_hash claim"
+          "representation": "sha256-prefixed"
         }
       ],
-      "discriminating_vector": "mm-fail-04-representation-confusion \u2014 pins that this type's two representations are not interchangeable (the derived identifier is bare hex; the in-document action_hash carries the sha256: prefix). agent-action-capsule, the only other registered artifact type, declares a single context in bare hex, so a verifier that accepted either form for either context would pass its cases and fail these. Cited at the commit-pinned URL below, not committed here \u2014 this entry's vectors are the owner's own published set.",
+      "discriminating_vector": "mm-fail-04-representation-confusion \u2014 pins that this type's two representations are not interchangeable (the derived identifier is bare-hex; the in-document action_hash is sha256-prefixed). agent-action-capsule, the only other registered artifact type, declares a single bare-hex context, so a verifier that accepted either form for either context would pass its cases and fail these. Cited at the commit-pinned URL below, not committed here \u2014 this entry's vectors are the owner's own published set.",
       "consuming_profile": "action-state-group/scitt-cose @ 04cf97a8d143459b7dd4193ba4d8c065c3783071 \u2014 the hosted verification surface at verify.agentactioncapsule.org. It parses and renders this type under the name machine-mandate (hosted_profiles/machine_mandate.py, PROFILE_PARSERS[\"machine-mandate\"]), against fixtures copied byte-verbatim from tyche-institute/machine-mandate@524e6a3 \u2014 the same commit this entry's Reference pins. What it does not do, stated plainly so the Designated Expert can weigh it: it detects the profile by the owner-controlled VCT URI and by pinned fixture digests, not by resolving the type through this registry, and its own module text disclaims endorsement. Whether a deployment that consumes the vocabulary without resolving the artifact type satisfies Gate B is the DE's call, not the registrant's \u2014 and the registrant is the owner, which is why it is put this way rather than asserted."
     },
     "evidence-record": {
@@ -89,7 +89,7 @@
           "exclusion_set": "none",
           "domain_separation": "none",
           "pre_image_encoding": "JCS UTF-8 octets (per jcs)",
-          "representation": "bare 64-char lowercase hex"
+          "representation": "bare-hex"
         }
       ],
       "discriminating_vector": "er-fail-02-unregistered-reconciliation-state \u2014 pins that this type's reconciliation vocabulary is CLOSED: reconciliation.state is exactly agreement | contradiction | no_independent_evidence, and an unrecognised value MUST be rejected rather than treated as informational. This deliberately inverts the never-reject invariant of the Capsule (draft-mih-scitt-agent-action-capsule, section 4: verifiers MUST treat unregistered values as informational) at the layer where our type lives: an unrecognised value is a failure, not a new rung, so a typo cannot silently raise a record's strength. Neither registered neighbour (agent-action-capsule, machine-mandate) declares a closed reconciliation vocabulary, so a verifier that accepted unknown values would pass their cases and fail ours. Full two-sided vector set pinned under Conformance vectors below.",
@@ -107,12 +107,12 @@
           "exclusion_set": "none",
           "domain_separation": "none",
           "pre_image_encoding": "JCS UTF-8 octets (per jcs)",
-          "representation": "bare 64-char lowercase hex"
+          "representation": "bare-hex"
         }
       ],
       "discriminating_vector": "ea-fail-01-grade-in-producer-record \u2014 pins the grade-location rule: an appraisal artifact cites its subject by typed digest and carries the verified grade in e_grade; a producer record that stamps its own appraisal grade inside its digest-committed payload is a category error. This is the RATS split (evidence in, appraisal policy is the bridge, attestation results out) that neither registered neighbour expresses, and it is what makes an appraisal's grade checkable against a specific record version rather than a floating claim. Full two-sided vector set pinned under Conformance vectors below.",
       "consuming_profile": "this artifact type is the consumer named by evidence-record above: its subject_record field is a typed digest reference binding the appraisal to the exact record version appraised. As with that entry, owner and consuming-profile maintainer are the same party (Empire Labs Pty Ltd / narko4u), so no separate consuming-profile ACK is required under Gate C."
     }
   },
-  "snapshot_sha256": "f70b52a2acf5933f8b42e4f089d22d7aeafdec2af8574c6f6c38287972b52f03"
+  "snapshot_sha256": "4787290d44cdc42029aedb73ed46a0ecacb0f992bc596727284f01e3c90f0de1"
 }

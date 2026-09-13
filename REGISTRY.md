@@ -403,7 +403,7 @@ Designated Expert's call. Owner and consuming-profile maintainer are the same pa
 
 | Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
 |---|---|---|---|---|---|---|---|
-| `identifier` | 0.1 (schema 0.1.0) | `jcs` | every member of `evidence-record-0.1.schema.json` (14 members), closed — schema-validated before digest; an unrecognised member or enum value is rejected, never digested | none | none | JCS UTF-8 octets (per `jcs`) | bare 64-char lowercase hex |
+| `identifier` | 0.1 (schema 0.1.0) | `jcs` | every member of `evidence-record-0.1.schema.json` (14 members), closed — schema-validated before digest; an unrecognised member or enum value is rejected, never digested | none | none | JCS UTF-8 octets (per `jcs`) | `bare-hex` |
 
 **What this entry does not do, stated plainly so the Designated Expert can weigh it:**
 this registry row registers the artifact type's derived-identifier context and its closed
@@ -447,7 +447,7 @@ ACK is required under Gate C.
 
 | Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
 |---|---|---|---|---|---|---|---|
-| `identifier` | 0.1 (schema 0.1.0) | `jcs` | every member of `evidence-appraisal-0.1.schema.json` (9 members), closed — schema-validated before digest; `e_grade` is a closed enum over the five-rung evidence-strength ladder E0 Declared, E1 Observed, E2 Enforced, E3 Corroborated, E4 Anchored; `claim_type` and `reconciliation_state` are likewise closed enums | none | none | JCS UTF-8 octets (per `jcs`) | bare 64-char lowercase hex |
+| `identifier` | 0.1 (schema 0.1.0) | `jcs` | every member of `evidence-appraisal-0.1.schema.json` (9 members), closed — schema-validated before digest; `e_grade` is a closed enum over the five-rung evidence-strength ladder E0 Declared, E1 Observed, E2 Enforced, E3 Corroborated, E4 Anchored; `claim_type` and `reconciliation_state` are likewise closed enums | none | none | JCS UTF-8 octets (per `jcs`) | `bare-hex` |
 
 **Registered `e_grade` vocabulary (the E0-E4 evidence-strength ladder):** this row
 registers the five-rung ladder as the closed, ordered `e_grade` vocabulary of the
