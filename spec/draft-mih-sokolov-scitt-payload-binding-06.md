@@ -1716,16 +1716,17 @@ Signed Statement.
 # Acknowledgments {#acknowledgments}
 {:numbered="false"}
 
-The following individuals contributed findings from the IETF 126 hackathon in
-Vienna that directly shaped the rules in this document. All attributions
-cite public artifacts.
+The following individuals contributed findings that directly shaped the rules
+in this document, whether raised at the IETF 126 hackathon in Vienna or
+through public review afterward. All attributions cite public artifacts.
 
 **Contributors** \[all named attributions and contributor acknowledgments
 individually confirmed: Anton Sokolov (confirmed 2026-07-24), Iman Schrock
 (confirmed 2026-07-24), Tom Sato (confirmed 2026-07-25), Yong Bok Lee (Scott
 Lee) (contributor attribution confirmed 2026-07-27), Tymofii Pidlisnyi (Agent Passport System,
 confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero, confirmed
-2026-07-25, email, with corrections)\]:
+2026-07-25, email, with corrections), Imran Siddique (Opaque Systems,
+confirmed 2026-09-11, on-issue)\]:
 
 * Anton Sokolov (Tyche Institute) — assurance-boundary discipline; the A2A
   boundary-seal instance in {{appendix-c}}.
@@ -1760,6 +1761,12 @@ confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero, confirmed
   {{I-D.schrock-ep-authorization-receipts}} and an action record produced by
   different implementations carry the same action digest. The vector set cited
   in {{appendix-c2}} contains those two computations.
+
+* Imran Siddique (Opaque Systems) — the plain-JCS subject-binding divergence
+  that led to the withdrawal of `jcs-n` and the registration of `jcs` (#34);
+  the `digest_alg` consistency-declaration clarification and the withdrawal
+  of `cde-n` (#36); and the verifier-behaviour rules for unregistered
+  external artifact types (#35).
 
 **Acknowledged** \[Amaury Chamayou confirmed 2026-07-24 (email)\]:
 

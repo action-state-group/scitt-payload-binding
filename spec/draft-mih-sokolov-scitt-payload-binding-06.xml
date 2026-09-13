@@ -2179,15 +2179,16 @@ Signed Statement.</t>
     </section>
     <section numbered="false" anchor="acknowledgments">
       <name>Acknowledgments</name>
-      <t>The following individuals contributed findings from the IETF 126 hackathon in
-Vienna that directly shaped the rules in this document. All attributions
-cite public artifacts.</t>
+      <t>The following individuals contributed findings that directly shaped the rules
+in this document, whether raised at the IETF 126 hackathon in Vienna or
+through public review afterward. All attributions cite public artifacts.</t>
       <t><strong>Contributors</strong> [all named attributions and contributor acknowledgments
 individually confirmed: Anton Sokolov (confirmed 2026-07-24), Iman Schrock
 (confirmed 2026-07-24), Tom Sato (confirmed 2026-07-25), Yong Bok Lee (Scott
 Lee) (contributor attribution confirmed 2026-07-27), Tymofii Pidlisnyi (Agent Passport System,
 confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero, confirmed
-2026-07-25, email, with corrections)]:</t>
+2026-07-25, email, with corrections), Imran Siddique (Opaque Systems,
+confirmed 2026-09-11, on-issue)]:</t>
       <ul spacing="normal">
         <li>
           <t>Anton Sokolov (Tyche Institute) — assurance-boundary discipline; the A2A
@@ -2228,6 +2229,13 @@ contributor's request 2026-09-07 — the single-digest composition instance
 <xref target="I-D.schrock-ep-authorization-receipts"/> and an action record produced by
 different implementations carry the same action digest. The vector set cited
 in <xref target="appendix-c2"/> contains those two computations.</t>
+        </li>
+        <li>
+          <t>Imran Siddique (Opaque Systems) — the plain-JCS subject-binding divergence
+that led to the withdrawal of <tt>jcs-n</tt> and the registration of <tt>jcs</tt> (#34);
+the <tt>digest_alg</tt> consistency-declaration clarification and the withdrawal
+of <tt>cde-n</tt> (#36); and the verifier-behaviour rules for unregistered
+external artifact types (#35).</t>
         </li>
       </ul>
       <t><strong>Acknowledged</strong> [Amaury Chamayou confirmed 2026-07-24 (email)]:</t>
@@ -2855,24 +2863,28 @@ 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
-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
+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
+Fz/uuZPRlzx2/x8v9pXQnlcBAA==
 
 -->
 
