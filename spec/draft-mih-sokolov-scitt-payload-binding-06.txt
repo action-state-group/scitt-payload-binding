@@ -5,12 +5,12 @@
 SCITT                                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
 Intended status: Standards Track                              A. Sokolov
-Expires: 15 March 2027                                   Tyche Institute
-                                                       11 September 2026
+Expires: 17 March 2027                                   Tyche Institute
+                                                       13 September 2026
 
 
         Canonicalization Declaration for SCITT Signed Statements
-               draft-mih-sokolov-scitt-payload-binding-05
+               draft-mih-sokolov-scitt-payload-binding-06
 
 Abstract
 
@@ -53,7 +53,7 @@ Note to Readers
 
 
 
-Mih & Sokolov             Expires 15 March 2027                 [Page 1]
+Mih & Sokolov             Expires 17 March 2027                 [Page 1]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -77,7 +77,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 15 March 2027.
+   This Internet-Draft will expire on 17 March 2027.
 
 Copyright Notice
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Mih & Sokolov             Expires 15 March 2027                 [Page 2]
+Mih & Sokolov             Expires 17 March 2027                 [Page 2]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -165,7 +165,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                 [Page 3]
+Mih & Sokolov             Expires 17 March 2027                 [Page 3]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -221,7 +221,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                 [Page 4]
+Mih & Sokolov             Expires 17 March 2027                 [Page 4]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -277,7 +277,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                 [Page 5]
+Mih & Sokolov             Expires 17 March 2027                 [Page 5]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -333,7 +333,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                 [Page 6]
+Mih & Sokolov             Expires 17 March 2027                 [Page 6]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -389,7 +389,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                 [Page 7]
+Mih & Sokolov             Expires 17 March 2027                 [Page 7]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -445,7 +445,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                 [Page 8]
+Mih & Sokolov             Expires 17 March 2027                 [Page 8]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -501,7 +501,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                 [Page 9]
+Mih & Sokolov             Expires 17 March 2027                 [Page 9]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -557,7 +557,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 10]
+Mih & Sokolov             Expires 17 March 2027                [Page 10]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -613,7 +613,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 11]
+Mih & Sokolov             Expires 17 March 2027                [Page 11]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -669,7 +669,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 12]
+Mih & Sokolov             Expires 17 March 2027                [Page 12]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -725,7 +725,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 13]
+Mih & Sokolov             Expires 17 March 2027                [Page 13]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -781,7 +781,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 14]
+Mih & Sokolov             Expires 17 March 2027                [Page 14]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -837,7 +837,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 15]
+Mih & Sokolov             Expires 17 March 2027                [Page 15]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -893,7 +893,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 16]
+Mih & Sokolov             Expires 17 March 2027                [Page 16]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -949,7 +949,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 17]
+Mih & Sokolov             Expires 17 March 2027                [Page 17]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1005,7 +1005,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 18]
+Mih & Sokolov             Expires 17 March 2027                [Page 18]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1061,7 +1061,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 19]
+Mih & Sokolov             Expires 17 March 2027                [Page 19]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1117,7 +1117,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 20]
+Mih & Sokolov             Expires 17 March 2027                [Page 20]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1173,7 +1173,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 21]
+Mih & Sokolov             Expires 17 March 2027                [Page 21]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1229,7 +1229,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 22]
+Mih & Sokolov             Expires 17 March 2027                [Page 22]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1285,7 +1285,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 23]
+Mih & Sokolov             Expires 17 March 2027                [Page 23]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1341,7 +1341,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 24]
+Mih & Sokolov             Expires 17 March 2027                [Page 24]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1397,7 +1397,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 25]
+Mih & Sokolov             Expires 17 March 2027                [Page 25]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1453,7 +1453,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 26]
+Mih & Sokolov             Expires 17 March 2027                [Page 26]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1509,7 +1509,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 27]
+Mih & Sokolov             Expires 17 March 2027                [Page 27]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1565,7 +1565,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 28]
+Mih & Sokolov             Expires 17 March 2027                [Page 28]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1621,7 +1621,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 29]
+Mih & Sokolov             Expires 17 March 2027                [Page 29]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1677,7 +1677,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 30]
+Mih & Sokolov             Expires 17 March 2027                [Page 30]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1733,7 +1733,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 31]
+Mih & Sokolov             Expires 17 March 2027                [Page 31]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1789,7 +1789,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 32]
+Mih & Sokolov             Expires 17 March 2027                [Page 32]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1845,7 +1845,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 33]
+Mih & Sokolov             Expires 17 March 2027                [Page 33]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1901,7 +1901,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 34]
+Mih & Sokolov             Expires 17 March 2027                [Page 34]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1957,7 +1957,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 35]
+Mih & Sokolov             Expires 17 March 2027                [Page 35]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2013,7 +2013,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 36]
+Mih & Sokolov             Expires 17 March 2027                [Page 36]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2069,7 +2069,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 37]
+Mih & Sokolov             Expires 17 March 2027                [Page 37]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2125,7 +2125,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 38]
+Mih & Sokolov             Expires 17 March 2027                [Page 38]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2181,7 +2181,7 @@ Appendix A.  Synthetic Registration Walkthrough
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 39]
+Mih & Sokolov             Expires 17 March 2027                [Page 39]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2237,7 +2237,7 @@ Appendix B.  Synthetic Two-Slot Composition
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 40]
+Mih & Sokolov             Expires 17 March 2027                [Page 40]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2293,7 +2293,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 41]
+Mih & Sokolov             Expires 17 March 2027                [Page 41]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2349,7 +2349,7 @@ C.1.1.  Glyphzero Byte-Agreement — Algorithm Determinism
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 42]
+Mih & Sokolov             Expires 17 March 2027                [Page 42]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2405,7 +2405,7 @@ C.1.3.  A2A Boundary Seal — Derived Identifier as Protocol Gate
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 43]
+Mih & Sokolov             Expires 17 March 2027                [Page 43]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2461,7 +2461,7 @@ C.2.  Field Table — IETF 126 Participants
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 44]
+Mih & Sokolov             Expires 17 March 2027                [Page 44]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2517,7 +2517,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 45]
+Mih & Sokolov             Expires 17 March 2027                [Page 45]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2573,16 +2573,17 @@ Appendix D.  Profile-Owned Payload Carriage Example
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 46]
+Mih & Sokolov             Expires 17 March 2027                [Page 46]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 Acknowledgments
 
-   The following individuals contributed findings from the IETF 126
-   hackathon in Vienna that directly shaped the rules in this document.
-   All attributions cite public artifacts.
+   The following individuals contributed findings that directly shaped
+   the rules in this document, whether raised at the IETF 126 hackathon
+   in Vienna or through public review afterward.  All attributions cite
+   public artifacts.
 
    *Contributors* [all named attributions and contributor
    acknowledgments individually confirmed: Anton Sokolov (confirmed
@@ -2590,7 +2591,8 @@ Acknowledgments
    2026-07-25), Yong Bok Lee (Scott Lee) (contributor attribution
    confirmed 2026-07-27), Tymofii Pidlisnyi (Agent Passport System,
    confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero,
-   confirmed 2026-07-25, email, with corrections)]:
+   confirmed 2026-07-25, email, with corrections), Imran Siddique
+   (Opaque Systems, confirmed 2026-09-11, on-issue)]:
 
    *  Anton Sokolov (Tyche Institute) — assurance-boundary discipline;
       the A2A boundary-seal instance in Appendix C.
@@ -2622,21 +2624,29 @@ Acknowledgments
       RFC 8785 JCS is reproducible across separately written
       implementations.
 
-   *  Iman Schrock (EMILIA/EP) — confirmed 2026-07-24; wording narrowed
-      at the contributor's request 2026-09-07 — the single-digest
-      composition instance (8cf0c36e...), in which an authorization
-      receipt [I-D.schrock-ep-authorization-receipts] and an action
 
 
 
-Mih & Sokolov             Expires 15 March 2027                [Page 47]
+
+
+Mih & Sokolov             Expires 17 March 2027                [Page 47]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
+   *  Iman Schrock (EMILIA/EP) — confirmed 2026-07-24; wording narrowed
+      at the contributor's request 2026-09-07 — the single-digest
+      composition instance (8cf0c36e...), in which an authorization
+      receipt [I-D.schrock-ep-authorization-receipts] and an action
       record produced by different implementations carry the same action
       digest.  The vector set cited in Appendix C.2 contains those two
       computations.
+
+   *  Imran Siddique (Opaque Systems) — the plain-JCS subject-binding
+      divergence that led to the withdrawal of jcs-n and the
+      registration of jcs (#34); the digest_alg consistency-declaration
+      clarification and the withdrawal of cde-n (#36); and the verifier-
+      behaviour rules for unregistered external artifact types (#35).
 
    *Acknowledged* [Amaury Chamayou confirmed 2026-07-24 (email)]:
 
@@ -2675,14 +2685,4 @@ Authors' Addresses
 
 
 
-
-
-
-
-
-
-
-
-
-
-Mih & Sokolov             Expires 15 March 2027                [Page 48]
+Mih & Sokolov             Expires 17 March 2027                [Page 48]
