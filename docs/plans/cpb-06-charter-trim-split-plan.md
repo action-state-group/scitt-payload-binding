@@ -208,8 +208,8 @@ once, and all three tasks must agree on the same answer. Not decided here.
 > short I-D, fold into AAC, or a non-normative application note) — that answer
 > has to be the same across CPB, AAC, and capsule-registry, and it's the part
 > that needs your sign-off before anyone touches the `.md`. Nothing has been
-> drafted; this is the split plan for your review at commit `<worktree HEAD
-> SHA — see outbox>`.
+> drafted; this is the split plan for your review at commit `ef06aca`
+> (branch `cpb-06-charter-trim`, held for EM push).
 
 ## Fold/supersede statement
 
