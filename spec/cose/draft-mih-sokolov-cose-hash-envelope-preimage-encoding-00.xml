@@ -68,30 +68,19 @@ before submission.</t>
 
 <section anchor="intro">
       <name>Introduction</name>
-      <t>The COSE Hash Envelope <xref target="RFC9995"/> defines header parameters that let a
-COSE_Sign1 carry the hash of content held elsewhere: payload-hash-alg (258)
-identifies the hash function, preimage-content-type (259) identifies the
-content format of the hashed bytes, and payload-location (260) hints at
-where to retrieve them. Together they let a verifier that has obtained the
-original content recompute the hash and compare it to the payload.</t>
-      <t>That comparison depends on one more fact <xref target="RFC9995"/> does not carry: when
-the hashed content is structured (for example, JSON or CBOR), more than one
-deterministic serialization of the same value is commonly in use, and a
-verifier that serializes differently than the producer did computes a
-different hash from identical content. <xref target="RFC9995"/> identifies the hash
-function and the hashed bytes' content type, not which serialization
-produced them.</t>
+      <t>The COSE Hash Envelope <xref target="RFC9995"/> identifies the hash function (258) and
+the content type of the hashed bytes (259), but not which of the (possibly
+several) deterministic serializations of that content type produced them --
+a fact a verifier needs to recompute the hash of structured content such as
+JSON or CBOR and compare it to the payload.</t>
       <t>This document defines one new protected-header parameter,
 payload-preimage-encoding, naming the deterministic encoding applied before
 hashing, and a small IANA registry of encoding identifiers. It extends the
-COSE Hash Envelope without changing <xref target="RFC9995"/> itself: the Hash Envelope
-protected header already permits extension parameters (CDDL <tt>* (int / tstr)
-=&gt; any</tt>), so this document registers a new header parameter rather than
-amending 9995's own CDDL.</t>
-      <t>One principal user of the COSE Hash Envelope is the SCITT Signed Statement
-<xref target="RFC9943"/>, which uses it to bind a Signed Statement to structured content
-held elsewhere; this document does not depend on SCITT, and the parameter it
-defines applies to any use of the Hash Envelope or of a plain COSE_Sign1.</t>
+COSE Hash Envelope without changing <xref target="RFC9995"/> itself: the protected
+header already permits extension parameters (CDDL <tt>* (int / tstr) =&gt;
+any</tt>).</t>
+      <t>The SCITT Signed Statement <xref target="RFC9943"/> is one principal user of the Hash
+Envelope; the parameter this document defines applies to any COSE_Sign1.</t>
     </section>
     <section anchor="terminology">
       <name>Terminology</name>
@@ -103,8 +92,8 @@ shown here.</t>
       <t>"COSE", "COSE_Sign1", and "protected header" are defined in <xref target="RFC9052"/>;
 "CDDL" in <xref target="RFC8610"/>; "preimage" in Section 2 of <xref target="RFC9995"/>. "Hash
 Envelope" refers to the COSE_Sign1 construction of <xref target="RFC9995"/>, whose header
-parameters 258 (payload-hash-alg), 259 (preimage-content-type), and 260
-(payload-location) together describe a payload that is the hash of content
+parameters 258, 259, and 260 (payload-hash-alg, preimage-content-type,
+payload-location) together describe a payload that is the hash of content
 available separately from the COSE_Sign1 itself.</t>
     </section>
     <section anchor="header-param">
@@ -151,24 +140,15 @@ itself.</t>
     </section>
     <section anchor="examples">
       <name>Examples</name>
-      <t>The following examples use Extended Diagnostic Notation (<xref target="RFC8610"/>
-Appendix G), in the style of <xref target="RFC9995"/> Section 4.1; signature and key
-material are illustrative and truncated. Full digests are given once in
-text and truncated in the COSE structure for line width.</t>
-      <section anchor="example-cbor">
-        <name>CBOR Deterministic Encoding Example</name>
-        <t>The preimage is the CBOR map <tt>{"artifact": "manifest.spdx.json", "size":
-48210}</tt>, encoded per the Core Deterministic Encoding Requirements of
-<xref target="RFC8949"/> Section 4.2.1, which sorts map keys by the bytewise order of
-their own encodings, here placing "size" before "artifact":</t>
-        <artwork><![CDATA[
-a26473697a6519bc52686172746966616374726d616e696665
-73742e737064782e6a736f6e
-]]></artwork>
-        <t>Its SHA-256 digest,
-<tt>cdb4930eaa6a019d6e27b1e93f9def8d5ab2e40382254f32b328f4637a446586</tt>, is the
-COSE_Sign1 payload:</t>
-        <artwork><![CDATA[
+      <t>The following use Extended Diagnostic Notation (<xref target="RFC8610"/> Appendix G), in
+the style of <xref target="RFC9995"/> Section 4.1; signature and key material are
+illustrative and truncated.</t>
+      <t>The preimage <tt>{"b": 2, "a": 1}</tt>, encoded per the Core Deterministic
+Encoding Requirements of <xref target="RFC8949"/> Section 4.2.1 (key order is bytewise,
+placing "a" before "b" regardless of source order), is the 7-octet string
+<tt>a2616101616202</tt>, whose SHA-256 digest is
+<tt>a0d3af9e86e5517f729bad0657e2c6f3b7d03899894c8d6b33759074c893b5e3</tt>:</t>
+      <artwork><![CDATA[
 18([ # COSE_Sign1
   <<{
     / alg               / 1: -7, # ES256
@@ -177,77 +157,45 @@ COSE_Sign1 payload:</t>
     / preimage encoding / 261: 1, # cbor-deterministic
   }>>
   / unprotected / {},
-  / payload     / h'cdb4930e...4637a446586', # digest above
+  / payload     / h'a0d3af9e...c893b5e3', # digest above
   / signature   / h'304502210...3b1c9f0e'
 ])
 ]]></artwork>
-      </section>
-      <section anchor="example-jcs">
-        <name>JCS Example</name>
-        <t>The preimage is the JSON value <tt>{"z": null, "a": {}, "m": [], "s": "CPB"}</tt>,
-canonicalized per the JSON Canonicalization Scheme <xref target="RFC8785"/>, which sorts
-object member names and retains null, empty-array, and empty-object
-members; the canonical UTF-8 octet string is:</t>
-        <artwork><![CDATA[
-{"a":{},"m":[],"s":"CPB","z":null}
-]]></artwork>
-        <t>Its SHA-256 digest,
-<tt>7b3ef8ebf31ee38952860dd3f30c2e0d101dcdbcd9972e3ed8108ef9cff0d7cb</tt>, is the
-COSE_Sign1 payload:</t>
-        <artwork><![CDATA[
-18([ # COSE_Sign1
-  <<{
-    / alg               / 1: -7, # ES256
-    / hash algorithm    / 258: -16, # sha-256
-    / preimage type     / 259: "application/json",
-    / preimage encoding / 261: 2, # jcs
-  }>>
-  / unprotected / {},
-  / payload     / h'7b3ef8eb...9cff0d7cb', # digest above
-  / signature   / h'3fa1c8e02...9d47b6a5'
-])
-]]></artwork>
-      </section>
+      <t>The same structure demonstrates value 2 with 259 <tt>"application/json"</tt> and
+261 <tt>2</tt>: for the JCS <xref target="RFC8785"/>-canonicalized preimage
+<tt>{"a":{},"m":[],"s":"CPB","z":null}</tt>, the payload is the SHA-256 digest
+<tt>7b3ef8ebf31ee38952860dd3f30c2e0d101dcdbcd9972e3ed8108ef9cff0d7cb</tt>.</t>
     </section>
     <section anchor="security">
       <name>Security Considerations</name>
       <section anchor="security-bytes">
         <name>Preimages Are Bytes, Not Renderings</name>
-        <t>The preimage identified by preimage-content-type (259) and encoded per
-payload-preimage-encoding (261) is the exact octet string the named
-encoding produces -- not a rendered form, a console printout, or a string
-that differs from the encoding's output by whitespace, trailing newlines, or
-character-encoding choices.</t>
-        <t>A producer that stores structured content and later re-reads it before
-hashing MUST ensure the octets entering the hash function are
-byte-identical to the encoding's own output, not whatever a
-deserialize-then-reserialize round trip happens to produce; the two are not
-guaranteed equal even for encodings designed to be deterministic
-(<xref target="iana-encodings"/>). Diagnosing a mismatch requires comparing octets, not
-visual representations of the content.</t>
+        <t>The preimage identified by 259 and encoded per 261 is the exact octet
+string the named encoding produces -- not a rendered form or a string
+differing from it by whitespace, newlines, or character-encoding choices.</t>
+        <t>A producer that re-reads stored content before hashing MUST ensure the
+octets entering the hash function are byte-identical to the encoding's own
+output; a deserialize-then-reserialize round trip is not guaranteed to
+reproduce it, even for encodings designed to be deterministic
+(<xref target="iana-encodings"/>).</t>
       </section>
       <section anchor="security-agility">
         <name>Encoding Agility</name>
         <t>The COSE Preimage Encodings registry (<xref target="iana-encodings"/>) grows by
-registering a new value for a new or differently scoped encoding, never by
-reinterpreting the octets an existing value already governs. An entry's
-definition, once registered, is immutable, so that an implementation
-holding an old definition and one holding a new one either agree on what a
-value means or one recognizes it as unregistered -- never that they
-silently disagree on what the same value means.</t>
+registering a new value for a new encoding, never by reinterpreting the
+octets an existing value already governs; each entry's definition, once
+registered, is immutable.</t>
       </section>
     </section>
     <section anchor="privacy">
       <name>Privacy Considerations</name>
-      <t>A digest computed by Hash Envelope Mode over deterministically encoded
-content is a stable function of that content, which makes the payload
-linkable across contexts in which it recurs. When the preimage is drawn
-from a small enumeration or another low-entropy value space, a party who
-suspects a candidate preimage can encode it with 261, hash it with 258, and
-compare the result to the payload, recovering the preimage without
-obtaining it directly. Neither risk is introduced by 261 itself -- both
-already exist wherever <xref target="RFC9995"/> is used -- but naming the encoding
-removes any ambiguity that might otherwise have slowed such an attempt.</t>
+      <t>A digest computed over deterministically encoded content is a stable
+function of that content, making the payload linkable across contexts
+where it recurs. When the preimage is drawn from a low-entropy value
+space, encoding a candidate with 261 and hashing it with 258 can recover
+the preimage by comparison to the payload -- a risk that already exists
+wherever <xref target="RFC9995"/> is used; naming the encoding removes ambiguity that
+might otherwise have slowed such an attempt.</t>
     </section>
     <section anchor="iana">
       <name>IANA Considerations</name>
@@ -320,16 +268,12 @@ Name, Description, Reference.</t>
           </tbody>
         </table>
         <t>Value 1, cbor-deterministic, is this registry's lead entry: <xref target="RFC8949"/>
-Section 4.2.1, Core Deterministic Encoding Requirements, part of STD 94. A
-separate CBOR Common Deterministic Encoding effort is, at the time of
-writing, an expired working-group Internet-Draft, not an RFC, and is not
-registered here; a future RFC would receive its own registration, never a
-reinterpretation of value 1.</t>
-        <t>Value 2, jcs, names <xref target="RFC8785"/>, cited informatively: an Independent
-Submission that this document does not require any implementation to
-support. It is registered because JCS preimages are already in deployed
-use; Standards Track encodings such as value 1 remain this registry's
-primary contents.</t>
+Section 4.2.1, Core Deterministic Encoding Requirements, part of STD 94.
+<tt>draft-ietf-cbor-cde</tt> is, at the time of writing, an expired working-group
+Internet-Draft, not an RFC, and is not registered here.</t>
+        <t>Value 2, jcs, names <xref target="RFC8785"/> informatively: an Independent Submission
+this document does not require any implementation to support, registered
+because JCS preimages are already in deployed use.</t>
       </section>
     </section>
   </middle>
@@ -474,7 +418,7 @@ primary contents.</t>
         </reference>
       </references>
     </references>
-    <?line 305?>
+    <?line 245?>
 
 <section numbered="false" anchor="acknowledgments">
       <name>Acknowledgments</name>
@@ -485,117 +429,99 @@ acknowledgment text will be finalized before submission.</t>
     </section>
   </back>
   <!-- ##markdown-source:
-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
-MQAA
+H4sIAAAAAAAAA51aa3Mjt7H9jl+BoqrurrY4XJJ6kkp8rZWUWKl9XUl26pbL
+JYEzIIloOMMMhtLSkvzbc7oBzIOSHCeu8mo4xKPRffr0A4yiSJSmTPVYdr4W
+2izUTMuzLM4Tk83kNC/kyZfLM/mDsnO8vtNpvtS2I9RkUug7zHn+rXy2TEck
+eZypBfZICjUto4WZRza/zdP8Lopzq6M5Foi0XyBa+gXwxi0Q9fsiUSXmD/vD
+/ag/igb7IsaLWV6sx9KWibCrycJYa/KsXC8x8Pzs6i/CLIuxLIuVLYf9/qg/
+FKrQCkJf6nhVmHLdEfd5cTsr8tXSH6UjbvUaL5OxkBEfnf6SeDKIRy+ChPQc
+qyzPTKxS86sqsT+9S3Spi4XJjC1NLMMxhC1VllyrNM8g4VpbsTRj+XOZx11p
+86Is9NTiab2gh1+EUKtynhcsicnsWF725CczF1JKp8zLUt/pLLzLi5nKvAxj
+eRzTXwyBluRf6YRdeZ7FPRqpF8qkUNtSx98rHmdpWE+Zaqvjnrx0Bqq3O85K
+WrF+3d7xah3PNfbAkctVqWlADB3jC5WmJsv4Rb7KSjLZmcVaRjWkUbR6z6Pi
++5IW65lqMZHlxQIb3WmoQ1785WQ4GIz84+HgYLd6HO6Hx/1BPzyOdsPYUX9v
+GB5Ho72xECabbix9eHC4V43Z3cGYKIqkmtiygLaEuMIxX4B9qksrFX9zfWlm
+2QDIKIq1LDGcAZRPcf6s1Fkp5zpNhE6tvp/rQndlmc80xhXy3pTzeoZKAXC8
+WXT5XZhNCKfVwjidiMm61MAO4AUR5gaDyHV5dSwuC10WBmChKYue/PscsKln
+VwsbC4gWq7hcFTrpykVOs+cqkwDsBqatLkwFeSeMKpsLxflikWfpGniSK6ud
+bLRnW2tJrq3MckxJMNFM1xDaxHPecVnkySrG6Rqi8kF78mpuLObGqwVtl+ip
+yTRpH1NKHZc6ieZaJVDoUhUALyTviqVap7lKntNL1wlPKLcs4svu65YniQqh
+lsvUkDh6Skoi4XghZwC7AOTl+fHnY2h+hlUAA6ioWsif1ejCipQPxdue0FKn
+rb0rJr7Q/1yZQtNxLa0FcErCdU+ek7qxsdDfoHtiQLJ4+SJIaytUepGm1h/W
+WVk1SbVgHKps3YBzz/kBbKWvP9M/ZX59wUq25BNNe7A8MHxi7kyyUqms2ZlM
+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
 
 -->
 
