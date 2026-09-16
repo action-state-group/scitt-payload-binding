@@ -1,0 +1,14 @@
+<reference anchor="RFC9052" target="https://www.rfc-editor.org/info/rfc9052">
+  <front>
+    <title>CBOR Object Signing and Encryption (COSE): Structures and Process</title>
+    <author fullname="J. Schaad" initials="J." surname="Schaad"/>
+    <date month="August" year="2022"/>
+    <abstract>
+      <t>Concise Binary Object Representation (CBOR) is a data format designed for small code size and small message size. There is a need to be able to define basic security services for this data format. This document defines the CBOR Object Signing and Encryption (COSE) protocol. This specification describes how to create and process signatures, message authentication codes, and encryption using CBOR for serialization. This specification additionally describes how to represent cryptographic keys using CBOR.</t>
+      <t>This document, along with RFC 9053, obsoletes RFC 8152.</t>
+    </abstract>
+  </front>
+  <seriesInfo name="STD" value="96"/>
+  <seriesInfo name="RFC" value="9052"/>
+  <seriesInfo name="DOI" value="10.17487/RFC9052"/>
+</reference>
