@@ -35,48 +35,45 @@
     <keyword>canonicalization</keyword>
     <keyword>payload binding</keyword>
     <keyword>derived identifier</keyword>
-    <keyword>typed digest reference</keyword>
     <abstract>
-      <?line 167?>
+      <?line 73?>
 
 <t>Independently written systems that anchor records to a SCITT Transparency
 Service repeatedly need the same construction: a canonical form of structured
-content, a content-addressed identifier derived from that form, binding to a
-SCITT Signed Statement and Receipt, and references that cite external artifacts
-by digest. This document, referred to as CPB, specifies that construction as
-declarations rather than as a payload format. A payload profile declares its
-canonicalization algorithm and exclusion set and thereby obtains a
-reproducible derived identifier. A CPB
-Signed Statement carries either the complete statement content as specified by
-RFC 9943 or a digest of content held elsewhere using the COSE Hash Envelope of
-RFC 9995. CPB also defines an abstract typed digest reference information model
-and one optional protected-header encoding, <tt>cpb-refs</tt>; a payload profile may
-instead define its own reference serialization. An IANA registry assigns the
-canonicalization algorithm identifiers that these declarations name. CPB does
-not define payload content formats,
-establish or require a universal artifact-type registry, or require either
-typed-reference carrier.</t>
+content, a content-addressed identifier derived from that form, and binding to
+a SCITT Signed Statement and Receipt. This document, referred to as CPB,
+specifies that construction as declarations rather than as a payload format. A
+payload profile declares its canonicalization algorithm and exclusion set and
+thereby obtains a reproducible derived identifier. A CPB Signed Statement
+carries either the complete statement content as specified by RFC 9943 or a
+digest of content held elsewhere using the COSE Hash Envelope of RFC 9995. An
+IANA registry assigns the canonicalization algorithm identifiers that these
+declarations name. CPB does not define payload content formats, artifact
+types, or a mechanism for citing other artifacts by digest.</t>
     </abstract>
     <note>
       <name>Note to Readers</name>
-      <?line 187?>
+      <?line 88?>
 
 <t>This document is an individual submission. The intended venue is the SCITT
 Working Group (scitt@ietf.org). Named acknowledgments in this document were
-individually confirmed in writing by the named parties.</t>
-      <t>Revision -05 changes the title, which was "Canonical Payload Binding: A
+individually confirmed in writing by the named parties. <strong>This revision is a
+draft for co-author and working-group review only; it has not been submitted
+to the datatracker.</strong></t>
+      <t>Revision -05 changed the title, which was "Canonical Payload Binding: A
 Signed Statement Construction Profile", so that it names what the document
 defines: how a Signed Statement declares the construction behind the digests
 it carries, rather than the payload those digests cover. The draft name and
-the short name CPB are unchanged. CPB remains the working short name, used by
-the <tt>cpb-refs</tt> header parameter and by the companion registry record and code,
-until the adopting working group settles the short name and the title.</t>
+the short name CPB are unchanged pending the adopting working group's own
+choice of short name and title. Revision -06 responds to WG scope review by
+removing the typed digest reference mechanism and its supporting material;
+see <xref target="changes-05"/>.</t>
       <t>The source of this document and the companion interop record are maintained
 at: https://github.com/action-state-group/scitt-payload-binding</t>
     </note>
   </front>
   <middle>
-    <?line 204?>
+    <?line 108?>
 
 <section anchor="intro">
       <name>Introduction</name>
@@ -100,28 +97,21 @@ document is computed over a serialization that nothing in the signed object
 names, two conforming implementations can bind the same document to
 different digests, and a verifier cannot select the construction that would
 reproduce either.</t>
-      <t>Records of automated and agent actions raise the same question. The agent
-action capsule profile <xref target="I-D.mih-scitt-agent-action-capsule"/> is one profile
-that uses CPB: the construction this document generalizes was first stated
-there and exercised across independent implementations at the IETF 126
-hackathon (<xref target="appendix-c"/>), and the companion interop record preserves the
-detailed provenance and digest-context boundaries.</t>
+      <t>Records of automated and agent actions raise the same question; the agent
+action capsule profile <xref target="I-D.mih-scitt-agent-action-capsule"/> is one example
+of a profile that uses CPB for this purpose.</t>
       <t>This document, referred to as CPB, answers the question with declarations
-rather than with a payload format. At its core are three things. First, the
+rather than with a payload format. At its core are two things. First, the
 Canonicalization Algorithm Registry (<xref target="iana-alg"/>), whose entries are names:
 each active entry assigns an identifier to a construction specified
 elsewhere, such as the JSON Canonicalization Scheme <xref target="RFC8785"/>, or to a rule
 selecting octets that a container format already fixes, and pins the hash
 function and output representation applied to the result (<xref target="algorithms"/>).
-Second, the declaration: a payload class declares exactly one registered
-identifier, and a typed digest reference, which CPB can carry in the
-protected header (<xref target="envelope-carriage"/>), selects a declared digest context
-that names one for the artifact it cites (<xref target="comparability"/>). Third, verifier
-rules under which the declared construction is used and never inferred,
-whether from the shape of a payload or from a header parameter that
-identifies only a hash function (<xref target="hash-envelope-mode"/>). The same rule,
-declare rather than infer, governs the other choices a verifier would
-otherwise guess: which Verifiable Data Structure a Receipt uses
+Second, verifier rules under which the declared construction is used and
+never inferred, whether from the shape of a payload or from a header
+parameter that identifies only a hash function (<xref target="hash-envelope-mode"/>). The
+same rule, declare rather than infer, governs the other choices a verifier
+would otherwise guess: which Verifiable Data Structure a Receipt uses
 (<xref target="receipt-binding"/>), and whether a log leaf is built from raw digest octets
 or from their hexadecimal text (<xref target="leaf-rule"/>).</t>
       <t>The COSE Hash Envelope <xref target="RFC9995"/> identifies a hash function and carries the
@@ -129,18 +119,9 @@ resulting digest; when structured content needs a deterministic preimage, CPB
 names the profile-selected canonicalization and defines how the derived
 identifier is computed with it (<xref target="derived-id"/>). CPB also supports the
 ordinary RFC 9943 case in which the complete statement content, rather than
-its digest, is supplied to COSE. CPB defines the binding mechanics and a
-typed-reference mechanism for citing other digests, but it does not define
-what any payload or cited artifact means, or how either is serialized.</t>
-      <t>For generic citation-binding verification, a CPB verifier can process a
-typed reference to any artifact type whose digest context it can resolve.
-Whether a particular citation slot permits that artifact type is determined
-by the consuming profile. Artifact-specific appraisal, authorization
-semantics, and application integration remain separate.</t>
-      <t>Supporting a new artifact type requires no change to this document's
-citation-binding algorithm. Declaring the type, its digest context, and its
-meaning is a matter for the payload profile that defines it; it may also
-require consuming-profile integration and artifact-specific appraisal.</t>
+its digest, is supplied to COSE. CPB defines this binding mechanics, but it
+does not define what any payload means, how it is serialized, or how a
+Signed Statement cites other artifacts by digest.</t>
       <section anchor="outofscope">
         <name>Out of Scope</name>
         <t>This document does not define:</t>
@@ -167,6 +148,12 @@ owned by payload or consuming profiles and identified by stable normative
 references. CPB defines no artifact-type registry.</t>
           </li>
           <li>
+            <t>Citing other artifacts by digest — a mechanism by which one record
+references another record or artifact and identifies what kind of thing is
+referenced. CPB's derived identifier (<xref target="derived-id"/>) addresses only the
+record that carries it.</t>
+          </li>
+          <li>
             <t>Application meaning — the real-world interpretation of any record
 anchored via this construction.</t>
           </li>
@@ -182,41 +169,72 @@ producers, Transparency Services, or verifiers.</t>
         </ul>
       </section>
     </section>
-    <section anchor="changes-04">
-      <name>Changes from -04</name>
-      <t>This revision changes framing, placement, and wording only. It makes no
-normative change: no requirement is added, removed, or changed in force, no
-registry entry changes, and the vectors at the locations in
-<xref target="test-vector-locations"/> are unchanged. It reframes the document around what
-it defines, a declaration of the construction behind a digest, rather than
-the payload that digest covers:</t>
+    <section anchor="changes-05">
+      <name>Changes from -05</name>
+      <t>This revision responds to a SCITT Working Group scope review (Jon Geater,
+scitt@ietf.org, 2026-09-14), which found the document, as reframed in -05,
+still "adjacent" to WG charter: useful for "the principle of establishing
+further interoperability among SCITT-using applications," but too wide
+because it leans on the Agent Action Capsule and Agent Passport profiles,
+and -- architecturally -- because the typed digest reference mechanism
+amounted to introducing a new meta content-type for payloads-of-payloads, a
+construction the working group considered and dropped early in its history.
+-05's own change note described a wording and framing change only, with no
+normative change; that could not answer a scope objection, since the
+document was 47 pages before and after. This revision instead removes
+content, and IS a normative change:</t>
       <ul spacing="normal">
         <li>
-          <t>The title is now "Canonicalization Declaration for SCITT Signed
-Statements". CPB remains the working short name.</t>
+          <t>Typed Digest References (the former Section 8 and its subsections, Profile
+Independence, Discovery Mirror, and Extensibility and Cross-Cutting
+Facilities) are removed in full, along with the <tt>cpb-refs</tt> COSE Header
+Parameter registration that carried them and the Immutable Coordinates,
+Tamper Evidence, and Long-Term Verifiability Considerations subsections of
+Security Considerations, which existed to support that mechanism. Removing
+it removes the shape of the objection, not merely its length: this
+document no longer states that a digest points at a thing of a declared
+type, only that given bytes were canonicalized a stated way. Where the
+removed mechanism finally lands -- a new short document, folded into the
+agent action capsule profile, or a non-normative application note -- is an
+open question outside this revision's scope; <xref target="I-D.mih-scitt-agent-action-capsule"/>
+and other documents that cite it are not orphaned by this removal, but
+neither are they satisfied by it yet.</t>
         </li>
         <li>
-          <t><xref target="algorithms"/> is retitled "Canonicalization Algorithm Registrations". The
-active entries, <tt>jcs</tt> and <tt>as-transmitted</tt>, are restated as registrations
-(identifier, normative reference, digest context, declaration rule) rather
-than as procedures. The withdrawn entries are unchanged.</t>
+          <t>Related Work and the appendices (worked examples, and the IETF 126
+field-verified instances) are removed; they existed to support and
+demonstrate the removed mechanism and travel with it.</t>
         </li>
         <li>
-          <t><xref target="outofscope"/> names payload formats, payload serialization, and payload
-structure, not only payload semantics.</t>
+          <t><xref target="algo-jcs-n"/> and <xref target="algo-cde-n"/> are compressed to their disposition and a
+pointer to the repository's withdrawal audit
+(<tt>docs/audits/jcsn-withdrawal-audit-2026-08-18.md</tt>); the withdrawn
+constructions themselves are unchanged and remain there, not restated
+here.</t>
         </li>
         <li>
-          <t><xref target="intro"/> opens on how a Signed Statement declares which derivation
-produced a digest it carries, adds the software supply chain as a
-motivating setting, and presents the agent action capsule as one profile
-that uses CPB.</t>
+          <t><xref target="intro"/> is rewritten to lead with the software supply chain as the
+motivating setting; the agent action capsule profile is named once, as one
+example, rather than framing the document's motivation and its evidence
+together.</t>
         </li>
         <li>
-          <t>Throughout, the text says that CPB names a canonicalization rather than
-supplying one.</t>
+          <t>Acknowledgments folds in a contributor addition and a framing widening
+held as an unposted -06 acknowledgments-only revision (2026-09-12),
+superseded by this one rather than posted separately, plus two rewordings
+where a contribution's credit cited material removed above.</t>
+        </li>
+        <li>
+          <t>No canonicalization algorithm, hash function, representation, or vector
+changes: <tt>jcs</tt> and <tt>as-transmitted</tt> (<xref target="algo-jcs"/>, <xref target="algo-as-transmitted"/>)
+are unchanged, and the vectors at the locations in
+<xref target="test-vector-locations"/> are unchanged.</t>
         </li>
       </ul>
-      <t>The editorial changes that produced -04 from -03 are recorded in -04.</t>
+      <t>This revision is a draft for co-author and working-group review only. It has
+not been submitted to the datatracker.</t>
+      <t>The editorial changes that produced -05 from -04, and -04 from -03, are
+recorded in -05 and -04 respectively.</t>
     </section>
     <section anchor="conventions">
       <name>Conventions and Definitions</name>
@@ -287,48 +305,11 @@ header, and an optional unprotected header; defined in <xref target="RFC9943"/>.
         </dd>
         <dt>Signature-Valid:</dt>
         <dd>
-          <t>A state of a Signed Statement, independent of typed-reference processing.
-The COSE signature has been cryptographically validated under the selected
-verification key. This state alone does not establish that the key is
-authorized for the asserted issuer. Merely being encoded in a protected
-header does not establish this state.</t>
-        </dd>
-        <dt>Issuer-Authenticated:</dt>
-        <dd>
-          <t>A state of a Signature-Valid Signed Statement for which the verifier's
-policy accepts the signing key as authorized for the asserted issuer.
-This state authenticates issuer claims but does not make a cited artifact
-or typed reference Verified.</t>
-        </dd>
-        <dt>Malformed:</dt>
-        <dd>
-          <t>A typed-reference processing state. The reference or its <tt>cpb-refs</tt>
-container violates the applicable serialization, required-member,
-duplicate, closed-extension, or size rules. A verifier MUST NOT report any
-entry in a Malformed <tt>cpb-refs</tt> value as Verified.</t>
-        </dd>
-        <dt>Unresolved:</dt>
-        <dd>
-          <t>A typed-reference processing state. The reference is well-formed, but the
-verifier cannot select exactly one authorized digest context or cannot
-obtain the cited artifact, or it lacks the implementation needed to execute
-an otherwise valid digest context. An Unresolved reference is
-not evidence of a content binding.</t>
-        </dd>
-        <dt>Failed:</dt>
-        <dd>
-          <t>A typed-reference processing state. The reference is well-formed and exactly
-one authorized digest context is selected, but the declared algorithm or
-representation conflicts with that context, the selected token is
-permanently undefined or prohibited, or a recomputed digest differs from
-the supplied value.</t>
-        </dd>
-        <dt>Verified:</dt>
-        <dd>
-          <t>A typed-reference processing state. The verifier selected exactly one
-authorized digest context, obtained the cited artifact, applied that
-context's canonicalization and hash rules, and obtained a digest equal to
-the supplied value in the context's declared representation.</t>
+          <t>A state of a Signed Statement. The COSE signature has been
+cryptographically validated under the selected verification key. This
+state alone does not establish that the key is authorized for the
+asserted issuer. Merely being encoded in a protected header does not
+establish this state.</t>
         </dd>
         <dt>Receipt:</dt>
         <dd>
@@ -462,100 +443,35 @@ decision, not a requirement of this algorithm.</t>
         <name>Algorithm jcs-n (Withdrawn)</name>
         <t>Algorithm <tt>jcs-n</tt> is withdrawn (2026-08-18) -- terminal marking, never
 deletion: the token stays bound, the definition it once carried is not
-reassigned, and it is never carried forward as an active IANA algorithm.
-That is a terminal marking that <tt>cde-n</tt> (<xref target="algo-cde-n"/>) also carries, though on different
-facts: <tt>cde-n</tt> never acquired a definition, while <tt>jcs-n</tt> did and its
-records remain eligible for verification by vintage.</t>
-        <t>For historical evaluation, the complete <tt>jcs-n</tt> construction is as follows.
-Let P be the JSON object supplied by the applicable payload or artifact-type
-profile, and let E be that profile's set of top-level member names to exclude:</t>
-        <ol spacing="normal" type="1"><li>
-            <t>Before converting the input JSON text to a data model, reject a duplicate
-member name in any object, including a duplicate that would later be
-excluded. Equality is tested on decoded Unicode member-name strings after
-JSON escape processing, with no Unicode normalization. NFC-equivalent but
-distinct strings are not duplicate names, and <tt>jcs-n</tt> applies no Unicode
-normalization.</t>
-          </li>
-          <li>
-            <t>Reject a JSON number token unless it has the integer form
-<tt>0|-?[1-9][0-9]*</tt> and its value is in the inclusive range
-<tt>[-(2^53-1), 2^53-1]</tt>. In particular, a decimal point, exponent notation,
-leading zero, or <tt>-0</tt> is prohibited. A non-integer quantity, and an integer
-outside that range, has to be represented as an exact JSON string if the
-applicable profile permits it.</t>
-          </li>
-          <li>
-            <t>Remove from P each top-level member whose name is in E. A same-named member
-nested below the top level is retained.</t>
-          </li>
-          <li>
-            <t>Normalize the remaining value bottom-up and recursively. In each object,
-remove every member whose normalized value is JSON null, an empty array, or
-an empty object. Array elements are not object members and are not removed,
-but values inside an array are recursively normalized before their
-containing object is considered.</t>
-          </li>
-          <li>
-            <t>Apply JCS <xref target="RFC8785"/> to the normalized object to produce canonical UTF-8
-octets, compute SHA-256 over those octets, and encode the 32-octet digest as
-exactly 64 lowercase hexadecimal ASCII characters.</t>
-          </li>
-        </ol>
-        <t>Thus, for historical <tt>jcs-n</tt> evaluation:</t>
-        <artwork><![CDATA[
-CANONICAL-DIGEST(jcs-n, P, E) =
-    lowercase_hex(SHA-256(JCS(normalize(P minus E))))
-]]></artwork>
-        <t>These steps define digest evaluation only. Evaluating the construction and
-obtaining matching bytes does not by itself establish an eligible vintage or
-produce a Verified typed-reference outcome.</t>
-        <t>The withdrawal followed from an implementer census (the reference
-implementation was the only implementer of the normalization step), a byte
-audit showing 191 of 203 evaluated records were byte-identical under plain
-<tt>jcs</tt> without it, the 12 divergent records being proof-of-concept artefacts
-retained by vintage, and the admission bar this document now applies to
-every entry: a named
-consuming profile. <tt>jcs</tt> (<xref target="algo-jcs"/>) is the entry that replaces it going
-forward; a payload class or typed digest reference that named <tt>jcs-n</tt> used
-the withdrawn construction described above, and a party citing that
-historical construction going forward registers a new entry rather than
-resuming use of this token.</t>
+reassigned, and it is never carried forward as an active IANA algorithm. The
+full historical construction and the withdrawal rationale (implementer
+census, byte audit) are recorded in the repository audit at
+<tt>docs/audits/jcsn-withdrawal-audit-2026-08-18.md</tt> and are not restated here.
+<tt>jcs</tt> (<xref target="algo-jcs"/>) is the entry that replaces it going forward.</t>
         <t>Withdrawal forecloses new declarations of <tt>jcs-n</tt>; it does not
 retroactively invalidate records already sealed under it. A payload class
-or typed digest reference that names <tt>jcs-n</tt> MUST NOT be newly declared. The
-vintage cutoff is the start of 2026-08-18 UTC. Pre-cutoff vintage is
-established only by profile-defined, cryptographically verifiable evidence
-that binds the exact record, or its digest under the declared context, to a
-time before that cutoff. A payload timestamp, source-control commit date,
-file-system time, transport arrival time, or other unauthenticated date MUST
-NOT be used as vintage evidence.</t>
-        <t>A verifier encountering <tt>jcs-n</tt> with evidence of a time at or after the
+MUST NOT newly declare <tt>jcs-n</tt>. The vintage cutoff is the start of
+2026-08-18 UTC. Pre-cutoff vintage is established only by profile-defined,
+cryptographically verifiable evidence that binds the exact record, or its
+digest under the declared context, to a time before that cutoff. A payload
+timestamp, source-control commit date, file-system time, transport arrival
+time, or other unauthenticated date MUST NOT be used as vintage evidence. A
+verifier encountering <tt>jcs-n</tt> with evidence of a time at or after the
 cutoff, or without sufficient evidence of a pre-cutoff vintage, MUST fail
-closed and MUST NOT report the payload class or typed digest reference as
-verified; a typed reference has the Failed outcome. Only after establishing
-pre-cutoff vintage MAY a verifier apply the historical construction above.
-If the construction is available, its ordinary digest comparison determines
-whether the typed reference is Verified or Failed. A verifier that lacks an
-implementation of the otherwise eligible historical construction reports the
-typed reference as Unresolved. A historical identifier MUST NOT be relabelled
-to another algorithm token or recomputed under another algorithm.</t>
+closed. A historical identifier MUST NOT be relabelled to another algorithm
+token or recomputed under another algorithm.</t>
       </section>
       <section anchor="algo-cde-n">
         <name>Algorithm cde-n (Withdrawn)</name>
         <t>Algorithm <tt>cde-n</tt> is withdrawn. It is a recorded terminal state, not a
 deletion: the token was reserved for a deterministic CBOR canonicalization
-profile, but it was never assigned a definition, and it will not be. The
-entry remains in the Canonicalization Algorithm Registry (<xref target="iana-alg"/>) as
-withdrawn -- the reserved entry bound the token, so the token stays bound,
-never assigned, never reassigned. A future deterministic CBOR
-canonicalization profile, if one is specified, is registered under a new
-token rather than by assigning a definition to <tt>cde-n</tt>.</t>
-        <t>A payload class or typed digest reference that names <tt>cde-n</tt> cannot be
-verified: the token names no defined algorithm and never will, so a
-verifier encountering it MUST fail closed — MUST NOT report the payload
-class or typed digest reference as verified. For a typed reference, the
-outcome is Failed because the selected token has no algorithm definition.</t>
+profile, but it was never assigned a definition, and it will not be --
+the same terminal-marking disposition as <tt>jcs-n</tt> (<xref target="algo-jcs-n"/>), recorded
+in <tt>docs/audits/jcsn-withdrawal-audit-2026-08-18.md</tt>. The entry remains in
+the Canonicalization Algorithm Registry (<xref target="iana-alg"/>) as withdrawn: the
+reserved entry bound the token, so the token stays bound, never assigned,
+never reassigned. A payload class naming <tt>cde-n</tt> MUST fail closed: the token
+names no defined algorithm and never will.</t>
       </section>
       <section anchor="algo-as-transmitted">
         <name>Algorithm as-transmitted</name>
@@ -678,13 +594,6 @@ the applicable payload profile expressly defines both the conversion and
 the resulting comparison representation. Such a conversion is an explicit
 protocol operation and does not make the original representations
 byte-identical.</t>
-        <t>Each digest context used by a typed reference MUST declare whether its
-comparison value is raw octets, bare text, or prefixed text, and MUST define
-the exact grammar of any textual form. In <tt>cpb-refs</tt>, raw octets are encoded
-as a CBOR byte string and textual forms as a CBOR text string. A verifier MUST
-NOT silently convert between these forms. A wire type or textual form that is
-inconsistent with the uniquely selected digest context produces the Failed
-state.</t>
       </section>
     </section>
     <section anchor="envelope">
@@ -701,8 +610,7 @@ does not define an alternative credential rule.</t>
 header parameters are permitted only when <xref target="RFC9052"/>, <xref target="RFC9943"/>, this
 document, or the applicable payload profile defines them. Producers MUST NOT add ad-hoc
 protected-header parameters. CPB assigns no meaning to non-critical header
-parameters defined elsewhere. The closed extension policy for the inner
-<tt>cpb-refs</tt> map is specified in <xref target="envelope-carriage"/>.</t>
+parameters defined elsewhere.</t>
       <section anchor="full-content-mode">
         <name>Full-Content Mode</name>
         <t>In Full-Content Mode, the payload supplied to COSE signing and verification
@@ -754,9 +662,7 @@ Canonicalization Algorithm Registry entry (<xref target="iana-alg"/>).</t>
 after applying its issuer/key policy, can authenticate the digest claim, but
 it has not verified the content binding.
 To verify that binding, it MUST obtain s, compute A(s), apply the function
-identified by label 258, and compare the raw result to the COSE payload.
-<tt>cpb-refs</tt> MAY be used in either envelope mode, subject to
-<xref target="envelope-carriage"/>.</t>
+identified by label 258, and compare the raw result to the COSE payload.</t>
       </section>
     </section>
     <section anchor="receipt-binding">
@@ -798,320 +704,6 @@ apply the declared selection and MUST NOT infer it from the apparent shape of
 the value. Confusing raw bytes with their hexadecimal encoding produces a
 different leaf hash.</t>
       </section>
-    </section>
-    <section anchor="typed-refs">
-      <name>Typed Digest References (Information Model)</name>
-      <t>A typed digest reference is the mechanism by which one record cites an
-external artifact — another record, an authorization document, a
-configuration object, or any other verifiable item — by its content-address
-without embedding it.</t>
-      <t>This section defines a typed digest reference as an abstract information
-model: four members, their meaning, and their requiredness. It does not fix a
-payload serialization. CPB defines an optional protected-header serialization
-in <xref target="envelope-carriage"/>; a payload profile may instead define its own
-serialization as described in <xref target="payload-carriage"/>.</t>
-      <t>A typed digest reference has the following members:</t>
-      <table>
-        <thead>
-          <tr>
-            <th align="left">Member</th>
-            <th align="left">Value</th>
-            <th align="left">Req</th>
-            <th align="left">Meaning</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td align="left">type</td>
-            <td align="left">text</td>
-            <td align="left">REQUIRED</td>
-            <td align="left">The artifact-type identifier defined by a stable specification that the consuming profile explicitly accepts. CPB does not register these values.</td>
-          </tr>
-          <tr>
-            <td align="left">purpose</td>
-            <td align="left">text</td>
-            <td align="left">CONDITIONAL</td>
-            <td align="left">Selects one digest context for the resolved type. It is REQUIRED when that type has multiple accepted contexts and otherwise follows <xref target="comparability"/>.</td>
-          </tr>
-          <tr>
-            <td align="left">digest_alg</td>
-            <td align="left">text</td>
-            <td align="left">REQUIRED</td>
-            <td align="left">The hash algorithm of the digest value (e.g., "SHA-256"). The canonicalization context of the cited artifact is resolved from the digest context selected by <tt>type</tt> and <tt>purpose</tt>, not from this field.</td>
-          </tr>
-          <tr>
-            <td align="left">digest</td>
-            <td align="left">digest in the context's declared representation</td>
-            <td align="left">REQUIRED</td>
-            <td align="left">The digest of the cited artifact, in the exact representation declared by the selected digest context.</td>
-          </tr>
-        </tbody>
-      </table>
-      <t>These are the only members of the CPB information model. A payload profile
-may place profile-specific fields beside its rendering of a typed reference,
-but those fields are not CPB typed-reference extensions and their processing
-is governed solely by that profile. The <tt>cpb-refs</tt> map is closed in this
-version; see <xref target="envelope-carriage"/>.</t>
-      <section anchor="comparability">
-        <name>Cross-Profile Comparability</name>
-        <t>Within typed-reference verification, the digest carried by the reference
-and the digest recomputed over the referenced artifact are comparable only
-when both are interpreted under the same established referenced-artifact
-digest context and comparison representation.</t>
-        <t>A consuming profile that accepts typed references MUST identify, by stable
-normative reference, every artifact-type declaration that it accepts. Each
-declaration MUST bind an exact <tt>type</tt> token to one or more digest contexts.
-Each context MUST state its preimage construction, canonicalization
-algorithm, hash function, exact <tt>digest_alg</tt> token, output representation,
-and a purpose label when required below. A deployment MAY select a subset of
-the declarations its consuming profile permits, but it MUST NOT redefine a
-token or any parameter of its cited declaration. CPB creates no artifact-type
-registry and does not authorize discovery from an unspecified or mutable
-registry snapshot.</t>
-        <t>The verifier MUST use <tt>type</tt> and, when present, <tt>purpose</tt> to select exactly
-one accepted context:</t>
-        <ul spacing="normal">
-          <li>
-            <t>If exactly one context is accepted for <tt>type</tt>, <tt>purpose</tt> MAY be absent. If
-it is present, it MUST exactly match that context's declared purpose;
-otherwise the reference is Unresolved.</t>
-          </li>
-          <li>
-            <t>If multiple contexts are accepted for <tt>type</tt>, every context MUST have a
-distinct, non-empty purpose label and the reference MUST carry <tt>purpose</tt>.
-An absent or non-matching value makes the reference Unresolved.</t>
-          </li>
-          <li>
-            <t>If no declaration matches, or declarations from more than one normative
-source leave the selection ambiguous, the reference is Unresolved. The
-verifier MUST NOT choose by entry order, apparent recency, or preferred
-algorithm.</t>
-          </li>
-          <li>
-            <t>A profile or deployment configuration containing duplicate <tt>(type,
-purpose)</tt> selections is invalid and MUST NOT be used for verification.</t>
-          </li>
-        </ul>
-        <t>After selecting a context, the verifier MUST compare <tt>digest_alg</tt> with the
-exact token declared by that context. Comparison is case-sensitive and
-octet-for-octet: no case folding, alias table, or whitespace trimming is
-permitted. A mismatch makes the reference Failed; the verifier MUST NOT
-silently use the context's algorithm while ignoring the supplied value.</t>
-        <t><tt>digest_alg</tt> is REQUIRED even though every algorithm registered in
-<xref target="iana-alg"/> today names the same hash, SHA-256: it is the field that lets
-a future Canonicalization Algorithm Registry entry using a different hash
-land as a new token without a breaking change to this wire format, rather
-than being decorative because only one value is legal now.</t>
-        <t>The hash algorithm is not chosen per reference. The selected digest context
-determines it; <tt>digest_alg</tt> is a redundant consistency declaration for
-algorithm agility and downgrade detection.</t>
-        <t>The verifier MUST next check that the carried value uses the selected
-context's declared representation. A mismatch is Failed. If the
-representation matches but the cited artifact cannot be obtained, the state
-is Unresolved. If the context is valid but the verifier does not implement its
-construction, the state is also Unresolved. Otherwise, the verifier
-MUST recompute the digest using the selected context and compare it
-byte-for-byte with <tt>digest</tt>. Equal values produce Verified; unequal values
-produce Failed. A deterministic conversion
-is permitted only when the selected context expressly defines that conversion
-and its output comparison representation.</t>
-        <t>The citing record's own derived-identifier context need NOT be compatible
-with the referenced artifact's digest context; those contexts govern
-different computations.</t>
-        <t>The two values actually being compared must share an established comparison
-context. Bare hexadecimal equality alone is not a join.</t>
-        <t>The enclosing Signed Statement's signature result is independent of these
-states. A verifier SHOULD return the signature result and each reference
-result separately. It MUST NOT treat a typed reference as authenticated or
-actionable on behalf of the issuer unless the Signed Statement is
-Issuer-Authenticated.
-A Signature-Valid statement can contain an Unresolved or Failed reference;
-a Verified digest match does not authenticate an issuer whose signature did
-not validate.</t>
-        <t>The consuming profile MUST define the disposition of every non-Verified
-state. It MUST NOT rely on an Unresolved, Failed, or Malformed reference as
-evidence of a content binding.</t>
-      </section>
-      <section anchor="carriage-selection">
-        <name>Carriage Selection</name>
-        <t>A payload profile that uses CPB typed references MUST select exactly one
-carrier for them in each Signed Statement: <tt>cpb-refs</tt> envelope carriage or a
-profile-owned payload carriage. A producer MUST NOT use both carriers in one
-Signed Statement, whether for the same or different citations. A
-profile-aware verifier that detects both MUST classify the Signed Statement
-as nonconforming and MUST NOT merge the sets or prefer one carrier. A generic
-CPB verifier is not expected to recognize a payload profile's private
-serialization.</t>
-      </section>
-      <section anchor="envelope-carriage">
-        <name>Envelope Carriage</name>
-        <t>A CPB-bound Signed Statement MAY carry its typed digest references as a
-COSE protected header parameter, <tt>cpb-refs</tt>, registered in <xref target="iana-header"/>.
-The parameter MUST NOT occur in the unprotected header. Its value is defined
-by this CDDL <xref target="RFC8610"/>:</t>
-        <artwork><![CDATA[
-cpb-refs = [1*64 typed-digest-reference]
-
-typed-digest-reference = {
-  1 => type-tstr,  ; type
-  ? 2 => purpose-tstr,  ; purpose
-  3 => digest-alg-tstr,  ; digest_alg
-  4 => digest-value  ; digest
-}
-
-type-tstr = tstr .size (1..255)
-purpose-tstr = tstr .size (1..64)
-digest-alg-tstr = tstr .size (1..32)
-digest-value = tstr .size (1..128) / bstr .size (1..128)
-]]></artwork>
-        <t>The integer keys have these meanings:</t>
-        <table>
-          <thead>
-            <tr>
-              <th align="left">Key</th>
-              <th align="left">Member</th>
-              <th align="left">CBOR type</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td align="left">1</td>
-              <td align="left">type</td>
-              <td align="left">text string</td>
-            </tr>
-            <tr>
-              <td align="left">2</td>
-              <td align="left">purpose</td>
-              <td align="left">text string</td>
-            </tr>
-            <tr>
-              <td align="left">3</td>
-              <td align="left">digest_alg</td>
-              <td align="left">text string</td>
-            </tr>
-            <tr>
-              <td align="left">4</td>
-              <td align="left">digest</td>
-              <td align="left">text string or byte string, matching the selected context's representation (<xref target="representation"/>)</td>
-            </tr>
-          </tbody>
-        </table>
-        <t>The encoded UTF-8 lengths of <tt>type</tt>, <tt>purpose</tt>, and <tt>digest_alg</tt> MUST be,
-respectively, 1 through 255, 1 through 64, and 1 through 32 octets. The
-encoded value at key 4 MUST be 1 through 128 octets. The array MUST contain
-1 through 64 entries. These limits are part of the wire profile;
-implementations MAY impose lower deployment limits only when their
-registration or consuming policy advertises those limits before accepting
-statements.</t>
-        <t>The map is closed. Keys other than 1 through 4 are not extensions: their
-presence makes the entire <tt>cpb-refs</tt> value Malformed. Any missing required
-key, wrong CBOR type, empty or oversized value, or array outside the declared
-bounds has the same result. A future extension that changes the reference
-map requires a standards update or a new COSE header parameter; it MUST NOT
-be introduced through an unrecognized inner-map key.</t>
-        <t>CBOR map keys MUST be unique as required by this protocol's application of
-<xref target="RFC8949"/>. A decoder MUST detect duplicate keys before any data-model
-conversion that could discard them. Repeated array entries with the same
-decoded four-member tuple are also forbidden. A duplicate key or repeated
-entry makes the entire <tt>cpb-refs</tt> value Malformed; first-wins, last-wins,
-partial-success, and duplicate-weighting behavior are prohibited. If any
-array entry is Malformed, a verifier MUST NOT report another entry from that
-header value as Verified. The COSE signature result remains independently
-reportable.</t>
-        <t>The CDDL constrains the data model, not the choice among CBOR serializations.
-CPB imposes no deterministic-encoding or definite-length requirement beyond
-<xref target="RFC8949"/> and <xref target="RFC9052"/>. Test fixtures MAY pin one deterministic encoding
-solely to make expected bytes reproducible. A conforming verifier MUST NOT
-reject another otherwise valid encoding solely because its bytes differ from
-the fixture encoding.</t>
-        <t>If a consuming profile requires understanding <tt>cpb-refs</tt> before accepting or
-processing the Signed Statement, the producer MUST include the <tt>cpb-refs</tt>
-label in the protected <tt>crit</tt> header parameter, and a verifier applying that
-profile MUST reject a statement that omits that critical marking. When the
-references are advisory to the applicable policy, the producer MAY omit the
-label from <tt>crit</tt>. Unsupported critical use is a COSE processing failure as
-specified by <xref target="RFC9052"/>. Critical marking does not make a Malformed,
-Unresolved, or Failed reference valid.</t>
-        <t><tt>cpb-refs</tt> is signature-covered because it is protected-header content, but
-it becomes authenticated as an issuer claim only after the Signed Statement
-is Issuer-Authenticated. It is not covered by the payload's derived identifier
-(<xref target="derived-id"/>), which is computed from the payload content alone.</t>
-      </section>
-      <section anchor="payload-carriage">
-        <name>Payload Carriage</name>
-        <t>This section is informative.</t>
-        <t>A payload profile MAY carry typed digest references in its own
-serialization — JSON, CBOR, or any other format the payload class
-defines — as part of the payload bytes that the derived identifier is
-computed over. This document does not define that serialization: a
-payload profile that carries references this way states its own field names,
-container structure, extension behavior, and any profile-specific
-requiredness beyond <xref target="typed-refs"/>'s information model. In Full-Content Mode,
-the serialized reference data are part of the content supplied to COSE
-signature verification. In Hash Envelope Mode, the raw digest of the complete
-statement content is supplied instead, and the reference data are covered only
-after the verifier obtains that content and validates the hash binding as
-specified in <xref target="hash-envelope-mode"/>. Neither kind of coverage makes a typed
-reference Verified without the processing in <xref target="comparability"/>.
-<xref target="appendix-d"/> describes one profile-owned example without defining its wire
-format here. The prohibition on dual carriage in <xref target="carriage-selection"/>
-still applies.</t>
-      </section>
-      <section anchor="verification-scope">
-        <name>Verification Scope</name>
-        <t>Successful verification of a typed digest reference establishes content
-binding to the referenced artifact under the declared digest context. CPB
-verification alone MUST NOT be interpreted as establishing issuer authority,
-artifact validity, scope, freshness, revocation status, policy compliance,
-semantic acceptance, or application authorization. Any appraisal required
-by the referenced artifact type or consuming application profile remains a
-separate verification step. Missing, indeterminate, or failed required
-appraisal MUST NOT be treated as authorization success.</t>
-        <t>The interchangeability property of typed digest references -- that any
-artifact type whose digest context can be resolved may fill a citation slot
--- applies to citation-binding interoperability only and does not extend to
-any appraisal or authorization semantics defined by the artifact type or
-consuming profile.</t>
-      </section>
-    </section>
-    <section anchor="profile-independence">
-      <name>Profile Independence</name>
-      <t>When a payload profile uses CPB to bind an artifact of another type, it MUST
-NOT require the CPB citation-binding verifier to interpret the other payload
-profile's internal fields. The CPB relationship is expressed through a typed
-reference (<xref target="typed-refs"/>) that resolves against the cited artifact type's own
-digest-context declaration.</t>
-      <t>This constraint keeps CPB binding verification decomposable: a verifier
-evaluates each digest under its own declared context. It does not prohibit an
-application or consuming profile from defining additional joint semantics or
-appraisal after the independent content bindings have been checked.</t>
-    </section>
-    <section anchor="discovery">
-      <name>Discovery Mirror</name>
-      <t>This section is informative.</t>
-      <t>A producer MAY place an unprotected COSE header parameter that mirrors the
-derived identifier of the record when the applicable payload profile defines
-that parameter's label, type, and processing. CPB does not assign a discovery
-label or wire encoding. Any such parameter is advisory only: it can help log
-tooling locate a record's content-address without parsing the payload, but it
-carries no binding guarantee.</t>
-      <t>A verifier MUST NOT rely on an advisory mirror without obtaining the content
-and recomputing its derived identifier under the applicable payload profile.
-A mismatch is a defect in the record and MUST be reported.</t>
-      <t>Section 3.11.2 of <xref target="I-D.birkholz-verifiable-agent-conversations"/> defines an
-unprotected <tt>trace-metadata</tt> map with optional <tt>content-hash</tt> and
-<tt>content-hash-alg</tt> members. That is an analogous profile-owned discovery
-mechanism. CPB does not assert wire compatibility with it.</t>
-    </section>
-    <section anchor="cross-cutting">
-      <name>Extensibility and Cross-Cutting Facilities</name>
-      <t>This section is informative.</t>
-      <t>This specification does not define selective disclosure, countersignature or
-multi-party attestation, record-relation semantics, erasure tombstones,
-producer timestamps or validity periods, batch aggregation, or profile
-versioning. A companion or payload profile that defines one specifies its own
-semantics and wire behavior; it does not thereby extend the closed <tt>cpb-refs</tt>
-map.</t>
     </section>
     <section anchor="security">
       <name>Security Considerations</name>
@@ -1158,46 +750,6 @@ JSON numbers, in the fields it selects for digesting; such a constraint is a
 payload-profile decision, not a requirement this document imposes on every
 payload class.</t>
       </section>
-      <section anchor="immutable-coordinates">
-        <name>Immutable Coordinates</name>
-        <t>A mutable reference — a branch name, a tag that can be moved, a content
-URL that is not a content-addressed URL — is not evidence. The moment a
-record is amended at its referent, any citation to the mutable reference
-silently refers to the new content. A payload profile that relies on CPB to
-verify a citation MUST express it as a typed digest reference (<xref target="typed-refs"/>)
-that pins the content by its CANONICAL-DIGEST. Names, labels, and human-readable identifiers MAY appear
-alongside a typed reference for display purposes but carry no evidentiary
-weight.</t>
-        <t>When an artifact type cited in an immutable coordinate has no uniquely
-resolvable, profile-authorized digest-context declaration, the reference is
-Unresolved and the consuming profile determines the disposition
-(<xref target="comparability"/>). A verifier MUST NOT invent a mapping or reinterpret an
-existing type token to make an earlier citation verifiable.</t>
-      </section>
-      <section anchor="tamper-evidence-and-runtime-honesty">
-        <name>Tamper Evidence and Runtime Honesty</name>
-        <t>The envelope signature and the registration Receipt provide tamper evidence
-for the record's bytes and bound its timing. They do not prove the recording
-runtime was honest at the moment of recording. A producer that seals a false
-record produces a structurally valid record of a fiction. A Transparency
-Service's append-only property bounds the timing of such a record and makes
-its omission or substitution detectable; it does not make its content true.</t>
-      </section>
-      <section anchor="ltv">
-        <name>Long-Term Verifiability Considerations</name>
-        <t>Artifacts bound under this specification may need to remain verifiable over periods
-considerably longer than the lifetime of any particular digest or signature algorithm.
-Because a binding is expressed in terms of a registered algorithm identifier rather
-than a fixed algorithm, artifacts bound under different algorithms are each well-formed
-and independently verifiable.</t>
-        <t>Preserving verifiability across an algorithm transition requires that evidence be
-re-established under a stronger algorithm <em>before</em> the original is considered weak;
-this cannot be done retroactively. Deployments with long retention requirements SHOULD
-adopt an evidence-renewal scheme. <xref target="RFC4998"/> specifies one such scheme and
-distinguishes timestamp renewal, which operates on archived evidence alone, from
-hash-tree renewal, which requires access to the original data objects. This
-specification does not mandate a particular scheme.</t>
-      </section>
     </section>
     <section anchor="privacy">
       <name>Privacy Considerations</name>
@@ -1206,16 +758,7 @@ the statement payload unless another applicable mechanism protects it. Hash
 Envelope Mode can withhold the preimage, but exposes a stable digest. COSE
 protected headers are integrity-protected after successful signature
 validation and issuer-authenticated only after the applicable key policy
-succeeds; they are not encrypted. In particular, <tt>cpb-refs</tt> exposes each reference's
-type, purpose, digest algorithm, and digest value, together with citation-graph
-structure. These values can enable correlation across records and dictionary
-attacks against low-entropy artifacts.</t>
-      <t>A producer SHOULD omit <tt>cpb-refs</tt> or use a profile-defined confidential
-payload carrier when public header visibility is inappropriate. A consuming
-profile MUST analyze whether its type and purpose values, stable digests, or
-citation topology disclose identities, relationships, workflow state, or
-otherwise sensitive information. <tt>type</tt> and <tt>purpose</tt> MUST NOT contain secrets
-or unnecessary personal data.</t>
+succeeds; they are not encrypted.</t>
       <t>Low-entropy fields are not confidential merely because they are digested
 (<xref target="security"/>). Salting, unlinkable identifiers, and selective-disclosure
 commitments can reduce some risks, but each changes the digest context and
@@ -1230,13 +773,10 @@ intended to be anchored.</t>
       <name>IANA Considerations</name>
       <t>This document requests the creation of one new IANA registry, the
 Canonicalization Algorithm Registry (<xref target="iana-alg"/>), under a "Canonical
-Payload Binding" heading, and one registration in an existing IANA
-registry, the <tt>cpb-refs</tt> COSE Header Parameter (<xref target="iana-header"/>). The
-Canonicalization Algorithm Registry uses the Specification Required
-policy (<xref target="RFC8126"/>, Section 4.6); a Designated Expert is required for each
-registration. This document neither creates nor depends on an artifact-type
-registry. Artifact-type and digest-context declarations are owned and
-selected by profiles as specified in <xref target="comparability"/>.</t>
+Payload Binding" heading. The Canonicalization Algorithm Registry uses the
+Specification Required policy (<xref target="RFC8126"/>, Section 4.6); a Designated
+Expert is required for each registration. This document neither creates nor
+depends on an artifact-type registry.</t>
       <t>An active entry's algorithm semantics are immutable. If a behavior change is
 needed, a new entry MUST be registered; an existing name MUST NOT be
 reinterpreted. Status changes follow the rules below and the same
@@ -1266,7 +806,7 @@ silently come to mean more than its name states.</t>
 canonicalization or byte-selection operation deterministically.</t>
           </li>
           <li>
-            <t>Hash function and typed-reference token: The hash function and the exact
+            <t>Hash function and digest_alg token: The hash function and the exact
 <tt>digest_alg</tt> string used by a digest context based on this entry.</t>
           </li>
           <li>
@@ -1368,16 +908,14 @@ of an existing active or withdrawn definition.</t>
               <t><tt>as-transmitted</tt>: https://github.com/action-state-group/scitt-payload-binding/tree/main/vectors/as-transmitted</t>
             </li>
           </ul>
-          <t>A payload class or typed digest reference naming <tt>cde-n</tt> MUST NOT be
-treated as verifiable under any vintage: the token was bound by a reserved
-entry but never assigned a definition, so no construction exists to verify
-against, and a verifier encountering it MUST fail closed; for a typed
-reference, the outcome is Failed. A payload class or typed digest reference
-naming <tt>jcs-n</tt> MUST NOT be newly declared;
-records committed under it before 2026-08-18 are governed by the vintage
-rule in <xref target="algo-jcs-n"/>. Both withdrawals are recorded terminal states, not
-deletions: the tokens stay bound and are never assigned or reassigned. See
-<xref target="algo-cde-n"/> and <xref target="algo-jcs-n"/>.</t>
+          <t>A payload class naming <tt>cde-n</tt> MUST NOT be treated as verifiable under any
+vintage: the token was bound by a reserved entry but never assigned a
+definition, so no construction exists to verify against, and a verifier
+encountering it MUST fail closed. A payload class naming <tt>jcs-n</tt> MUST NOT be
+newly declared; records committed under it before 2026-08-18 are governed by
+the vintage rule in <xref target="algo-jcs-n"/>. Both withdrawals are recorded terminal
+states, not deletions: the tokens stay bound and are never assigned or
+reassigned. See <xref target="algo-cde-n"/> and <xref target="algo-jcs-n"/>.</t>
           <t>An artifact type MUST NOT declare <tt>as-transmitted</tt> without a byte-boundary
 selector that cites a named production in the container specification
 (<xref target="algo-as-transmitted"/>). Without that selector, an <tt>as-transmitted</tt>
@@ -1385,91 +923,6 @@ declaration states nothing: there is no field set, no exclusion set, and no
 canonicalization to fall back on for the pre-image construction.</t>
         </section>
       </section>
-      <section anchor="iana-header">
-        <name>COSE Header Parameters Registration</name>
-        <t>This document requests registration of the following entry in the "COSE
-Header Parameters" registry <xref target="RFC9052"/>, Section 11.1:</t>
-        <table>
-          <thead>
-            <tr>
-              <th align="left">Name</th>
-              <th align="left">Label</th>
-              <th align="left">Value Type</th>
-              <th align="left">Value Registry</th>
-              <th align="left">Description</th>
-              <th align="left">Reference</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td align="left">cpb-refs</td>
-              <td align="left">TBD1</td>
-              <td align="left">array</td>
-              <td align="left"> </td>
-              <td align="left">A closed, bounded array of typed digest references encoded as specified in <xref target="envelope-carriage"/></td>
-              <td align="left">This document</td>
-            </tr>
-          </tbody>
-        </table>
-        <t>IANA is requested to assign an integer value for TBD1. The registry uses the
-Specification Required policy (<xref target="RFC8126"/>, Section 4.6). <tt>cpb-refs</tt> may
-appear in the protected header only and MUST NOT appear in the unprotected
-header. Its critical-processing behavior and the distinction among
-signature coverage, authentication, and reference verification are specified
-in <xref target="envelope-carriage"/>.</t>
-      </section>
-    </section>
-    <section anchor="related">
-      <name>Related Work</name>
-      <t><xref target="RFC9995"/> defines the protected parameters and COSE payload semantics for
-signing a hash rather than its preimage. CPB Hash Envelope Mode
-(<xref target="hash-envelope-mode"/>) uses that format and names, through the applicable
-payload profile, the canonicalization that precedes the registered hash
-function.</t>
-      <t><xref target="RFC9942"/> defines generic COSE Receipts. The CCF Receipt Profile
-<xref target="I-D.ietf-scitt-receipts-ccf-profile"/> defines one VDS-specific Receipt
-profile. CPB does not alter either format.</t>
-      <t><xref target="I-D.hillier-scitt-arp"/> independently derives a similar canonical claim
-construction in its Sections 3 and 4.1. Its Claim Hash uses its own
-normalization, deterministic encoding, and deployment-blinding rules. It is
-not byte-compatible with a CPB <tt>jcs</tt> identifier, and implementations MUST NOT
-substitute one construction for the other.</t>
-      <t><xref target="I-D.birkholz-verifiable-agent-conversations"/> defines trace-metadata
-at the conversation grain in Section 3.11.2, including optional content-hash
-metadata in an unprotected header. <xref target="discovery"/> notes the analogous design
-without claiming a shared label or wire format. CPB does not normatively
-depend on that document.</t>
-      <t><xref target="I-D.le-scitt-derived-subjects"/> derives a protected CWT <tt>sub</tt> value from an
-application-admitted structured Value. It explicitly does not derive that
-subject from the Statement payload or define generic payload binding. CPB
-instead derives identifiers for Statement content and binds digest references;
-it does not replace that document's subject-identity profile.</t>
-      <t><xref target="I-D.le-comparing-derived-identifiers"/> gives general principles for fixing
-the comparison domain, equivalence relation, and complete derivation semantics
-of independently produced identifiers. It defines no wire syntax,
-canonicalization format, or hash procedure. CPB instantiates such choices for
-its narrower Statement-content and typed-reference mechanisms.</t>
-      <t><xref target="I-D.nobuo-scitt-protected-object-binding"/> defines protected-object and
-Statement-reference models, relationship vocabulary, and an optional graph
-manifest. It does not define CPB's canonicalization algorithm registry,
-derived-identifier procedure, or <tt>cpb-refs</tt> carrier; CPB does not import its
-graph semantics.</t>
-      <t><xref target="RFC6920"/> defines hash-based <tt>ni</tt> and <tt>nih</tt> names, URI/URL representations,
-and associated registries. CPB names the preimage construction and digest
-context used for its bindings but defines no URI syntax or resolution
-protocol.</t>
-      <t><xref target="I-D.schrock-ep-authorization-receipts"/> defines an authorization receipt
-that binds an enrolled approver key to one action before execution, and states
-that the receipt establishes only the guarantees of the verification profile
-it selects. CPB defines no approver enrolment and no authorization semantics:
-a Signed Statement constructed under this document carries no claim that the
-action it describes was authorized.</t>
-      <t><xref target="I-D.sokolov-rats-aep-composition"/> addresses the complementary problem in
-the RATS domain: composing application-layer action evidence with remote
-attestation. <xref target="I-D.mih-sato-agent-accountability-composition"/> defines
-composition and conformance rules for multi-agent accountability chains.
-They address composition and appraisal questions outside CPB's payload-neutral
-binding rules; CPB does not import their payload semantics.</t>
     </section>
   </middle>
   <back>
@@ -1549,20 +1002,6 @@ binding rules; CPB does not import their payload semantics.</t>
           <seriesInfo name="RFC" value="8259"/>
           <seriesInfo name="DOI" value="10.17487/RFC8259"/>
         </reference>
-        <reference anchor="RFC8610">
-          <front>
-            <title>Concise Data Definition Language (CDDL): A Notational Convention to Express Concise Binary Object Representation (CBOR) and JSON Data Structures</title>
-            <author fullname="H. Birkholz" initials="H." surname="Birkholz"/>
-            <author fullname="C. Vigano" initials="C." surname="Vigano"/>
-            <author fullname="C. Bormann" initials="C." surname="Bormann"/>
-            <date month="June" year="2019"/>
-            <abstract>
-              <t>This document proposes a notational convention to express Concise Binary Object Representation (CBOR) data structures (RFC 7049). Its main goal is to provide an easy and unambiguous way to express structures for protocol messages and data formats that use CBOR or JSON.</t>
-            </abstract>
-          </front>
-          <seriesInfo name="RFC" value="8610"/>
-          <seriesInfo name="DOI" value="10.17487/RFC8610"/>
-        </reference>
         <reference anchor="RFC8785">
           <front>
             <title>JSON Canonicalization Scheme (JCS)</title>
@@ -1578,21 +1017,6 @@ binding rules; CPB does not import their payload semantics.</t>
           <seriesInfo name="RFC" value="8785"/>
           <seriesInfo name="DOI" value="10.17487/RFC8785"/>
         </reference>
-        <reference anchor="RFC8949">
-          <front>
-            <title>Concise Binary Object Representation (CBOR)</title>
-            <author fullname="C. Bormann" initials="C." surname="Bormann"/>
-            <author fullname="P. Hoffman" initials="P." surname="Hoffman"/>
-            <date month="December" year="2020"/>
-            <abstract>
-              <t>The Concise Binary Object Representation (CBOR) is a data format whose design goals include the possibility of extremely small code size, fairly small message size, and extensibility without the need for version negotiation. These design goals make it different from earlier binary serializations such as ASN.1 and MessagePack.</t>
-              <t>This document obsoletes RFC 7049, providing editorial improvements, new details, and errata fixes while keeping full compatibility with the interchange format of RFC 7049. It does not create a new version of the format.</t>
-            </abstract>
-          </front>
-          <seriesInfo name="STD" value="94"/>
-          <seriesInfo name="RFC" value="8949"/>
-          <seriesInfo name="DOI" value="10.17487/RFC8949"/>
-        </reference>
         <reference anchor="RFC9052">
           <front>
             <title>CBOR Object Signing and Encryption (COSE): Structures and Process</title>
@@ -1606,21 +1030,6 @@ binding rules; CPB does not import their payload semantics.</t>
           <seriesInfo name="STD" value="96"/>
           <seriesInfo name="RFC" value="9052"/>
           <seriesInfo name="DOI" value="10.17487/RFC9052"/>
-        </reference>
-        <reference anchor="RFC9942">
-          <front>
-            <title>CBOR Object Signing and Encryption (COSE) Receipts</title>
-            <author fullname="O. Steele" initials="O." surname="Steele"/>
-            <author fullname="H. Birkholz" initials="H." surname="Birkholz"/>
-            <author fullname="A. Delignat-Lavaud" initials="A." surname="Delignat-Lavaud"/>
-            <author fullname="C. Fournet" initials="C." surname="Fournet"/>
-            <date month="June" year="2026"/>
-            <abstract>
-              <t>CBOR Object Signing and Encryption (COSE) Receipts prove properties of a Verifiable Data Structure (VDS) to a verifier. VDSs and associated Proof Types enable security properties, such as minimal disclosure, transparency, and non-equivocation. Transparency helps maintain trust over time and has been applied to certificates, end-to-end encrypted messaging systems, and supply chain security. This specification enables concise transparency-oriented systems by building on Concise Binary Object Representation (CBOR) and COSE. The extensibility of the approach is demonstrated by providing CBOR encodings for Merkle inclusion and consistency proofs.</t>
-            </abstract>
-          </front>
-          <seriesInfo name="RFC" value="9942"/>
-          <seriesInfo name="DOI" value="10.17487/RFC9942"/>
         </reference>
         <reference anchor="RFC9943">
           <front>
@@ -1669,39 +1078,6 @@ binding rules; CPB does not import their payload semantics.</t>
           <seriesInfo name="RFC" value="7515"/>
           <seriesInfo name="DOI" value="10.17487/RFC7515"/>
         </reference>
-        <reference anchor="RFC6920">
-          <front>
-            <title>Naming Things with Hashes</title>
-            <author fullname="S. Farrell" initials="S." surname="Farrell"/>
-            <author fullname="D. Kutscher" initials="D." surname="Kutscher"/>
-            <author fullname="C. Dannewitz" initials="C." surname="Dannewitz"/>
-            <author fullname="B. Ohlman" initials="B." surname="Ohlman"/>
-            <author fullname="A. Keranen" initials="A." surname="Keranen"/>
-            <author fullname="P. Hallam-Baker" initials="P." surname="Hallam-Baker"/>
-            <date month="April" year="2013"/>
-            <abstract>
-              <t>This document defines a set of ways to identify a thing (a digital object in this case) using the output from a hash function. It specifies a new URI scheme for this purpose, a way to map these to HTTP URLs, and binary and human-speakable formats for these names. The various formats are designed to support, but not require, a strong link to the referenced object, such that the referenced object may be authenticated to the same degree as the reference to it. The reason for this work is to standardise current uses of hash outputs in URLs and to support new information-centric applications and other uses of hash outputs in protocols.</t>
-            </abstract>
-          </front>
-          <seriesInfo name="RFC" value="6920"/>
-          <seriesInfo name="DOI" value="10.17487/RFC6920"/>
-        </reference>
-        <reference anchor="RFC9162">
-          <front>
-            <title>Certificate Transparency Version 2.0</title>
-            <author fullname="B. Laurie" initials="B." surname="Laurie"/>
-            <author fullname="E. Messeri" initials="E." surname="Messeri"/>
-            <author fullname="R. Stradling" initials="R." surname="Stradling"/>
-            <date month="December" year="2021"/>
-            <abstract>
-              <t>This document describes version 2.0 of the Certificate Transparency (CT) protocol for publicly logging the existence of Transport Layer Security (TLS) server certificates as they are issued or observed, in a manner that allows anyone to audit certification authority (CA) activity and notice the issuance of suspect certificates as well as to audit the certificate logs themselves. The intent is that eventually clients would refuse to honor certificates that do not appear in a log, effectively forcing CAs to add all issued certificates to the logs.</t>
-              <t>This document obsoletes RFC 6962. It also specifies a new TLS extension that is used to send various CT log artifacts.</t>
-              <t>Logs are network services that implement the protocol operations for submissions and queries that are defined in this document.</t>
-            </abstract>
-          </front>
-          <seriesInfo name="RFC" value="9162"/>
-          <seriesInfo name="DOI" value="10.17487/RFC9162"/>
-        </reference>
         <reference anchor="RFC9901">
           <front>
             <title>Selective Disclosure for JSON Web Tokens</title>
@@ -1719,47 +1095,6 @@ disclosure of JSON Web Token (JWT) claims.</t>
           <seriesInfo name="RFC" value="9901"/>
           <seriesInfo name="DOI" value="10.17487/RFC9901"/>
         </reference>
-        <reference anchor="RFC4998">
-          <front>
-            <title>Evidence Record Syntax (ERS)</title>
-            <author fullname="T. Gondrom" initials="T." surname="Gondrom"/>
-            <author fullname="R. Brandner" initials="R." surname="Brandner"/>
-            <author fullname="U. Pordesch" initials="U." surname="Pordesch"/>
-            <date month="August" year="2007"/>
-            <abstract>
-              <t>In many scenarios, users must be able prove the existence and integrity of data, including digitally signed data, in a common and reproducible way over a long and possibly undetermined period of time. This document specifies the syntax and processing of an Evidence Record, a structure designed to support long-term non-repudiation of existence of data. [STANDARDS-TRACK]</t>
-            </abstract>
-          </front>
-          <seriesInfo name="RFC" value="4998"/>
-          <seriesInfo name="DOI" value="10.17487/RFC4998"/>
-        </reference>
-        <reference anchor="I-D.ietf-scitt-receipts-ccf-profile">
-          <front>
-            <title>CCF Profile for COSE Receipts</title>
-            <author fullname="Henk Birkholz" initials="H." surname="Birkholz">
-              <organization>Fraunhofer SIT</organization>
-            </author>
-            <author fullname="Antoine Delignat-Lavaud" initials="A." surname="Delignat-Lavaud">
-              <organization>Microsoft Research</organization>
-            </author>
-            <author fullname="Cedric Fournet" initials="C." surname="Fournet">
-              <organization>Microsoft Research</organization>
-            </author>
-            <author fullname="Amaury Chamayou" initials="A." surname="Chamayou">
-              <organization>Microsoft Research</organization>
-            </author>
-            <date day="24" month="June" year="2026"/>
-            <abstract>
-              <t>   This document defines a new verifiable data structure (VDS) type for
-   COSE Receipts and inclusion proofs specifically designed for append-
-   only logs produced by the Confidential Consortium Framework (CCF) to
-   provide stronger tamper-evidence guarantees.
-
-              </t>
-            </abstract>
-          </front>
-          <seriesInfo name="Internet-Draft" value="draft-ietf-scitt-receipts-ccf-profile-04"/>
-        </reference>
         <reference anchor="I-D.mih-scitt-agent-action-capsule">
           <front>
             <title>An Agent Action Capsule Profile for SCITT</title>
@@ -1770,48 +1105,6 @@ disclosure of JSON Web Token (JWT) claims.</t>
           </front>
           <seriesInfo name="Internet-Draft" value="draft-mih-scitt-agent-action-capsule-04"/>
         </reference>
-        <reference anchor="I-D.hillier-scitt-arp">
-          <front>
-            <title>Attestation Reconciliation Protocol</title>
-            <author initials="J." surname="Hillier" fullname="Joel Hillier">
-              <organization>Certisyn, Inc.</organization>
-            </author>
-            <date year="2026" month="August" day="13"/>
-          </front>
-          <seriesInfo name="Internet-Draft" value="draft-hillier-scitt-arp-03"/>
-        </reference>
-        <reference anchor="I-D.mih-sato-agent-accountability-composition">
-          <front>
-            <title>Agent Accountability: Composition and Conformance</title>
-            <author initials="S." surname="Mih" fullname="Steven Mih">
-              <organization>Action State Group, Inc.</organization>
-            </author>
-            <author initials="T." surname="Sato" fullname="Tom Sato">
-              <organization>MyAuberge K.K.</organization>
-            </author>
-            <author initials="I." surname="Schrock" fullname="Iman Schrock">
-              <organization>EMILIA Protocol, Inc.</organization>
-            </author>
-            <author initials="S." surname="Bu" fullname="Songbo Bu">
-              <organization>Independent</organization>
-            </author>
-            <author initials="A." surname="Sokolov" fullname="Anton Sokolov">
-              <organization>Tyche Institute</organization>
-            </author>
-            <date year="2026" month="August" day="16"/>
-          </front>
-          <seriesInfo name="Internet-Draft" value="draft-mih-sato-agent-accountability-composition-01"/>
-        </reference>
-        <reference anchor="I-D.sokolov-rats-aep-composition">
-          <front>
-            <title>Composing Application-Layer Action Evidence with Remote Attestation Procedures</title>
-            <author initials="A." surname="Sokolov" fullname="Anton Sokolov">
-              <organization>Tyche Institute</organization>
-            </author>
-            <date year="2026" month="August" day="31"/>
-          </front>
-          <seriesInfo name="Internet-Draft" value="draft-sokolov-rats-aep-composition-06"/>
-        </reference>
         <reference anchor="I-D.schrock-ep-authorization-receipts">
           <front>
             <title>Authorization Receipts for High-Risk Agent Actions</title>
@@ -1821,62 +1114,6 @@ disclosure of JSON Web Token (JWT) claims.</t>
             <date year="2026" month="August" day="16"/>
           </front>
           <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-12"/>
-        </reference>
-        <reference anchor="I-D.birkholz-verifiable-agent-conversations">
-          <front>
-            <title>Verifiable Agent Conversation Records</title>
-            <author initials="H." surname="Birkholz" fullname="Henk Birkholz">
-              <organization>Fraunhofer Institute for Secure Information Technology</organization>
-            </author>
-            <author initials="T." surname="Heldt" fullname="Tobias Heldt">
-              <organization/>
-            </author>
-            <author initials="O." surname="Steele" fullname="Orie Steele">
-              <organization/>
-            </author>
-            <date year="2026" month="August" day="31"/>
-          </front>
-          <seriesInfo name="Internet-Draft" value="draft-birkholz-verifiable-agent-conversations-01"/>
-        </reference>
-        <reference anchor="I-D.le-scitt-derived-subjects">
-          <front>
-            <title>SCITT Profile for Independently Derived Subjects</title>
-            <author initials="T." surname="Le" fullname="Thanh Le">
-              <organization/>
-            </author>
-            <date year="2026" month="August" day="22"/>
-          </front>
-          <seriesInfo name="Internet-Draft" value="draft-le-scitt-derived-subjects-00"/>
-        </reference>
-        <reference anchor="I-D.le-comparing-derived-identifiers">
-          <front>
-            <title>Principles for Comparing Independently Derived Identifiers</title>
-            <author initials="T." surname="Le" fullname="Thanh Le">
-              <organization/>
-            </author>
-            <date year="2026" month="August" day="22"/>
-          </front>
-          <seriesInfo name="Internet-Draft" value="draft-le-comparing-derived-identifiers-00"/>
-        </reference>
-        <reference anchor="I-D.nobuo-scitt-protected-object-binding">
-          <front>
-            <title>SCITT Statement Relationship and Protected Object Binding</title>
-            <author initials="N." surname="Aoki" fullname="Nobuo Aoki">
-              <organization>The Graduate University for Advanced Studies (SOKENDAI)</organization>
-            </author>
-            <date year="2026" month="July" day="07"/>
-          </front>
-          <seriesInfo name="Internet-Draft" value="draft-nobuo-scitt-protected-object-binding-00"/>
-        </reference>
-        <reference anchor="I-D.rampalli-pedigree">
-          <front>
-            <title>PEDIGREE: Provenance and Delegation Records for Digital Artifacts</title>
-            <author initials="K." surname="Rampalli" fullname="Karthik Rampalli">
-              <organization>Glyphzero, Inc.</organization>
-            </author>
-            <date year="2026" month="April" day="25"/>
-          </front>
-          <seriesInfo name="Internet-Draft" value="draft-rampalli-pedigree-00"/>
         </reference>
         <reference anchor="I-D.lee-orprg-permit-receipts">
           <front>
@@ -1890,320 +1127,33 @@ disclosure of JSON Web Token (JWT) claims.</t>
         </reference>
       </references>
     </references>
-    <?line 1444?>
+    <?line 842?>
 
-<section anchor="appendix-a">
-      <name>Synthetic Registration Walkthrough</name>
-      <t>This appendix illustrates the mechanics of <xref target="derived-id"/>, <xref target="envelope"/>, and
-<xref target="receipt-binding"/> using a non-domain-specific payload class. No domain
-vocabulary from any specific profile is used.</t>
-      <t><strong>Payload class:</strong> <tt>temperature-record</tt>. Fields: <tt>station_id</tt> (string),
-<tt>timestamp</tt> (string), <tt>celsius</tt> (exact decimal string), <tt>record_id</tt> (string).
-Exclusion set: <tt>{record_id}</tt>. Algorithm: <tt>jcs</tt>. Representation: bare 64-char
-lowercase hex.</t>
-      <t><strong>Step 1 — Construct the payload:</strong></t>
-      <sourcecode type="json"><![CDATA[
-{
-  "station_id": "WS-42",
-  "timestamp": "2026-07-24T00:00:00Z",
-  "celsius": "21.3",
-  "record_id": null
-}
-]]></sourcecode>
-      <t><strong>Step 2 — Apply the exclusion set:</strong></t>
-      <t>Remove <tt>record_id</tt> (it is in the exclusion set). The resulting object is:</t>
-      <sourcecode type="json"><![CDATA[
-{
-  "station_id": "WS-42",
-  "timestamp": "2026-07-24T00:00:00Z",
-  "celsius": "21.3"
-}
-]]></sourcecode>
-      <t><strong>Step 3 — Compute the derived identifier:</strong></t>
-      <t>Apply JCS <xref target="RFC8785"/> to produce the canonical octet string. Compute
-SHA-256 and encode as lowercase hex. The result is the <tt>record_id</tt> value
-to be placed back into the payload for transport.</t>
-      <t><strong>Step 4 — Construct the Signed Statement:</strong></t>
-      <t>Use Full-Content Mode (<xref target="full-content-mode"/>): wrap the complete payload,
-including the now-populated <tt>record_id</tt>, in an RFC 9943 Signed Statement.
-Its protected header includes:</t>
-      <ul spacing="normal">
-        <li>
-          <t><tt>alg</tt>: the producer's signing algorithm;</t>
-        </li>
-        <li>
-          <t><tt>content_type</tt>: <tt>application/example+json</tt>, used here only as the
-illustrative media type from the RFC 9943 examples;</t>
-        </li>
-        <li>
-          <t>CWT Claims (label 15), including an <tt>iss</tt> such as
-<tt>https://issuer.example</tt> and a <tt>sub</tt> such as
-<tt>urn:example:temperature-record:WS-42</tt>; and</t>
-        </li>
-        <li>
-          <t>key identification or certificate parameters conforming to RFC 9943.</t>
-        </li>
-      </ul>
-      <t>A real <tt>temperature-record</tt> profile would specify an appropriate media type;
-CPB does not register one.</t>
-      <t><strong>Step 5 — Register and receive a Receipt:</strong></t>
-      <t>Submit the Signed Statement to a SCITT Transparency Service. Attach the
-returned Receipt to the unprotected header. The Transparent Statement is
-now suitable for distribution to verifiers.</t>
-      <t><strong>Step 6 — Verify:</strong></t>
-      <t>A verifier validates the Signed Statement signature and RFC 9943 headers,
-extracts the payload, strips <tt>record_id</tt>, applies JCS, recomputes SHA-256,
-and compares the result to the carried <tt>record_id</tt>. If a Receipt is present,
-the verifier separately verifies it under a trusted Transparency Service
-key. The signature, content binding, and Receipt results remain distinct.</t>
-    </section>
-    <section anchor="appendix-b">
-      <name>Synthetic Two-Slot Composition</name>
-      <t>This appendix illustrates <xref target="typed-refs"/> using two cooperating payload
-classes. No domain vocabulary is used.</t>
-      <t><strong>Scenario:</strong> a <tt>decision-record</tt> payload class cites an <tt>authorization-doc</tt>
-using a typed digest reference.</t>
-      <t><strong>Authorization doc</strong> (payload class <tt>authorization-doc</tt>; algorithm <tt>jcs</tt>):</t>
-      <sourcecode type="json"><![CDATA[
-{
-  "doc_id": "...",
-  "subject": "WS-42",
-  "scope": "temperature-write",
-  "issued_at": "2026-07-24T00:00:00Z"
-}
-]]></sourcecode>
-      <t>Its derived identifier is computed with <tt>doc_id</tt> in the exclusion set.
-Suppose the result is <tt>"ab12cd34..."</tt>.</t>
-      <t><strong>Decision record</strong> (payload class <tt>decision-record</tt>; algorithm <tt>jcs</tt>):</t>
-      <t>For this example, the profile selects payload carriage and therefore the
-Signed Statement does not also contain <tt>cpb-refs</tt>. The profile accepts a
-stable specification for <tt>authorization-doc</tt> that declares exactly one
-digest context, using <tt>jcs</tt>, the <tt>SHA-256</tt> token, and lowercase hexadecimal
-output. <tt>purpose</tt> is therefore omitted.</t>
-      <sourcecode type="json"><![CDATA[
-{
-  "record_id": null,
-  "action": "write",
-  "authorization": {
-    "type": "authorization-doc",
-    "digest_alg": "SHA-256",
-    "digest": "ab12cd34..."
-  }
-}
-]]></sourcecode>
-      <t>The typed reference <tt>authorization</tt> cites the authorization doc by its
-artifact type and derived identifier. A verifier can confirm the doc was
-cited by resolving the <tt>authorization-doc</tt> artifact type's digest context
-from its governing specification, recomputing <tt>"ab12cd34..."</tt> from the
-doc's bytes, and matching.</t>
-      <t><strong>Composability:</strong> a profile-aware parser first extracts the reference from
-the <tt>decision-record</tt> payload. Generic citation-binding verification then
-needs the accepted <tt>authorization-doc</tt> digest-context declaration and cited
-artifact, but no other <tt>decision-record</tt> semantics. Whether this citation
-slot permits that type is determined by the consuming profile. Artifact
-appraisal, authorization semantics, and application integration remain
-separate.</t>
-    </section>
-    <section anchor="appendix-c">
-      <name>Field-Verified Instances</name>
-      <t>The instances in this appendix were chosen to illustrate the mechanisms of
-<xref target="algorithms"/>, <xref target="receipt-binding"/>, and <xref target="typed-refs"/>. They are not a
-ranking. Two parties appear in every instance: the implementing system and
-the verification counterparty. The common counterparty in each case is the
-AAC reference implementation, which is present as a verifier, not as the
-subject. This is a historical record and is not edited retroactively: the
-instances below report what ran at the time, under algorithm <tt>jcs-n</tt>, which
-is withdrawn as of this revision (<xref target="algo-jcs-n"/>). The byte-agreement result
-each instance reports is a property of applying RFC 8785 JCS consistently,
-which <tt>jcs</tt> (<xref target="algo-jcs"/>) also provides going forward.</t>
-      <t><strong>Owner consent status:</strong> Anton Sokolov (Tyche Institute) — confirmed
-2026-07-24. Tom Sato (GAR/SOOS) — confirmed 2026-07-25. Tymofii
-Pidlisnyi (Agent Passport System) — confirmed 2026-07-24 (on-issue).</t>
-      <section anchor="appendix-c1">
-        <name>Deep Mechanism Instances</name>
-        <section anchor="glyphzero-byte-agreement-algorithm-determinism">
-          <name>Glyphzero Byte-Agreement — Algorithm Determinism</name>
-          <t>Public record: Glyphzero PEDIGREE delegation record, IETF 126 hackathon.</t>
-          <t><strong>What ran:</strong> Two independently written RFC 8785 JCS implementations —
-Glyphzero's (Rampalli), used to produce its PEDIGREE delegation records
-<xref target="I-D.rampalli-pedigree"/>, and the AAC reference implementation — computed
-a digest over the same delegation record and both produced
-<tt>subject_digest</tt> <tt>0b4da06b...</tt> without any coordination on byte ordering
-beyond RFC 8785 itself. The record carried no null, empty-array or
-empty-object member, so the absent-field normalization pass <tt>jcs-n</tt> added
-to JCS did not apply to it; the agreement is an agreement about RFC 8785
-JCS, which is the part <tt>jcs</tt> (<xref target="algo-jcs"/>) carries forward.</t>
-          <t><strong>Mechanism illustrated:</strong> <xref target="algo-jcs"/>. RFC 8785 JCS is reproducible
-across separately written implementations. The agreement was not
-premeditated; it emerged from two systems applying the same algorithm
-independently. This instance does not evidence an independent
-implementation of the withdrawn normalization pass, and the implementer
-census (<xref target="algo-jcs-n"/>) records that there was none.</t>
-          <t><strong>Consent:</strong> Karthik Rampalli (Glyphzero) confirmed 2026-07-25 (email, with corrections).</t>
-        </section>
-        <section anchor="gar-session-block-leaf-construction-rule">
-          <name>GAR Session Block — Leaf Construction Rule</name>
-          <t>Public record: GAR Session Block anchor, IETF 126 hackathon; gar-core.ts
-commit fe18f24; CT leaf 166.</t>
-          <t><strong>What ran:</strong> A GAR Session Block record was registered in a SCITT
-Transparency Service (<tt>RFC9162_SHA256</tt> VDS; <xref target="RFC9162"/>). The log leaf was constructed as
-SHA-256 of the raw bytes of the derived identifier — <tt>bytes.fromhex(id)</tt>,
-not <tt>id.encode("utf-8")</tt>. The inclusion proof verified correctly against the
-anchored Merkle root only when the leaf used the raw bytes.</t>
-          <t><strong>Mechanism illustrated:</strong> <xref target="leaf-rule"/>. The leaf-bytes-not-hex rule was
-discovered during live anchoring when a leaf constructed from the hex string
-failed to verify; switching to raw bytes produced the correct root.</t>
-          <t><strong>Consent:</strong> Tom Sato (GAR/SOOS) — confirmed 2026-07-25.</t>
-        </section>
-        <section anchor="a2a-boundary-seal-derived-identifier-as-protocol-gate">
-          <name>A2A Boundary Seal — Derived Identifier as Protocol Gate</name>
-          <t>Public record: capsule-emit issue #29, verified offline at
-https://github.com/action-state-group/capsule-emit/issues/29.</t>
-          <t><strong>What ran:</strong> An A2A-protocol boundary producer submitted a record to a SCITT
-Transparency Service and used the derived identifier as a protocol-layer
-gate (<tt>capsule.digest</tt> / <tt>capsule.resolve</tt>). The receipt was verified
-offline using a conforming SCITT verifier (<tt>scitt-cose verify_receipt</tt>
-→ <tt>ok=True</tt>), and the Merkle inclusion proof (<tt>verify_inclusion</tt>) folded to
-the anchored root. A DENY negative case was also demonstrated: a fabricated
-derived identifier not present in the log returned 404 on the resolve step
-and DENY on the gate.</t>
-          <t><strong>Classification (exact):</strong> single-machine loopback rehearsal, independently
-reproduced. The read-only resolve path (<tt>/anchor/inclusion-proof-ct</tt>) is live
-at <tt>anchor.agentactioncapsule.org</tt>; a networked cross-machine close is
-pending counterparty schedule.</t>
-          <t><strong>Mechanism illustrated:</strong> <xref target="derived-id"/> and <xref target="receipt-binding"/> applied at
-a protocol boundary: the derived identifier is stable across network hops and
-usable as a verifiable join key without payload disclosure.</t>
-          <t><strong>Consent:</strong> Anton Sokolov (Tyche Institute) — confirmed 2026-07-24.</t>
-        </section>
-      </section>
-      <section anchor="appendix-c2">
-        <name>Field Table — IETF 126 Participants</name>
-        <t>The following table lists all parties that ran verifiable instances at the
-IETF 126 hackathon. Rows appear in alphabetical order by party name; the
-order carries no ranking.</t>
-        <table>
-          <thead>
-            <tr>
-              <th align="left">Party</th>
-              <th align="left">Record type</th>
-              <th align="left">What ran</th>
-              <th align="left">Public record</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td align="left">Agent Passport System (Pidlisnyi)</td>
-              <td align="left">Decision record</td>
-              <td align="left">Content-derived action reference; NFC + code-point sort + JCS; bidirectional cross-runs 6/6 + 24/24</td>
-              <td align="left">draft-pidlisnyi-aps + hackathon coordinates</td>
-            </tr>
-            <tr>
-              <td align="left">EP (Schrock)</td>
-              <td align="left">Named-human approval</td>
-              <td align="left">Three independent codebases produced <tt>8cf0c36e...</tt>; three-computation single-digest</td>
-              <td align="left">agent-action-capsule PR #40</td>
-            </tr>
-            <tr>
-              <td align="left">GAR (Sato)</td>
-              <td align="left">Kernel session block</td>
-              <td align="left">Sealed as record; CT leaf = SHA-256(raw bytes of id); leaf 166 verified</td>
-              <td align="left">gar-core.ts commit fe18f24</td>
-            </tr>
-            <tr>
-              <td align="left">Glyphzero (Rampalli)</td>
-              <td align="left">Delegation record</td>
-              <td align="left">Two independent JCS implementations; <tt>subject_digest</tt> <tt>0b4da06b...</tt></td>
-              <td align="left">Glyphzero PEDIGREE hackathon record</td>
-            </tr>
-            <tr>
-              <td align="left">Microsoft (Chamayou)</td>
-              <td align="left">Two-TS statement</td>
-              <td align="left">One payload, two receipt profiles (ccf.v1 + RFC9162_SHA256) in conjunction</td>
-              <td align="left">scitt-ccf-ledger PR #424</td>
-            </tr>
-            <tr>
-              <td align="left">Sokolov (Tyche)</td>
-              <td align="left">Boundary-seal</td>
-              <td align="left">A2A gate; derived-id as resolve key; DENY negative; offline Receipt verify</td>
-              <td align="left">capsule-emit issue #29</td>
-            </tr>
-          </tbody>
-        </table>
-        <t>The composition vector set behind the EP row is public and hash-pinned:
-<tt>action-state-group/agent-action-capsule</tt> pull request #40, merged as commit
-<tt>ff6edfedb6f9c72dd65b8eb870d38958421d35bc</tt>, directory
-<tt>interop-vectors/composition</tt>, with a <tt>SHA256SUMS</tt> manifest fixing the
-seventeen files it lists. What that set carries is the capsule producer's and
-the receipt producer's independent computations of <tt>8cf0c36e...</tt>. It does not
-carry a third computation of that digest; its reserved third-attestor case is
-a placeholder for a separate attestor's claim over the same subject and is not
-runnable. A reader comparing the two should note that the row above reports
-what the parties ran in July, and this set was frozen afterwards.</t>
-      </section>
-      <section anchor="appendix-c3">
-        <name>Agreed and Scheduled</name>
-        <t>The following cross-verifications are agreed and scheduled but have not
-produced field-verified instances at time of writing:</t>
-        <ul spacing="normal">
-          <li>
-            <t>VTO/libp2p (M.S. Gupta) — content-addressed telemetry objects citing
-action records across grains.</t>
-          </li>
-          <li>
-            <t>VSO/VeritasChain (Kamimura) — verifiable service objects under <tt>jcs</tt>.</t>
-          </li>
-        </ul>
-        <t>Field-verified instances are expected to be added in future revisions as
-cross-verifications complete.</t>
-        <t>The PermitReceipt × MachineMandate composition is excluded from this appendix.
-It is recorded in the AAC interop registry (INTEROP.md).</t>
-      </section>
-    </section>
-    <section anchor="appendix-d">
-      <name>Profile-Owned Payload Carriage Example</name>
-      <t>This appendix is informative. Section 5.5.5 of
-<xref target="I-D.mih-scitt-agent-action-capsule"/> defines a payload-level <tt>references</tt>
-array. In revision -04, each entry's identity uses the profile-owned JSON
-members <tt>type</tt>, <tt>digest_alg</tt>, and <tt>digest</tt>; the separate
-<tt>citation_purpose</tt> member describes why the Capsule cites the target. That
-field is not CPB's <tt>purpose</tt>, which selects a digest context.</t>
-      <t>This is an example of the profile-owned payload carriage described in
-<xref target="payload-carriage"/>, not a CPB JSON wire format. CPB neither imports nor
-redefines AAC's field names, additional members, or extension behavior.
-Implementers of that carrier follow the cited AAC revision. An AAC consuming
-profile that applies CPB verification also identifies by stable normative
-reference the artifact-type and digest-context declarations it accepts, as
-required by <xref target="comparability"/>, and does not include <tt>cpb-refs</tt> in the same
-Signed Statement.</t>
-    </section>
-    <section numbered="false" anchor="acknowledgments">
+<section numbered="false" anchor="acknowledgments">
       <name>Acknowledgments</name>
-      <t>The following individuals contributed findings from the IETF 126 hackathon in
-Vienna that directly shaped the rules in this document. All attributions
-cite public artifacts.</t>
+      <t>The following individuals contributed findings that directly shaped the
+rules in this document, whether raised at the IETF 126 hackathon in Vienna
+or through public review afterward. All attributions cite public artifacts.</t>
       <t><strong>Contributors</strong> [all named attributions and contributor acknowledgments
 individually confirmed: Anton Sokolov (confirmed 2026-07-24), Iman Schrock
 (confirmed 2026-07-24), Tom Sato (confirmed 2026-07-25), Yong Bok Lee (Scott
 Lee) (contributor attribution confirmed 2026-07-27), Tymofii Pidlisnyi (Agent Passport System,
 confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero, confirmed
-2026-07-25, email, with corrections)]:</t>
+2026-07-25, email, with corrections), Imran Siddique (Opaque Systems,
+confirmed 2026-09-11, on-issue)]:</t>
       <ul spacing="normal">
         <li>
-          <t>Anton Sokolov (Tyche Institute) — assurance-boundary discipline; the A2A
-boundary-seal instance in <xref target="appendix-c"/>.</t>
+          <t>Anton Sokolov (Tyche Institute) — assurance-boundary discipline
+underlying this document's declare-rather-than-infer rule, demonstrated
+at the IETF 126 hackathon by the A2A boundary-seal instance (a derived
+identifier used as a protocol gate).</t>
         </li>
         <li>
           <t>Yong Bok Lee (Scott Lee), Meridian Verity Group — ORPRG-derived
 cross-profile digest-context discipline: equal-looking digest text alone
-is not a valid join; a typed reference is verified by recomputing the
-referenced artifact under its established digest context and comparing
-that result with the digest carried in the reference, not with the citing
-record's own derived identifier. Also contributed the
-representation-boundary distinction among raw digest bytes, bare lowercase
-hexadecimal text, and prefixed text, and the verification-scope boundary
-separating typed-reference content binding from artifact-specific
-appraisal and authorization. See <xref target="I-D.lee-orprg-permit-receipts"/>.</t>
+is not a valid join, a finding that fed the digest-context discipline
+underlying <xref target="derived-id"/> and <xref target="representation"/>. See
+<xref target="I-D.lee-orprg-permit-receipts"/>.</t>
         </li>
         <li>
           <t>Tymofii Pidlisnyi (Agent Passport System) — the content-derived action reference pattern
@@ -2226,8 +1176,16 @@ RFC 8785 JCS is reproducible across separately written implementations.</t>
 contributor's request 2026-09-07 — the single-digest composition instance
 (<tt>8cf0c36e...</tt>), in which an authorization receipt
 <xref target="I-D.schrock-ep-authorization-receipts"/> and an action record produced by
-different implementations carry the same action digest. The vector set cited
-in <xref target="appendix-c2"/> contains those two computations.</t>
+different implementations carry the same action digest, demonstrating that
+independently derived identifiers agree byte-for-byte under this
+document's canonicalization rules.</t>
+        </li>
+        <li>
+          <t>Imran Siddique (Opaque Systems) — the plain-JCS subject-binding divergence
+that led to the withdrawal of <tt>jcs-n</tt> and the registration of <tt>jcs</tt> (#34);
+the <tt>digest_alg</tt> consistency-declaration clarification and the withdrawal
+of <tt>cde-n</tt> (#36); and the verifier-behaviour rules for unregistered
+external artifact types (#35).</t>
         </li>
       </ul>
       <t><strong>Acknowledged</strong> [Amaury Chamayou confirmed 2026-07-24 (email)]:</t>
@@ -2241,638 +1199,347 @@ microsoft/scitt-ccf-ledger #424.</t>
     </section>
   </back>
   <!-- ##markdown-source:
-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
-E6bYfVoEqxIDuqMJ6yUKzcN22FbTQDt6lnXhsKWeF9E7c9I8IvMY1YZ+ZjAe
-0ZUPBWvGW2TZcNREfM3wxdnpm7dvLs5Of0pfXfxwfnm1dzpK7vZRJeZMqTuz
-5mSVZEGox6kxf5ZtSnRApMKSIjEWPyKGIuiy4UWmTQ4PIjwGOz6/HfTuE6Im
-skqSfuqyzI8UGdCXiEjJt0oyf1U0IAmmWGlUsM8OczNxM5n1nrGU8hupPjCi
-Ne+/tfiqOFOE8QsDx2CTUtCxWHNEpDSOev6YnXZS6th5NorJdujK2JOos8+q
-0LtCMo3Glpwy1YOAj6TslBSLh29cZJbKo0wgIH7vK12VmI5kFIqbnYjduIsY
-cfMNMJWuyYS/srwv5mU0SItpgnDLAgcD37MuxSfAOfXmJXHqQidekHBc1qKS
-Mu6IjT4MuLHPaYaO2hKGV4uvc69ZNvfdPXQ0OkecmmQaBXoNETi7XalojUej
-gEtyzdP9DY7yGpj8bS6+Z07Hb8jeCE9k7K+0bCQSbxCixF+r+EKRgTHlJepr
-GMc9/VXuNbNvc3cbJXOSyHZIentiOz0mPRZJDf0fESGehupTcjdK/DuZlyR/
-Sn787XTvdO9un+J8yFXwH8JYkMsZfybfP4oU9d/AL5UBxf768LBOv27YCqGd
-oYf/uI9pHEwcUxvwhkTzIScfSjWwmfAsMFlQbxhsdZeR/qdtOHrUBpk4bPz5
-m7O3r85h97uHYiehT/CSA9mgS4NPB/f6D+w02gmdvT6HK7qNDTPvS+MLGEhM
-P4cmAUUsPXz2nDbh+VGKGShwreDCL6v7vKY4RhAsOiGdQWgjfkOW4C1Bu8ME
-c8hjNGdLuIsdZBXm6sY5FzCUiDYEH4CfexnGWxanZ4tHCD5ajTs3IroHpgyL
-vtETAqgr3p0wxxNHMjEv4fbxNqOLQ4URxbGrUiy32CAy4QE/YHGJEQeqd/i6
-YWboi42LJtzcNawxPG/09ndMIr4dGCD6Db86kNwYidY9eXYICiwn1Vmqn/Hx
-zHuWYWLqWxb90DKsN2XX/3wiLHzGyqUl/sj0MlRi019gG2Y8O+bdpDx1pz+K
-ODDKzE7wSmI/xBqSxEKTjb6HGMkkR391vV231U2drRd4i0CW3uEUyODmMDWd
-qygN5vcW9x6YMlJEwLMl0AqvYPpUa8s4ROOH2ZvEcfKZj6mDslnjiwsgTkyh
-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
+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
 
 -->
 
