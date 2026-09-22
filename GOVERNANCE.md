@@ -69,6 +69,11 @@ exception.** This includes editorial revisions, acknowledgments-only revisions, 
 change no normative text. The standing pre-authorization above governs the repository; it does not
 govern publication.
 
+A normative change that landed under the 14-day window without an explicit statement from an author
+is not thereby agreed for submission. Before a revision is submitted, each normative change made
+since the previous revision carries an explicit yes from each author, named by commit. Lazy
+consensus governs the repository; it does not accumulate into a submission.
+
 A revision is a statement made in both authors' names to a standards body. It is the one thing in
 this project that cannot be undone by a later pull request, and it is therefore the one thing that
 always waits.
