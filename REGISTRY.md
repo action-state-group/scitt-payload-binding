@@ -276,65 +276,90 @@ artifact type.
 
 ### `agent-action-capsule`
 
-**Reference:** draft-mih-scitt-agent-action-capsule
+**Reference:** draft-mih-scitt-agent-action-capsule, §2 (the format-4 declaration rule) and §5.1 "Identity and parties" (the `canonicalization_id`/`capsule_id` field table) — **normative there**.
+§2 is the section that carries the MUST: a conforming Capsule MUST declare
+`format_version: "4"` and `canonicalization_id: "jcs"`, and any other
+`format_version`, or an absent, null, non-string, empty, unknown or `jcs-n`
+`canonicalization_id`, MUST fail closed for producers and verifiers.
+This entry is a pointer into that text, not a restatement of it: per the
+current CPB draft's Cross-Profile Comparability section, artifact-type and
+digest-context declarations are owned and selected by the citing profile, and
+this file does not authorize discovery from an unspecified or mutable registry
+snapshot. The owner's own draft is the stable normative reference; consult it
+directly for the exact construction.
 **Status:** provisional
 
-**Fail-closed correction (2026-09-05).** Both retained contexts use the same
-`purpose` token, `identifier`, while the typed-reference wire form carries no
-profile-version selector. Consequently `(type, purpose)` cannot select exactly
-one row. This entry is non-live until the owner supplies a normative, on-wire
-resolution coordinate or distinct artifact type names. A verifier MUST NOT infer
-the row from `digest_alg`, representation, record contents, or profile internals.
+Pending Anton's exact-SHA concurrence as CPB co-editor before this entry is
+treated as live; see Disclosure below.
+
+**Repair (2026-09-15, supersedes the 2026-09-05 fail-closed correction).** The
+prior shape of this entry carried two digest-context rows sharing the same
+`purpose` token, `identifier`, with no profile-version selector on the
+typed-reference wire form — `(type, purpose)` could not select exactly one row,
+and the entry was held non-live. The owner (Steven Mih) ruled: `jcs-n` is not a
+selectable digest context for this artifact type — it is withdrawn (2026-08-18)
+and is retained only as historical/vintage-verification information, not as a
+row competing for `(type, purpose)` selection. **Exactly one digest context is
+registered:**
 
 | Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
 |---|---|---|---|---|---|---|---|
-| `identifier` | N/A (no versioned profile registered yet) | `jcs-n` | all capsule fields | `{capsule_id, chain}` | none | JCS UTF-8 octets (per `jcs-n`) | `bare-hex` |
-| `identifier` | `draft-mih-scitt-agent-action-capsule-04` | `jcs` | all capsule fields | `{capsule_id}` | none | JCS UTF-8 octets (per `jcs`) | `bare-hex` |
+| `identifier` | any profile version whose §2 and §5.1 state this construction; the only such version published at the time of this entry is `draft-mih-scitt-agent-action-capsule-04` | `jcs` | all capsule fields | `{capsule_id}` | none | JCS UTF-8 octets (per `jcs`) | `bare-hex` |
 
-Content unchanged from the prior 3-element shape — only the shape changed to the
-full digest-context template above. Domain separation and pre-image encoding are
-not new owner-supplied parameters: both are stated directly by `jcs-n`'s own
-normative definition, not invented for this row.
+`(agent-action-capsule, identifier)` now selects exactly one row. A record
+declaring `canonicalization_id: "jcs"` (format 4) resolves to it; any other
+declaration — including a `jcs-n`/format-2 (vintage) record — is not a match
+for this row and fails closed under ordinary `(type, purpose)` resolution, per
+the owner's own draft (`canonicalization_id` REQUIRED for format 4, MUST be
+absent for format 2) and its reference implementations, which reject an
+unsupported `canonicalization_id` rather than falling back to a second
+construction.
 
-**Second digest context (`jcs`, profile version -04).** `jcs-n` was withdrawn on
-2026-08-18 and verifies only on the authenticated historical-vintage path described
-by its `withdrawn` row above, so the first row is a vintage
-verification path and **no live digest context remained for this artifact type**.
-Profile version -04 supplies one: capsules declare `canonicalization_id: "jcs"` and
-the identifier is SHA-256 over plain JCS of the capsule with **only `capsule_id`**
-removed. The `canonicalization_id` declaration and the `chain` block **participate**.
-That exclusion set is the whole difference from the vintage row, and it is why this
-is a separate digest context rather than an edit of the existing one: the registered
-behavior of the `jcs-n` row is untouched, as the immutability rule in the policy
-header requires. Two rows under one entry is exactly what the registration template
-anticipates — one entry, one row per digest context, profile version stated per
-context.
+**Historical note — `jcs-n` (withdrawn, not a selectable row here).** Before
+this repair, a second row carried `jcs-n` / profile-version N/A / exclusion set
+`{capsule_id, chain}`, for vintage format-2 Capsules. That construction is not
+deleted or reinterpreted — the algorithm token `jcs-n` remains `Withdrawn` in
+the Payload Canonicalization Algorithm Registry above, immutable per this
+file's policy header, and pre-cutoff (before 2026-08-18) format-2 records
+remain verifiable by vintage evidence. But it is no longer a row in *this*
+artifact type's digest-context table: per the owner's ruling, format 2 is out
+of scope for live `(type, purpose)` resolution here, and verification of
+pre-cutoff format-2 artifacts is served by the frozen
+`agent-action-capsule` release `legacy-verify/v0.1.0` (never updated; format
+`{2, 4}` at that pin, format 2 retained solely for historical artifacts), not
+by a competing row in this registry. A discriminating vector recorded the two
+constructions' non-interchangeability on a record carrying a `chain` block —
+`{capsule_id}` (the live row) digests to
+`862024869f00481bb4f59d9528a45c2d4885f64c5222a9324a38ac2c2cd119f2`;
+`{capsule_id, chain}` (the historical vintage construction) digests to
+`1164b5696cf27d9c13965de1929b8e2b14097b7824f25e63f9ac7e954369d886` on the same
+input — kept here as the historical record of why the two were never
+interchangeable, not as an active selection candidate.
 
-⌙ Registrant: added by Anton Sokolov, read from the `spec_version`,
-  `format_version`, `canonicalization_id` and `capsule_id` rows of the Capsule field
-  table in `draft-mih-scitt-agent-action-capsule-04`, at
+⌙ Registrant: repair authored by the coder on the owner's (Steven Mih's)
+  explicit ruling, 2026-09-15, superseding the prior third-party reading by
+  Anton Sokolov (co-author of the CPB draft, co-editor of this registry, not
+  the owner of this artifact type) recorded against
+  `draft-mih-scitt-agent-action-capsule-04` at
   `action-state-group/agent-action-capsule` commit
   `8ccf345731360bbaa421141e0936e6b189053d0f`.
-⌙ Disclosure: the registrant is a co-author of the CPB draft and a co-editor of this
-  registry, and is **not** the owner of this artifact type. This row is a third-party
-  reading of the owner's own specification text and is **pending owner confirmation**
-  before it is treated as owner-confirmed.
-⌙ Discriminating-vector: `test-vectors/pos-v4-jcs-chain-committed/` in the artifact
-  type's own repository — *"Format 4 plain JCS commits the chain block and a present
-  empty array to capsule_id"*, recomputed identifier
-  `862024869f00481bb4f59d9528a45c2d4885f64c5222a9324a38ac2c2cd119f2`. Recomputed
-  from that vector's input with the artifact type's own JCS implementation, the two
-  exclusion sets do not agree, and the difference is stated here rather than
-  asserted:
+⌙ Disclosure: this repair is owner-directed but not yet owner-*confirmed* in
+  the sense this registry's admission rules use (no PR approval, on-record
+  email, or GitHub comment from the owner identity yet exists for it — the
+  ruling was given directly to the implementing session). It is also pending
+  Anton's exact-SHA concurrence as CPB co-editor per this task's gate. Treat as
+  provisional until both are on record.
+⌙ Discriminating-vector: `test-vectors/pos-v4-jcs-chain-committed/` in the
+  artifact type's own repository — *"Format 4 plain JCS commits the chain
+  block and a present empty array to capsule_id"*. Recomputed from that
+  vector's input, the live row's exclusion set and the historical one do not
+  agree, which is what makes them distinct digest contexts rather than
+  restatements of each other:
 
   | Exclusion set | SHA-256 over JCS of the remainder |
   |---|---|
-  | `{capsule_id}` (this row) | `862024869f00481bb4f59d9528a45c2d4885f64c5222a9324a38ac2c2cd119f2` — matches the vector |
-  | `{capsule_id, chain}` (vintage row) | `1164b5696cf27d9c13965de1929b8e2b14097b7824f25e63f9ac7e954369d886` — does not |
-
-  The two contexts are therefore not interchangeable on a record that carries a
-  `chain` block, which is what makes this a distinct digest context and not a
-  restatement of the vintage one.
+  | `{capsule_id}` (the live row) | `862024869f00481bb4f59d9528a45c2d4885f64c5222a9324a38ac2c2cd119f2` — matches the vector |
+  | `{capsule_id, chain}` (historical, `jcs-n`) | `1164b5696cf27d9c13965de1929b8e2b14097b7824f25e63f9ac7e954369d886` — does not |
 
 ### `machine-mandate`
 
@@ -679,13 +704,17 @@ Registry PRs from forks get the same verdict automatically in CI — see the
 
 The flat single-row templates below are the shape for the Payload Canonicalization
 Algorithm Registry, and for simple Artifact Type entries. They are **not the only
-shape.** An Artifact Type entry MAY instead take the form the
-`agent-action-capsule` entry demonstrates: a **named subsection** (`### <name>`) carrying a
-multi-column **Digest Context** sub-table (one row per digest context) plus a
-`Reference:` line, with the entry's **Status expressed as a prose
-`Status:` line** rather than a per-row Status column. Use the flat row for a simple
-one-context artifact type; use the named-subsection form when an entry has multiple
-digest contexts or otherwise does not fit a single flat row. In both shapes the
+shape.** An Artifact Type entry MAY instead take the form the `machine-mandate`
+entry demonstrates: a **named subsection** (`### <name>`) carrying a multi-column
+**Digest Context** sub-table (one row per digest context) plus a `Reference:`
+line, with the entry's **Status expressed as a prose `Status:` line** rather
+than a per-row Status column. `agent-action-capsule` uses the same named-subsection
+shape with a single digest-context row, because its `Reference:` is a pointer
+into the owning profile's own draft rather than a flat citation — the named
+form is also the right one whenever the prose around an entry (a pointer, a
+repair note, a historical note) does not fit a flat row, not only when there
+are multiple contexts. Use the flat row for a simple one-context artifact type
+that needs no such prose; use the named-subsection form otherwise. In both shapes the
 same required fields (below) and the same status vocabulary apply.
 
 For a flat-row entry, add one row to the appropriate registry table per entry.
