@@ -14,15 +14,20 @@ publication, change control transfers to IANA**, and the registries this
 repository maintains become the normative IANA registries CPB's IANA
 Considerations section establishes.
 
-**Identifiers are stable across that transfer.** An identifier registered
-here — live or provisional — carries forward under the same name and the
-same registered semantics when IANA takes over; the transfer is not a
-re-adjudication. See the IANA-forwarding clause in
+**What the editors undertake about identifier stability.** The IANA
+Considerations section will ask that an identifier registered here — live or
+provisional — be carried forward under the same name and the same registered
+semantics, and the editors will not themselves rename or reassign one. What
+an IANA registry contains at establishment is settled by IANA and by the
+responsible working group, not by the authors of an individual
+Internet-Draft, so this is an undertaking rather than a guarantee, and
+building on a pre-IANA identifier carries that residual risk. See the
+IANA-forwarding clause in
 [`spec/cpb-registry-policy.md`](https://github.com/action-state-group/scitt-payload-binding/blob/main/spec/cpb-registry-policy.md)
-for the full statement and its citation of RFC 7120 early allocation as the
-analog. **That policy document is currently a DRAFT, held pending sign-off
-from both co-authors** — it is not yet ratified, and this page will be
-updated once it is.
+for the full statement, including why it is weaker than RFC 7120 early
+allocation rather than its counterpart. **That policy document is currently a
+DRAFT, held pending sign-off from both co-authors** — it is not yet ratified,
+and this page will be updated once it is.
 
 ## Designated Expert review
 

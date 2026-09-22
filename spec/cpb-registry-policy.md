@@ -123,9 +123,19 @@ Anton. Steven and Anton should treat naming the panel to ≥2-organizations-and-
 beyond as part of ratifying this section, not something this draft resolves
 by proposing a name itself.
 
+**When the rule binds.** The panel today is one person, so the requirement
+above would be violated on the day it is ratified if it took effect
+immediately. It therefore binds **from the date a second expert is
+appointed**, and until then an entry admitted under single-expert review is
+marked as such in its filing. Stating this is not a loophole: an entry
+reviewed by one expert is a weaker artifact than one reviewed by two, and a
+reader is entitled to see which they are looking at rather than infer it from
+a panel table elsewhere in the document.
+
 ## §4 — The IANA-forwarding clause
 
-**New policy — this is what makes `provisional` safe to build against today.**
+**New policy — this is what a registrant is entitled to know before building
+against a `provisional` identifier, including where the assurance stops.**
 
 CPB's registries are, for now, interim: REGISTRY.md's policy header already
 states the change controller is "Action State Group, Inc. (interim) → IETF
@@ -134,35 +144,46 @@ adoption to IANA at RFC publication. What is not yet stated anywhere is the
 guarantee an implementer actually needs before committing code to a
 provisional or promoted CPB identifier ahead of that transfer:
 
-> **Clause.** An identifier registered in either CPB registry — a
-> canonicalization-algorithm token or an artifact-type name — that is live
-> (`owner-confirmed`, `third-party-documented`, or `standards-referenced`) or
-> `provisional` at the time CPB's IANA Considerations section establishes the
-> corresponding IANA registries (at RFC publication) is carried forward to
-> that IANA registry **under the same identifier string, with the same
-> registered semantics**. The identifier does not change, is not
-> re-adjudicated from scratch, and does not lose its accumulated
-> vector-backed conformance history solely because of the transfer. A
-> `provisional` entry is not "promoted" by the transfer itself — it remains
-> exactly as provisional under IANA stewardship as it was under this interim
-> registry, subject to the same promotion gates — but its *name* is
-> guaranteed stable across the move.
+> **Clause.** The editors undertake two things, and only these two, because
+> only these two are theirs to give. First, the IANA Considerations section of
+> the defining document will **request** that every identifier in either CPB
+> registry — a canonicalization-algorithm token or an artifact-type name —
+> that is live (`owner-confirmed`, `third-party-documented`, or
+> `standards-referenced`) or `provisional` at the time of transfer be carried
+> forward **under the same identifier string, with the same registered
+> semantics**, together with its accumulated vector-backed conformance
+> history. Second, the editors will not themselves rename, reassign or
+> silently re-adjudicate an entry in the course of preparing that transfer.
+>
+> **What the editors cannot undertake.** The contents of an IANA registry at
+> establishment are settled by IANA and by the responsible working group, not
+> by the authors of an individual Internet-Draft. Under a Specification
+> Required policy a Designated Expert may decline an entry; a working group
+> may rewrite an IANA Considerations section, including by dropping a registry
+> from the document's scope — which has already happened once in this
+> document's history. An implementer building on a pre-IANA CPB identifier
+> therefore carries a real, bounded risk: the editors will not move the name,
+> and will ask that nobody else does, but they cannot promise on behalf of a
+> body that has not agreed. That is the honest shape of the guarantee, and it
+> is stated here rather than discovered later.
+>
+> A `provisional` entry is not "promoted" by a transfer — it remains exactly
+> as provisional under IANA stewardship as it was under this interim registry,
+> subject to the same promotion gates.
 
-**Analog: RFC 7120 early allocation.** This clause is CPB's registry-level
-counterpart to [RFC 7120](https://www.rfc-editor.org/rfc/rfc7120)'s
-"Early IANA Allocation of Standards Track Code Points" — the mechanism that
-lets implementers build against an IANA code point *before* the defining
-document reaches RFC status, on the understanding that early-allocated
-values are not reassigned out from under them absent exceptional
-circumstance (RFC 7120 §3). CPB's situation is the mirror image: the
-registries exist and are actively used *before* IANA hosts them at all, so
-the guarantee an implementer needs runs the other direction — not "this
-early value won't be revoked before publication," but "this pre-IANA value
-won't be renamed or reassigned *at* publication." Citing RFC 7120 as the
-analog rather than inventing new vocabulary is deliberate: implementers
-already reason about early-allocation stability guarantees, and this clause
-asks them to trust the same shape of promise, pointed at the opposite end of
-the same transition.
+**Why this is weaker than RFC 7120, and why the difference matters.**
+[RFC 7120](https://www.rfc-editor.org/rfc/rfc7120), "Early IANA Allocation of
+Standards Track Code Points", lets implementers build against an IANA code
+point before the defining document reaches RFC status, on the understanding
+that early-allocated values are not reassigned absent exceptional
+circumstance (RFC 7120 §3). It is tempting to present the clause above as
+CPB's counterpart pointed at the other end of the same transition. It is
+not, and the difference is the whole point: **RFC 7120 works because IANA
+operates it**, under a documented procedure with IESG approval. CPB has no
+such standing. What is offered above is an undertaking by two editors, not a
+procedure operated by a registry authority, and an implementer should price
+it accordingly. RFC 7120 is cited here as the thing CPB's guarantee is
+*weaker than*, so that nobody reads the resemblance as equivalence.
 
 **What this clause does not do.** It does not freeze an entry's *content* —
 immutability-at-promotion (§2) already governs that, separately, for
