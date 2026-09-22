@@ -2,7 +2,7 @@
 
 
 
-TBD                                                               S. Mih
+COSE                                                              S. Mih
 Internet-Draft                                  Action State Group, Inc.
 Intended status: Standards Track                              A. Sokolov
 Expires: 26 March 2027                                   Tyche Institute
@@ -29,9 +29,9 @@ Abstract
 Note to Readers
 
    This document is an individual submission; the intended working group
-   is to be determined. *This revision is a draft for co-author and
-   working-group review only; it has not been submitted to the
-   datatracker.*
+   is the COSE Working Group (cose@ietf.org). *This revision is a draft
+   for co-author and working-group review only; it has not been
+   submitted to the datatracker.*
 
 Status of This Memo
 
@@ -80,7 +80,7 @@ Table of Contents
    4.  Producer and Verifier Behavior  . . . . . . . . . . . . . . .   3
    5.  Examples  . . . . . . . . . . . . . . . . . . . . . . . . . .   4
    6.  Security Considerations . . . . . . . . . . . . . . . . . . .   4
-     6.1.  Preimages Are Bytes, Not Renderings . . . . . . . . . . .   5
+     6.1.  Preimages Are Bytes, Not Renderings . . . . . . . . . . .   4
      6.2.  Encoding Agility  . . . . . . . . . . . . . . . . . . . .   5
    7.  Privacy Considerations  . . . . . . . . . . . . . . . . . . .   5
    8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   5
@@ -150,8 +150,7 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
 
    Label TBD MAY be present in the protected header and MUST NOT be
    present in the unprotected header, following the placement rule
-   [RFC9995] states for labels 258 through 260.  It names the encoding
-   applied before hashing a Hash Envelope payload.
+   [RFC9995] states for labels 258 through 260.
 
 4.  Producer and Verifier Behavior
 
@@ -162,6 +161,7 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
    A verifier MUST NOT infer the preimage encoding from preimage-
    content-type (259) or from the shape of the recomputed content.  If
    payload-preimage-encoding is absent or carries an unrecognized value,
+   the content binding cannot be verified by recomputation: the verifier
 
 
 
@@ -170,7 +170,6 @@ Mih & Sokolov             Expires 26 March 2027                 [Page 3]
 Internet-Draft       COSE payload-preimage-encoding       September 2026
 
 
-   the content binding cannot be verified by recomputation: the verifier
    MUST NOT report that binding as verified, and MUST report it as
    unverified rather than as failed.  Unverified means the verifier
    lacked the information needed to recompute; failed means a
@@ -213,11 +212,12 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
 
 6.  Security Considerations
 
+6.1.  Preimages Are Bytes, Not Renderings
 
-
-
-
-
+   The preimage identified by 259 and encoded per TBD is the exact octet
+   string the named encoding produces -- not a rendered form or a string
+   differing from it by whitespace, newlines, or character-encoding
+   choices.
 
 
 
@@ -225,13 +225,6 @@ Mih & Sokolov             Expires 26 March 2027                 [Page 4]
 
 Internet-Draft       COSE payload-preimage-encoding       September 2026
 
-
-6.1.  Preimages Are Bytes, Not Renderings
-
-   The preimage identified by 259 and encoded per TBD is the exact octet
-   string the named encoding produces -- not a rendered form or a string
-   differing from it by whitespace, newlines, or character-encoding
-   choices.
 
    A producer that re-reads stored content before hashing MUST ensure
    the octets entering the hash function are byte-identical to the
@@ -273,6 +266,13 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
    Parameters" registry, in the "Integer values from 256 to 65535"
    range, under the Specification Required policy ([RFC8126]
    Section 4.6) that governs that range:
+
+
+
+
+
+
+
 
 
 
@@ -322,14 +322,14 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
    |       |      | requirements of RFC    | application/ |           |
    |       |      | 8949 Section 4.2.1     | cbor         |           |
    +-------+------+------------------------+--------------+-----------+
-   | 2     | jcs  | JSON Canonicalization  | JSON content | [RFC8785] |
-   |       |      | Scheme                 | types, such  |           |
-   |       |      |                        | as           |           |
-   |       |      |                        | application/ |           |
-   |       |      |                        | json         |           |
-   +-------+------+------------------------+--------------+-----------+
 
                                  Table 2
+
+   Value 1, cde, is the lead entry: the Core Deterministic Encoding
+   Requirements of [RFC8949] Section 4.2.1, part of STD 94.  The
+   registry is open under the policy above, so encodings for other
+   structured content types can be added by later registrations, each
+   citing its own reference.
 
 
 
@@ -337,14 +337,6 @@ Mih & Sokolov             Expires 26 March 2027                 [Page 6]
 
 Internet-Draft       COSE payload-preimage-encoding       September 2026
 
-
-   Value 1, cde, is the lead entry: the Core Deterministic Encoding
-   Requirements of [RFC8949] Section 4.2.1, part of STD 94.  Value 2,
-   jcs, is the JSON Canonicalization Scheme [RFC8785]; it lets producers
-   that canonicalize JSON declare that encoding.  The registry is open
-   under the policy above, so encodings for other structured content
-   types can be added by later registrations, each citing its own
-   reference.
 
 9.  References
 
@@ -387,23 +379,20 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
 
 9.2.  Informative References
 
+   [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
+              Y., and S. Lasker, "An Architecture for Trustworthy and
+              Transparent Digital Supply Chains", RFC 9943,
+              DOI 10.17487/RFC9943, June 2026,
+              <https://www.rfc-editor.org/rfc/rfc9943>.
+
+
+
 
 
 Mih & Sokolov             Expires 26 March 2027                 [Page 7]
 
 Internet-Draft       COSE payload-preimage-encoding       September 2026
 
-
-   [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
-              Canonicalization Scheme (JCS)", RFC 8785,
-              DOI 10.17487/RFC8785, June 2020,
-              <https://www.rfc-editor.org/rfc/rfc8785>.
-
-   [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
-              Y., and S. Lasker, "An Architecture for Trustworthy and
-              Transparent Digital Supply Chains", RFC 9943,
-              DOI 10.17487/RFC9943, June 2026,
-              <https://www.rfc-editor.org/rfc/rfc9943>.
 
 Authors' Addresses
 
@@ -417,6 +406,17 @@ Authors' Addresses
    Tallinn
    Estonia
    Email: anton.sokolov@tyche.institute
+
+
+
+
+
+
+
+
+
+
+
 
 
 
