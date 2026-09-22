@@ -7,7 +7,7 @@ category: std
 submissiontype: IETF
 ipr: trust200902
 area: "Security"
-workgroup: "TBD"
+workgroup: "COSE"
 keyword:
  - COSE
  - hash envelope
@@ -39,7 +39,6 @@ normative:
   RFC9995:
 
 informative:
-  RFC8785:
   RFC9943:
 
 --- abstract
@@ -56,8 +55,8 @@ the COSE Hash Envelope through the existing extension point.
 
 --- note_Note_to_Readers
 
-This document is an individual submission; the intended working group is to
-be determined. **This revision is a draft for co-author and working-group
+This document is an individual submission; the intended working group is the
+COSE Working Group (cose@ietf.org). **This revision is a draft for co-author and working-group
 review only; it has not been submitted to the datatracker.**
 
 --- middle
@@ -113,8 +112,7 @@ with one optional member, alongside the members for labels 258-260:
 
 Label TBD MAY be present in the protected header and MUST NOT be present in
 the unprotected header, following the placement rule {{RFC9995}} states for
-labels 258 through 260. It names the encoding applied before hashing a Hash
-Envelope payload.
+labels 258 through 260.
 
 # Producer and Verifier Behavior {#behavior}
 
@@ -233,12 +231,9 @@ Applicable Content Types, Reference. Initial contents:
 | Value | Name | Description | Applicable Content Types | Reference |
 |---|---|---|---|---|
 | 1 | cde | CBOR deterministic encoding per the core deterministic encoding requirements of RFC 8949 Section 4.2.1 | CBOR content types, such as application/cbor | {{RFC8949}} Section 4.2.1 |
-| 2 | jcs | JSON Canonicalization Scheme | JSON content types, such as application/json | {{RFC8785}} |
 
 Value 1, cde, is the lead entry: the Core Deterministic
 Encoding Requirements of {{RFC8949}} Section 4.2.1, part of STD 94.
-Value 2, jcs, is the JSON Canonicalization Scheme {{RFC8785}}; it lets
-producers that canonicalize JSON declare that encoding.
 The registry is open under the policy above, so encodings for other
 structured content types can be added by later registrations, each citing
 its own reference.
