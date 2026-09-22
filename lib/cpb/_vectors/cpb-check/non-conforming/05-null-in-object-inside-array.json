@@ -1,0 +1,15 @@
+{
+  "id": "cpb-check-nonconforming-05",
+  "description": "P violation: null member inside an object that is itself an array element. Array elements are exempt, but objects nested inside arrays are still subject to the member rule.",
+  "expected_verdict": "non-conforming",
+  "expected_violations": [
+    {"path": "$[\"items\"][0][\"optional\"]", "rule": "P"}
+  ],
+  "record": {
+    "type": "list",
+    "items": [
+      {"kind": "a", "optional": null},
+      {"kind": "b", "value": 1}
+    ]
+  }
+}

@@ -1,11 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
-"""CPB reference library — spec-pure construction and verification.
+"""CPB reference library — live construction and historical compatibility.
 
 Implements only the mechanisms defined in draft-mih-sokolov-scitt-payload-binding:
-  §3.1  Algorithm jcs-n: normalize → JCS → SHA-256 → lowercase hex
-  §4    Derived identifier: CANONICAL-DIGEST(A, payload minus exclusion_set)
-  §6    Typed digest reference: construction and verification
-  §13   Registry snapshot lookup (machine-readable registry.json)
+  §4    Live jcs plus historical jcs-n digest evaluation
+  §5    Derived-identifier construction, evaluation, and verification
+  §8    Typed-reference construction, evaluation, and verification
+  §8.3  Protected-header typed-reference carriage and structural validation
+  compat Legacy repository-snapshot lookup (machine-readable registry.json)
   check Grammar conformance checker (P/R rules, Phase 1)
 
 No payload semantics from any specific profile are included here.
@@ -13,24 +14,51 @@ No payload semantics from any specific profile are included here.
 from .canonicalize import (
     FloatInDigestError,
     UnsafeIntegerError,
+    JsonWireFormatError,
     MAX_SAFE_INTEGER,
     normalize,
     jcs,
+    jcs_n,
+    raw_digest,
     canonical_digest,
+    canonical_digest_json,
 )
-from .derive_id import derive_id, verify_carried_id, CarriedIdMismatch
+from .derive_id import (
+    derive_id,
+    derive_id_json,
+    evaluate_derived_id,
+    evaluate_derived_id_json,
+    verify_carried_id,
+    CarriedIdMismatch,
+)
 from .typed_ref import (
+    ArtifactDigestContext,
+    ArtifactTypeDefinition,
     TypedRef,
     ArtifactTypeRegistryEntry,
     TypedRefError,
     ContextMismatchError,
+    DigestContextResolutionError,
     RepresentationMismatchError,
     DigestAlgorithmMismatchError,
     PurposeMismatchError,
+    PurposeRequiredError,
+    UnsupportedDigestContextError,
+    UnsupportedRepresentationError,
     make_typed_ref,
+    make_typed_ref_json,
+    evaluate_typed_ref_digest,
     verify_typed_ref,
+    verify_typed_ref_json,
+    verify_cbor_typed_ref,
     hex_to_raw,
     raw_to_hex,
+)
+from .vintage import (
+    JCS_N_WITHDRAWAL_CUTOFF,
+    VintageEvidenceVerifier,
+    WithdrawnAlgorithmError,
+    VintageEvidenceError,
 )
 from .registry import (
     VERDICT_VERIFIED,
@@ -50,28 +78,97 @@ from .check import (
     check_p,
     check_r,
 )
+from .cose_refs import (
+    FULL_CONTENT_MODE,
+    HASH_ENVELOPE_MODE,
+    CborMap,
+    CborSimple,
+    CborTag,
+    CoseHeaderError,
+    CoseSign1,
+    CpbRefsError,
+    CpbRefsLocationError,
+    CriticalHeaderError,
+    DuplicateCborKeyError,
+    MalformedCborError,
+    SignedStatementError,
+    StatementMode,
+    cose_signature1_structure,
+    decode_cose_sign1,
+    encode_deterministic_cbor,
+    extract_cpb_refs,
+    validate_cose_headers,
+    validate_cpb_signed_statement,
+    validate_cpb_statement_mode,
+    validate_critical_headers,
+    validate_rfc9943_baseline,
+)
 
 __all__ = [
+    "ArtifactDigestContext",
+    "ArtifactTypeDefinition",
     "FloatInDigestError",
     "UnsafeIntegerError",
+    "JsonWireFormatError",
     "MAX_SAFE_INTEGER",
     "normalize",
     "jcs",
+    "jcs_n",
+    "raw_digest",
     "canonical_digest",
+    "canonical_digest_json",
     "derive_id",
+    "derive_id_json",
+    "evaluate_derived_id",
+    "evaluate_derived_id_json",
     "verify_carried_id",
     "CarriedIdMismatch",
     "TypedRef",
     "ArtifactTypeRegistryEntry",
     "TypedRefError",
     "ContextMismatchError",
+    "DigestContextResolutionError",
     "RepresentationMismatchError",
     "DigestAlgorithmMismatchError",
     "PurposeMismatchError",
+    "PurposeRequiredError",
+    "UnsupportedDigestContextError",
+    "UnsupportedRepresentationError",
     "make_typed_ref",
+    "make_typed_ref_json",
+    "evaluate_typed_ref_digest",
     "verify_typed_ref",
+    "verify_typed_ref_json",
+    "verify_cbor_typed_ref",
     "hex_to_raw",
     "raw_to_hex",
+    "FULL_CONTENT_MODE",
+    "HASH_ENVELOPE_MODE",
+    "CborMap",
+    "CborSimple",
+    "CborTag",
+    "CoseHeaderError",
+    "CoseSign1",
+    "CpbRefsError",
+    "CpbRefsLocationError",
+    "CriticalHeaderError",
+    "DuplicateCborKeyError",
+    "MalformedCborError",
+    "SignedStatementError",
+    "StatementMode",
+    "cose_signature1_structure",
+    "decode_cose_sign1",
+    "encode_deterministic_cbor",
+    "extract_cpb_refs",
+    "validate_cose_headers",
+    "validate_cpb_signed_statement",
+    "validate_cpb_statement_mode",
+    "validate_critical_headers",
+    "validate_rfc9943_baseline",
+    "JCS_N_WITHDRAWAL_CUTOFF",
+    "VintageEvidenceVerifier",
+    "WithdrawnAlgorithmError",
+    "VintageEvidenceError",
     "VERDICT_VERIFIED",
     "VERDICT_RESERVED",
     "VERDICT_UNKNOWN_ID",

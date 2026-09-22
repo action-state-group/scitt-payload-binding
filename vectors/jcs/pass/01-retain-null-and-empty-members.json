@@ -1,0 +1,20 @@
+{
+  "id": "jcs-pass-01",
+  "algorithm": "jcs",
+  "description": "PASS: plain RFC 8785 JCS sorts object member names and retains JSON null, empty-array, and empty-object members. This is the smallest active-algorithm vector that discriminates jcs from the withdrawn jcs-n normalization behavior.",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-03, Algorithm jcs; RFC 8785",
+  "must_fail": false,
+  "input_json": "{ \"z\": null, \"a\": {}, \"m\": [], \"s\": \"CPB\" }",
+  "input_data_model": {
+    "z": null,
+    "a": {},
+    "m": [],
+    "s": "CPB"
+  },
+  "exclusion_set": [],
+  "pre_image": "{\"a\":{},\"m\":[],\"s\":\"CPB\",\"z\":null}",
+  "pre_image_bytes_hex": "7b2261223a7b7d2c226d223a5b5d2c2273223a22435042222c227a223a6e756c6c7d",
+  "digest_alg": "SHA-256",
+  "digest_representation": "lowercase-hex",
+  "digest": "7b3ef8ebf31ee38952860dd3f30c2e0d101dcdbcd9972e3ed8108ef9cff0d7cb"
+}

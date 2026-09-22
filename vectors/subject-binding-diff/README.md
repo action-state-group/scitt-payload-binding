@@ -57,12 +57,15 @@ jcs.digest == jcs_n.digest → exerciser must flip to failure.
 | subject-binding-diff-02 | `"tags": {}` (empty object) | A | `0fdd1225…` | `163468697d…` |
 | subject-binding-diff-03 | `"tags": []` (empty array) | A | `6cbef10f…` | `163468697d…` |
 | subject-binding-diff-04 | `"confidence": 0.95` (float) | B | `0fa3ccae…` | MUST-FAIL |
+| subject-binding-diff-05 | `"context.details.note": null` (nested, bottom-up) | A | `adf6aa8a…` | `163468697d…` |
 
-**Direction A cross-vector note:** diff-01, diff-02, and diff-03 produce the same
-jcs-n digest (`163468697d…`) because all three normalize to the same two-member object
+**Direction A cross-vector note:** diff-01, diff-02, diff-03, and diff-05 produce the same
+jcs-n digest (`163468697d…`) because all four normalize to the same two-member object
 `{"device":"sensor-01","task":"write-report"}`. Their plain-JCS digests differ because
 the pre-images differ. This confirms that null, empty-object, and empty-array are
-independent divergence sources: any one of them suffices to fork the digests.
+independent divergence sources: any one of them suffices to fork the digests. Diff-05
+additionally proves that the historical normalization ran bottom-up: removing the nested
+null makes each parent empty and therefore eligible for removal by its own parent.
 
 **Direction B note:** diff-04 shows the sharpest form of divergence — not merely a
 different digest but a categorical split between acceptance and rejection. A composition

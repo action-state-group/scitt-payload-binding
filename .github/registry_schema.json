@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CPB Registry Snapshot",
-  "description": "Machine-readable snapshot of the CPB Payload Canonicalization Algorithm and Artifact Type registries. Generated from REGISTRY.md by .github/gen_registry.py. The snapshot_sha256 field is the SHA-256 of the document body (all fields except snapshot_sha256 itself) serialized as compact JSON with keys sorted — a verifier can recompute and detect tampering.",
+  "description": "Machine-readable snapshot of the CPB Payload Canonicalization Algorithm and Artifact Type registries. Generated from REGISTRY.md by .github/gen_registry.py. The snapshot_sha256 field is the SHA-256 of the document body (all fields except snapshot_sha256 itself) serialized as compact JSON with keys sorted. Recomputing it checks internal consistency; authenticity requires comparison with an independently trusted digest or a trusted distribution channel.",
   "type": "object",
   "required": ["schema_version", "snapshot_sha256", "canonicalization_algorithms", "artifact_types"],
   "additionalProperties": false,
@@ -77,6 +77,7 @@
           },
           "digest_contexts": {
             "type": "array",
+            "minItems": 1,
             "items": {
               "type": "object",
               "required": ["purpose", "algorithm"],
@@ -89,7 +90,10 @@
                 "exclusion_set": {"type": "string"},
                 "domain_separation": {"type": "string"},
                 "pre_image_encoding": {"type": "string"},
-                "representation": {"type": "string"}
+                "representation": {
+                  "type": "string",
+                  "enum": ["bare-hex", "sha256-prefixed", "raw"]
+                }
               }
             }
           }

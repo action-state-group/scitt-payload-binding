@@ -7,7 +7,7 @@ Phase 1 scope
 -------------
 - P  Normal-form walk: no dict member (at any depth, including dicts inside
   arrays) may have value null, [] or {}.  Array elements are exempt.
-  Scope matches normalize() exactly (§3.1 step 1).
+  Scope matches historical jcs-n normalize() exactly (draft -00 §3.1 step 1).
 - R  Wire-layer: every number token must be in integer-token form
   ^(?:0|-?[1-9][0-9]*)$; no duplicate object keys; declared array order
   where the profile states one (profile-specific, not yet wired — awaits the
@@ -38,7 +38,7 @@ __all__ = [
     'check_r',
 ]
 
-Verdict = Literal['verified', 'non-conforming', 'digest-mismatch', 'unknown-id']
+Verdict = Literal['conforming', 'non-conforming', 'digest-mismatch', 'unknown-id']
 
 
 @dataclass(frozen=True)
@@ -80,7 +80,7 @@ def check_p(value: Any, path: str = '$') -> list[Violation]:
     exempt — the restriction applies to *members of dicts*, not to elements of
     arrays regardless of their position.
 
-    The scope matches ``normalize()`` exactly (§3.1 step 1).
+    The scope matches historical ``normalize()`` exactly (draft -00 §3.1 step 1).
     """
     violations: list[Violation] = []
     _p_walk(value, path, violations)
@@ -133,8 +133,11 @@ def check_r(raw: str | bytes) -> list[Violation]:
 def check(raw: str | bytes) -> CheckResult:
     """Check *raw* JSON against CPB P and R grammar rules.
 
-    Returns ``'verified'`` if no violations are found, or ``'non-conforming'``
-    with the full violation list otherwise.
+    Returns ``'conforming'`` if no grammar violations are found, or
+    ``'non-conforming'`` with the full violation list otherwise.  A
+    ``'conforming'`` result is deliberately not called ``'verified'``:
+    Phase 1 does not resolve a digest context, retrieve an artifact, recompute
+    its digest, or compare that digest with a carried value.
 
     Phase 1 only.  ``'digest-mismatch'`` and ``'unknown-id'`` verdicts are
     Phase 2 and are not produced here.
@@ -152,9 +155,9 @@ def check(raw: str | bytes) -> CheckResult:
         return CheckResult(verdict='non-conforming', violations=all_violations)
 
     return CheckResult(
-        verdict='verified',
+        verdict='conforming',
         note=(
-            'grammar check passed (Phase 1); '
-            'digest verification awaits Phase 2 (canonicalization_id / G1)'
+            'grammar conformance check passed (Phase 1); no artifact or digest '
+            'was verified (digest processing awaits Phase 2)'
         ),
     )

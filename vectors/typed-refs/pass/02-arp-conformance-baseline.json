@@ -1,6 +1,6 @@
 {
   "id": "typed-ref-cpb01-01",
-  "description": "PASS: conformance baseline for CPB-01 \u00a77. The registry entry, the carried digest_alg, the carried representation and the recomputed digest are all mutually consistent. A verifier MUST report this reference as verified. Present so the set is two-sided: four MUST-FAIL vectors can detect a verifier that is too loose and structurally cannot detect one that is too strict.",
+  "description": "HISTORICAL EVALUATION PASS: the registry entry, carried digest_alg, carried representation and recomputed jcs-n digest are mutually consistent. This folded fixture establishes byte agreement only; it carries no authenticated pre-2026-08-18 vintage evidence and therefore cannot by itself be reported as a verified typed reference. It remains the positive side for detecting an evaluator that is too strict.",
   "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 \u00a77, \u00a77.1",
   "finding_class": "conformance_baseline",
   "must_fail": false,
@@ -11,7 +11,7 @@
     "exclusion_set": [
       "doc_id"
     ],
-    "representation": "bare_hex"
+    "representation": "bare-hex"
   },
   "cited_artifact": {
     "payload": {
@@ -29,7 +29,7 @@
     "digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
   },
   "expected": {
-    "verified": true,
+    "digest_agreement": true,
     "recomputed_digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
   }
 }

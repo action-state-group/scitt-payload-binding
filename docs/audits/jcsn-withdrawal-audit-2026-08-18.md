@@ -8,8 +8,9 @@ Algorithm Registry) and in
 so the audit is available to any reader without a side channel.
 
 **Disposition.** `jcs-n` is withdrawn entirely (2026-08-18): a recorded
-terminal state, not a deletion. The registry row, its two implementation
-notes, and its `vectors/jcs-n/` conformance suite are unchanged; the token
+terminal state, not a deletion. The registry definition, its two implementation
+notes, and its `vectors/jcs-n/` conformance suite remain the historical record;
+later editorial clarifications do not change the byte construction. The token
 stays bound and is never reassigned;
 `draft-mih-sokolov-scitt-payload-binding-00` remains the permanent record of
 the construction IETF-126-era implementations built. Same disposition as
@@ -31,8 +32,10 @@ empty-object member. Executed 2026-08-18: **191 of 203 evaluated records
 match byte-for-byte under plain `jcs`** — the production and reference
 corpora are clean, exactly as the identity predicts. The 12 records that
 diverge are enumerated below; all 12 are mesh sidecar proof-of-concept
-demo artefacts, not evidentiary records, and they remain fully verifiable
-under `jcs-n` by vintage. See [Per-record-set table](#per-record-set-table)
+demo artefacts, not evidentiary records. Their stored digests remain
+reproducible under `jcs-n`; a verification verdict additionally requires
+profile-defined cryptographic evidence binding the record or digest to a time
+before the withdrawal cutoff. See [Per-record-set table](#per-record-set-table)
 for the full breakdown, including the non-evaluated (skip/error/sanity-fail)
 rows.
 
@@ -121,10 +124,11 @@ member paths that are present as `null`, `[]`, or `{}` placeholders:
 placeholders are intentional proof-of-concept scaffolding for fields the
 mesh sidecar does not yet populate (`capsule_sidecar.py` §402–406: "steps
 4/5 … are future work") — not evidentiary production records. No
-re-anchoring is needed. All 12 records remain fully verifiable under
-`jcs-n` by vintage; the withdrawal does not affect their validity, since
-withdrawal forecloses new declarations of `jcs-n`, not verification of
-records already committed under it.
+re-anchoring is needed. All 12 stored digests remain reproducible under
+`jcs-n`. That byte agreement alone is not a verification verdict: each record
+is eligible for historical verification only when profile-defined
+cryptographic evidence binds that exact record or digest to a time before
+2026-08-18 UTC. Without such evidence a verifier fails closed.
 
 ## Method
 

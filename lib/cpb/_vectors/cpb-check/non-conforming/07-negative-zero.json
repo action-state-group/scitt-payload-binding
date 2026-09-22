@@ -1,0 +1,10 @@
+{
+  "id": "cpb-check-nonconforming-07",
+  "description": "R violation: negative zero. -0 is excluded from the integer-token form.",
+  "expected_verdict": "non-conforming",
+  "expected_violations": [
+    {"path": "$[\"value\"]", "rule": "R"}
+  ],
+  "record_raw": "{\"type\":\"example\",\"value\":-0}",
+  "note": "-0 matches the bare '0' branch in the JSON number grammar but is excluded by ^(?:0|-?[1-9][0-9]*)$. The minus requires at least one non-zero digit after it."
+}

@@ -2,7 +2,7 @@
   "id": "jcs-n-kat-37",
   "algorithm": "jcs-n",
   "spec_ref": "draft-mih-sokolov-scitt-payload-binding-01 §7",
-  "description": "MUST-FAIL: duplicate key 'a' after NFC normalization; explicit departure from RFC 8785 §3.1 preserve-as-is",
+  "description": "MUST-FAIL: duplicate member name 'a'; RFC 8785 §3.1 requires I-JSON input, and RFC 7493 §2.3 forbids member names that decode to identical Unicode-character sequences",
   "must_fail": true,
   "failure_reason": "duplicate_key",
   "input": {"a": 1, "a": 2}

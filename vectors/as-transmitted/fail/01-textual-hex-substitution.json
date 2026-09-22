@@ -1,0 +1,30 @@
+{
+  "id": "as-transmitted-fail-01",
+  "algorithm": "as-transmitted",
+  "description": "MUST-FAIL: the candidate hashes the 46 ASCII characters spelling the selected Sig_structure in hexadecimal instead of the 23 selected octets themselves. The source COSE_Sign1 object and byte-boundary selector are identical to the positive vector, isolating the failure to a concrete raw-octets versus textual-hex substitution.",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-03, Algorithm as-transmitted; RFC 9052 Section 4.4",
+  "must_fail": true,
+  "failure_reason": "as_transmitted_textual_hex_substitution",
+  "container": {
+    "format": "COSE_Sign1",
+    "bytes_hex": "d28443a10127a045ff004350425840bf677421861df4923d00eab2c290d98fd7f35cd975bcdee2995284d32090166cf25a01a0fa1373a23c7960f67be99d2af5c8795a6039fbe0ce07cb110bbe4a0d"
+  },
+  "byte_boundary_selector": {
+    "normative_reference": "RFC 9052 Section 4.4",
+    "named_production": "Sig_structure (ToBeSigned)",
+    "context": "Signature1",
+    "external_aad_bytes_hex": ""
+  },
+  "selected_bytes_hex": "846a5369676e61747572653143a101274045ff00435042",
+  "selected_length_octets": 23,
+  "digest_alg": "SHA-256",
+  "digest_representation": "lowercase-hex",
+  "digest": "12dfd0e052395cfe91d00136371028348507a072963ad16764366f51503b8657",
+  "nonconforming_pre_image": {
+    "construction": "selected_bytes_hex.encode('ascii')",
+    "bytes_hex": "38343661353336393637366536313734373537323635333134336131303132373430343566663030343335303432",
+    "length_octets": 46,
+    "digest": "ef1dfdc08568dd33d570c07e50d86f6d93927b111d0d404abca048967d242a26"
+  },
+  "carried_digest": "ef1dfdc08568dd33d570c07e50d86f6d93927b111d0d404abca048967d242a26"
+}

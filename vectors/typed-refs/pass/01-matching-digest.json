@@ -1,6 +1,6 @@
 {
   "id": "typed-ref-pass-01",
-  "description": "PASS: typed digest reference verifies. The cited artifact digest is recomputed under its declared digest context and matches the carried digest.",
+  "description": "HISTORICAL EVALUATION PASS: the cited artifact digest recomputed under its declared jcs-n context matches the carried digest. This fixture establishes byte agreement only; it does not carry authenticated pre-2026-08-18 vintage evidence and therefore is not by itself a verified typed reference.",
   "spec_ref": "draft-mih-sokolov-scitt-payload-binding-00 §6",
   "cited_artifact": {
     "payload_class": "authorization-doc",
@@ -30,11 +30,11 @@
     "digest_alg": "SHA-256",
     "digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
   },
-  "verification": {
+  "digest_evaluation": {
     "step_1": "Resolve artifact type 'authorization-doc' from registry to get digest context: jcs-n, exclusion set {doc_id}",
     "step_2": "Apply exclusion set {doc_id}, normalize, JCS, SHA-256 of cited artifact payload",
     "step_3": "Compare recomputed digest to typed_reference.digest",
-    "result": "PASS",
+    "result": "DIGEST AGREEMENT ONLY — vintage not established",
     "recomputed_digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
   }
 }

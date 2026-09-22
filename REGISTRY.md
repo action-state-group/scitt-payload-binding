@@ -1,25 +1,29 @@
-# Registries of record — Canonical Payload Binding
+# Repository registry history — Canonical Payload Binding
 
-**Status.** This document is the **interim registry of record** for the two
-Canonical Payload Binding (CPB) registries, until RFC publication establishes the
-corresponding IANA registries. The registries and their normative definitions are
-in the Internet-Draft (`draft-mih-sokolov-scitt-payload-binding`, this
-repository's `spec/`), **§13 (IANA Considerations)**. Registration policy:
-**Specification Required** per [RFC 8126 §4.6]; a Designated Expert is required
-for each registration. **Entries are immutable in behavior** — if a behavior
-change is needed (a different canonicalization algorithm, field set, or
-exclusion set), a new entry MUST be registered; an entry's registered behavior
-MUST NOT be modified retroactively. This does not bar the two narrower edits
-described below, neither of which changes what the entry specifies: a factual
-correction to bibliographic detail (see [Removal and Correction](#removal-and-correction))
-or a status transition along the [Entry Lifecycle](#entry-lifecycle) (e.g.
-`third-party-documented` → `owner-confirmed`).
+**CPB-03 status — non-normative.** This file preserves repository registry
+experiments and their provenance. It is not an interim registry of record for
+CPB-03 and is not an alternative to IANA. CPB-03 requests one new IANA
+Canonicalization Algorithm Registry and one `cpb-refs` registration in the
+existing COSE Header Parameters registry. It creates no artifact-type registry.
 
-Change controller: **Action State Group, Inc.** (interim) → **IETF** on
-publication. On working-group adoption, the provisional registry **moves with the
-document** to a repository of the working group's choosing (draft §11).
+The algorithm material below is a repository working record; the current
+Internet-Draft and, after publication, IANA control the algorithm definitions
+and status. The artifact-type material is retained only as legacy or provisional
+profile-owned data. Listing a type or digest context here does not register it,
+make it acceptable to a consuming profile, or make it usable for verification.
+A verifier uses such a declaration only when a consuming profile identifies its
+stable normative source and accepts it under the resolution rules in CPB-03.
 
-**One registry home for the CPB document family.** These registries serve the
+**Supersession notice.** The remainder of this file intentionally retains the
+pre-03 workflow, terminology, and evidence record for auditability. Any statement
+below about "two CPB registries", a single registry home, repository
+registration, change control, or PR-based consent describes that historical
+repository process only; it is not a CPB-03 protocol requirement or an IANA
+allocation.
+
+## Archived pre-03 repository policy
+
+**One registry home for the CPB document family.** These registries served the
 entire CPB family — this document and its companions — and this is the single
 place any of them registers. Companion **mechanisms** stay in the companion
 documents as normative text and are never registry entries: selective
@@ -34,10 +38,12 @@ simply a new **artifact type** registers in the existing Artifact Type Registry
 (e.g. an erasure tombstone), adding no new structure. Per-companion registry
 scattering would break decomposable verification the same way per-profile
 invention of these facilities would — one registry home is the structural
-guarantee. The home moves **as a unit** through adoption: this repository today →
-the working group's repository on adoption → IANA at RFC publication.
+guarantee. Under that retired model, the home would have moved **as a unit**
+through adoption: this repository → the working group's repository → IANA at RFC
+publication.
 
-**How entries change — PR as consent.** The tables below change **only** by pull
+**Archived workflow — PR as consent.** Under the pre-03 repository policy, the
+tables below changed **only** by pull
 request with the named owner's approval. A canonicalization-algorithm or
 artifact-type entry enters the record only once its semantics are pinned in a
 publicly available specification and the owner confirms every owner-supplied
@@ -46,8 +52,19 @@ behalf. Proposed entries under discussion with their owners are tracked
 separately in [`spec/cpb-provisional-registry.md`](spec/cpb-provisional-registry.md)
 until confirmed; they enter the tables here on merge.
 
-**Registration rules for new entries.** Two requirements apply to every entry
-regardless of registration type:
+**Mechanical only — semantic content routes elsewhere on promotion.** This
+registry records algorithms, digest contexts, and canonicalization profiles
+only — never field-value semantics, action-type/outcome conventions, or
+composition-level meaning. An entry in `spec/cpb-provisional-registry.md`
+may carry both a Digest Context table and semantic content (vocabulary,
+producer invariants) in the same entry while provisional; on that entry's
+own promotion ruling, the Digest Context table stays here and the semantic
+content routes to
+[`capsule-registry`](https://github.com/action-state-group/capsule-registry),
+the composition/semantics registry (Home-2). This registry is Home-1.
+
+**Archived admission rules.** Two requirements applied to entries under that
+repository process, regardless of registration type:
 
 1. **A new entry MUST resolve to a specific normative reference.** Naming an
    algorithm family is not declaring a digest context: the cited text must pin the
@@ -61,7 +78,7 @@ regardless of registration type:
    positives-only cannot detect an implementation that accepts malformed inputs.
    Both sides are required to make a conformance claim.
 
-**Vector-backed means: shared core suite PLUS a mutation probe on every
+**Archived vector-backed rule: shared core suite PLUS a mutation probe on every
 profile-specific check.** A profile's own vectors REUSE the shared CPB core
 conformance suite for the binding layer — canonicalization, derived-id,
 typed-ref, and representation are profile-agnostic and are exercised by the same
@@ -77,9 +94,10 @@ what makes every future registry slot inherit the same rigor automatically — a
 registered profile cannot ship a weak or assertion-free check, because the suite
 will not certify a check family it cannot flip.
 
-**Descriptive, not generative.** This file is DESCRIPTIVE of the registries
-defined normatively in the Internet-Draft; it never generates new semantics. The
-draft (§11) is normative; this file is the living interim record.
+**Current authority.** This file does not generate protocol semantics. CPB-03
+governs CPB behavior, profile-owned specifications govern their artifact and
+digest-context declarations, and IANA will govern any registry created on RFC
+publication.
 
 [RFC 8126 §4.6]: https://www.rfc-editor.org/rfc/rfc8126#section-4.6
 
@@ -87,26 +105,33 @@ draft (§11) is normative; this file is the living interim record.
 
 ## Payload Canonicalization Algorithm Registry
 
-Records the canonicalization algorithms that may be used to compute
-CANONICAL-DIGEST values. Registration template: **Name**, **Description**,
-**Reference** (draft §13.1).
+**Non-normative CPB-03 working record.** This section preserves the repository
+history behind the proposed initial IANA contents. CPB-03, not this table,
+defines the algorithms; IANA controls their registration status after
+publication.
+
+The historical registration template was **Name**, **Description**, and
+**Reference**.
 
 | Name | Description | Reference | Status |
 |---|---|---|---|
-| `jcs-n` | Withdrawn — never carried to IANA (2026-08-18). RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; lowercase hex — the construction this entry named. See [`docs/audits/jcsn-withdrawal-audit-2026-08-18.md`](docs/audits/jcsn-withdrawal-audit-2026-08-18.md) for the withdrawal rationale. | draft-mih-sokolov-scitt-payload-binding | `withdrawn` |
-| `jcs` | RFC 8785 JCS over a JSON object (no normalization pass; null, empty-array, and empty-object members are retained as-is); SHA-256; lowercase hex | RFC 8785 §3 | `standards-referenced` |
+| `jcs-n` | Withdrawn — never carried to IANA (2026-08-18). RFC 8785 JCS over a normalized JSON object (null, empty-array, and empty-object members removed bottom-up); SHA-256; `bare-hex` — the construction this entry named. See [`docs/audits/jcsn-withdrawal-audit-2026-08-18.md`](docs/audits/jcsn-withdrawal-audit-2026-08-18.md) for the withdrawal rationale. | draft-mih-sokolov-scitt-payload-binding | `withdrawn` |
+| `jcs` | RFC 8785 JCS over a JSON object (no normalization pass; null, empty-array, and empty-object members are retained as-is); SHA-256; `bare-hex` | RFC 8785 §3 | `standards-referenced` |
 | `cde-n` | Withdrawn — the token was reserved for a deterministic CBOR canonicalization profile and never assigned a definition | draft-mih-sokolov-scitt-payload-binding | `withdrawn` |
-| `as-transmitted` | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); an artifact type entry using this algorithm states a byte-boundary selector in place of a field set; SHA-256; 64-character lowercase hex | draft-mih-sokolov-scitt-payload-binding | Registered |
+| `as-transmitted` | No canonicalization: the pre-image is the exact octet sequence identified by a cited named production in the container format (e.g., a signature's signing input); a profile-owned artifact-type declaration using this algorithm states a byte-boundary selector in place of a field set; SHA-256; `bare-hex` | draft-mih-sokolov-scitt-payload-binding | Registered |
 
 **jcs-n — withdrawal disposition (2026-08-18).** `jcs-n` is withdrawn entirely, the
 same disposition as `cde-n`: a recorded terminal state, not a deletion. The token
-stays bound and is never reassigned. This row, the two implementation notes below
-it, and the `vectors/jcs-n/` conformance suite are **retained exactly as
-registered** — nothing here is edited retroactively — because
+stays bound and is never reassigned. The definition, the two implementation
+notes below it, and the `vectors/jcs-n/` conformance suite are retained as the
+historical record because
 `draft-mih-sokolov-scitt-payload-binding-00` cites them as the permanent record of
 the construction IETF-126-era implementations actually built. Existing records
 committed under `jcs-n` (see the `agent-action-capsule` Artifact Type entry below)
-remain verifiable against it by vintage. No new record may declare `jcs-n`; a
+are eligible for verification only when profile-defined cryptographic evidence
+binds the exact record or digest to a time before 2026-08-18 UTC. Digest
+recomputation alone is historical evaluation, not verification. No new record
+may declare `jcs-n`; a
 tolerant-ingest use case, if one ever materializes, registers a fresh entry with
 domain separation designed in rather than reviving this token. The full
 rationale — implementer census, byte-audit result, and the admission-bar test the
@@ -173,8 +198,9 @@ for algorithm `jcs-n`, covering Known-Answer Tests (including the E3 boundary
 group: null, empty-array, empty-object, and absent field all normalize to the
 same canonical form), string-escape encoding (including both-directions contrast
 vectors for uppercase-hex, long-form, and escaped-sort deviations),
-derived-identifier construction, and typed-reference verification cases
-including MUST-FAIL cases.
+derived-identifier evaluation, and typed-reference digest-agreement cases
+including MUST-FAIL cases. Positive historical vectors do not establish the
+authenticated pre-cutoff vintage required for a verification verdict.
 
 **jcs — plain RFC 8785 with no normalization pass.** `jcs` applies RFC 8785 JCS
 directly to the input object without removing null, empty-array, or empty-object
@@ -216,8 +242,13 @@ exercises all four, including mutation probes, without external dependencies.
 
 ## Artifact Type Registry
 
-Records the artifact types that may appear in the `type` field of a typed digest
-reference. Registration template (draft §13.2): **Name**; **Digest Contexts** —
+**Legacy and provisional profile-owned material — not a CPB-03 registry.**
+CPB-03 does not establish this table, and a name does not become valid for a
+typed digest reference merely by appearing below. Each usable artifact-type and
+digest-context declaration is owned by its cited profile or specification and
+must be selected by a consuming profile through a stable normative reference.
+
+The retired repository registration template was **Name**; **Digest Contexts** —
 one or more, each stating a **purpose** label, a **profile version**, a
 **canonicalization algorithm** (from the Algorithm Registry above; MAY be
 `as-transmitted`), a **field set** (or, under `as-transmitted`, the
@@ -245,58 +276,90 @@ artifact type.
 
 ### `agent-action-capsule`
 
-**Reference:** draft-mih-scitt-agent-action-capsule
-**Status:** Registered — first payload profile
+**Reference:** draft-mih-scitt-agent-action-capsule, §2 (the format-4 declaration rule) and §5.1 "Identity and parties" (the `canonicalization_id`/`capsule_id` field table) — **normative there**.
+§2 is the section that carries the MUST: a conforming Capsule MUST declare
+`format_version: "4"` and `canonicalization_id: "jcs"`, and any other
+`format_version`, or an absent, null, non-string, empty, unknown or `jcs-n`
+`canonicalization_id`, MUST fail closed for producers and verifiers.
+This entry is a pointer into that text, not a restatement of it: per the
+current CPB draft's Cross-Profile Comparability section, artifact-type and
+digest-context declarations are owned and selected by the citing profile, and
+this file does not authorize discovery from an unspecified or mutable registry
+snapshot. The owner's own draft is the stable normative reference; consult it
+directly for the exact construction.
+**Status:** provisional
+
+Pending Anton's exact-SHA concurrence as CPB co-editor before this entry is
+treated as live; see Disclosure below.
+
+**Repair (2026-09-15, supersedes the 2026-09-05 fail-closed correction).** The
+prior shape of this entry carried two digest-context rows sharing the same
+`purpose` token, `identifier`, with no profile-version selector on the
+typed-reference wire form — `(type, purpose)` could not select exactly one row,
+and the entry was held non-live. The owner (Steven Mih) ruled: `jcs-n` is not a
+selectable digest context for this artifact type — it is withdrawn (2026-08-18)
+and is retained only as historical/vintage-verification information, not as a
+row competing for `(type, purpose)` selection. **Exactly one digest context is
+registered:**
 
 | Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
 |---|---|---|---|---|---|---|---|
-| `identifier` | N/A (no versioned profile registered yet) | `jcs-n` | all capsule fields | `{capsule_id, chain}` | none | JCS UTF-8 octets (per `jcs-n`) | 64-char lowercase hex |
-| `identifier` | `draft-mih-scitt-agent-action-capsule-04` | `jcs` | all capsule fields | `{capsule_id}` | none | JCS UTF-8 octets (per `jcs`) | 64-char lowercase hex |
+| `identifier` | any profile version whose §2 and §5.1 state this construction; the only such version published at the time of this entry is `draft-mih-scitt-agent-action-capsule-04` | `jcs` | all capsule fields | `{capsule_id}` | none | JCS UTF-8 octets (per `jcs`) | `bare-hex` |
 
-Content unchanged from the prior 3-element shape — only the shape changed to the
-full digest-context template above. Domain separation and pre-image encoding are
-not new owner-supplied parameters: both are stated directly by `jcs-n`'s own
-normative definition, not invented for this row.
+`(agent-action-capsule, identifier)` now selects exactly one row. A record
+declaring `canonicalization_id: "jcs"` (format 4) resolves to it; any other
+declaration — including a `jcs-n`/format-2 (vintage) record — is not a match
+for this row and fails closed under ordinary `(type, purpose)` resolution, per
+the owner's own draft (`canonicalization_id` REQUIRED for format 4, MUST be
+absent for format 2) and its reference implementations, which reject an
+unsupported `canonicalization_id` rather than falling back to a second
+construction.
 
-**Second digest context (`jcs`, profile version -04).** `jcs-n` was withdrawn on
-2026-08-18 and nothing verifies against it — see its `withdrawn` row in the Payload
-Canonicalization Algorithm Registry above — so the first row is a vintage
-verification path and **no live digest context remained for this artifact type**.
-Profile version -04 supplies one: capsules declare `canonicalization_id: "jcs"` and
-the identifier is SHA-256 over plain JCS of the capsule with **only `capsule_id`**
-removed. The `canonicalization_id` declaration and the `chain` block **participate**.
-That exclusion set is the whole difference from the vintage row, and it is why this
-is a separate digest context rather than an edit of the existing one: the registered
-behavior of the `jcs-n` row is untouched, as the immutability rule in the policy
-header requires. Two rows under one entry is exactly what the registration template
-anticipates — one entry, one row per digest context, profile version stated per
-context.
+**Historical note — `jcs-n` (withdrawn, not a selectable row here).** Before
+this repair, a second row carried `jcs-n` / profile-version N/A / exclusion set
+`{capsule_id, chain}`, for vintage format-2 Capsules. That construction is not
+deleted or reinterpreted — the algorithm token `jcs-n` remains `Withdrawn` in
+the Payload Canonicalization Algorithm Registry above, immutable per this
+file's policy header, and pre-cutoff (before 2026-08-18) format-2 records
+remain verifiable by vintage evidence. But it is no longer a row in *this*
+artifact type's digest-context table: per the owner's ruling, format 2 is out
+of scope for live `(type, purpose)` resolution here, and verification of
+pre-cutoff format-2 artifacts is served by the frozen
+`agent-action-capsule` release `legacy-verify/v0.1.0` (never updated; format
+`{2, 4}` at that pin, format 2 retained solely for historical artifacts), not
+by a competing row in this registry. A discriminating vector recorded the two
+constructions' non-interchangeability on a record carrying a `chain` block —
+`{capsule_id}` (the live row) digests to
+`862024869f00481bb4f59d9528a45c2d4885f64c5222a9324a38ac2c2cd119f2`;
+`{capsule_id, chain}` (the historical vintage construction) digests to
+`1164b5696cf27d9c13965de1929b8e2b14097b7824f25e63f9ac7e954369d886` on the same
+input — kept here as the historical record of why the two were never
+interchangeable, not as an active selection candidate.
 
-⌙ Registrant: added by Anton Sokolov, read from the `spec_version`,
-  `format_version`, `canonicalization_id` and `capsule_id` rows of the Capsule field
-  table in `draft-mih-scitt-agent-action-capsule-04`, at
+⌙ Registrant: repair authored by the coder on the owner's (Steven Mih's)
+  explicit ruling, 2026-09-15, superseding the prior third-party reading by
+  Anton Sokolov (co-author of the CPB draft, co-editor of this registry, not
+  the owner of this artifact type) recorded against
+  `draft-mih-scitt-agent-action-capsule-04` at
   `action-state-group/agent-action-capsule` commit
   `8ccf345731360bbaa421141e0936e6b189053d0f`.
-⌙ Disclosure: the registrant is a co-author of the CPB draft and a co-editor of this
-  registry, and is **not** the owner of this artifact type. This row is a third-party
-  reading of the owner's own specification text and is **pending owner confirmation**
-  before it is treated as owner-confirmed.
-⌙ Discriminating-vector: `test-vectors/pos-v4-jcs-chain-committed/` in the artifact
-  type's own repository — *"Format 4 plain JCS commits the chain block and a present
-  empty array to capsule_id"*, recomputed identifier
-  `862024869f00481bb4f59d9528a45c2d4885f64c5222a9324a38ac2c2cd119f2`. Recomputed
-  from that vector's input with the artifact type's own JCS implementation, the two
-  exclusion sets do not agree, and the difference is stated here rather than
-  asserted:
+⌙ Disclosure: this repair is owner-directed but not yet owner-*confirmed* in
+  the sense this registry's admission rules use (no PR approval, on-record
+  email, or GitHub comment from the owner identity yet exists for it — the
+  ruling was given directly to the implementing session). It is also pending
+  Anton's exact-SHA concurrence as CPB co-editor per this task's gate. Treat as
+  provisional until both are on record.
+⌙ Discriminating-vector: `test-vectors/pos-v4-jcs-chain-committed/` in the
+  artifact type's own repository — *"Format 4 plain JCS commits the chain
+  block and a present empty array to capsule_id"*. Recomputed from that
+  vector's input, the live row's exclusion set and the historical one do not
+  agree, which is what makes them distinct digest contexts rather than
+  restatements of each other:
 
   | Exclusion set | SHA-256 over JCS of the remainder |
   |---|---|
-  | `{capsule_id}` (this row) | `862024869f00481bb4f59d9528a45c2d4885f64c5222a9324a38ac2c2cd119f2` — matches the vector |
-  | `{capsule_id, chain}` (vintage row) | `1164b5696cf27d9c13965de1929b8e2b14097b7824f25e63f9ac7e954369d886` — does not |
-
-  The two contexts are therefore not interchangeable on a record that carries a
-  `chain` block, which is what makes this a distinct digest context and not a
-  restatement of the vintage one.
+  | `{capsule_id}` (the live row) | `862024869f00481bb4f59d9528a45c2d4885f64c5222a9324a38ac2c2cd119f2` — matches the vector |
+  | `{capsule_id, chain}` (historical, `jcs-n`) | `1164b5696cf27d9c13965de1929b8e2b14097b7824f25e63f9ac7e954369d886` — does not |
 
 ### `machine-mandate`
 
@@ -306,9 +369,9 @@ context.
 **Provenance:** confirmed by the owner in the PR #4 thread (2026-08-09 and 2026-08-13); the second Artifact Type Registry entry.
 **Disclosure:** the owner is a co-author of the CPB draft and a co-editor of this registry; this entry is owner-authored and is not independent or third-party validation.
 **Discriminating-vector:** `mm-fail-04-representation-confusion` — pins that this
-type's two representations are not interchangeable (the derived identifier is bare
-hex; the in-document `action_hash` carries the `sha256:` prefix). `agent-action-capsule`,
-the only other registered artifact type, declares a single context in bare hex, so a
+type's two representations are not interchangeable (the derived identifier is
+`bare-hex`; the in-document `action_hash` is `sha256-prefixed`). `agent-action-capsule`,
+the only other registered artifact type, declares a single `bare-hex` context, so a
 verifier that accepted either form for either context would pass its cases and fail
 these. Cited at the commit-pinned URL below, not committed here — this entry's vectors
 are the owner's own published set.
@@ -327,8 +390,10 @@ put this way rather than asserted.
 
 | Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
 |---|---|---|---|---|---|---|---|
-| `identifier` | N/A | `as-transmitted` | byte-boundary selector — the issuer-signed JWS component of the SD-JWT (RFC 7515 §7.1 compact serialization; the first `~`-separated component exactly as transmitted); everything after the first `~` is outside the pre-image | N/A (`as-transmitted` has no field set) | none | N/A (no separate encoding step) | bare 64-char lowercase hex |
-| `equivalence` | N/A | `jcs` | `{action_id, outcome}`, closed — every member is a string; a floating-point value is rejected rather than digested, and an integer whose magnitude exceeds 2^53−1 (the ECMAScript safe-integer bound) is rejected as a typed error rather than serialized | none | none | JCS UTF-8 octets (per `jcs`) | `sha256:` + 64-char lowercase hex, as carried in the in-document `action_hash` claim |
+| `identifier` | N/A | `as-transmitted` | byte-boundary selector — the issuer-signed JWS component of the SD-JWT (RFC 7515 §7.1 compact serialization; the first `~`-separated component exactly as transmitted); everything after the first `~` is outside the pre-image | N/A (`as-transmitted` has no field set) | none | N/A (no separate encoding step) | `bare-hex` |
+| `equivalence` | N/A | `jcs` | `{action_id, outcome}`, closed — every member is a string; a floating-point value is rejected rather than digested, and an integer whose magnitude exceeds 2^53−1 (the ECMAScript safe-integer bound) is rejected as a typed error rather than serialized | none | none | JCS UTF-8 octets (per `jcs`) | `sha256-prefixed` |
+
+The `sha256-prefixed` value is carried in the in-document `action_hash` claim.
 
 **Key ordering, for the record.** `jcs` sorts member names by UTF-16 code unit
 (RFC 8785 §3.2.3); the retired `json-sk-cp` sorted by Unicode code point. The two
@@ -354,7 +419,8 @@ Proposed Artifact Type entries awaiting their owners' confirmation are listed in
 
 ## Entry Status Vocabulary
 
-This controlled vocabulary applies to **new entries registered going forward**.
+This controlled vocabulary applies only to the legacy repository records in
+this file. It does not define CPB-03 or IANA status values.
 Every new registry entry carries a `status` field drawn from the following terms;
 registrars MUST use them verbatim.
 
@@ -362,9 +428,9 @@ registrars MUST use them verbatim.
 |---|---|
 | `owner-confirmed` | The profile's author or owner approved the entry text. Highest-provenance status; see [Designated Expert Admission Checklist](#designated-expert-admission-checklist), Gate C for the acknowledgment forms accepted and when a consuming-profile ACK is also required. |
 | `third-party-documented` | Registered by someone other than the owner, from publicly pinned artifacts (spec revision + repo commit). Registrant is named in the entry. Owner has been notified and invited to review. Not yet confirmed by owner. |
-| `provisional` | A reference resolves but the vector set is incomplete or the specification is insufficiently pinned. Entry is held in [`spec/cpb-provisional-registry.md`](spec/cpb-provisional-registry.md) until vectors and pinning are complete. |
+| `provisional` | A reference is held out of verification because its vector set, pinning, or resolution coordinates are incomplete. New proposals are held in [`spec/cpb-provisional-registry.md`](spec/cpb-provisional-registry.md). An existing entry quarantined by a correctness finding MAY remain in place as an auditable correction record, but lookup MUST treat it as non-live. |
 | `standards-referenced` | The entry's construction is fully specified by a published standard (RFC, ISO, or equivalent) rather than by a party who can acknowledge anything. There is no owner to ack, so `owner-confirmed` is unreachable by construction and its absence is not a provenance gap. Gates A and B still apply, and the Reference row MUST cite the standard to section precision. |
-| `withdrawn` | The token stays bound but will never (again) be carried forward to a live registration — whether it was a reserved token never assigned a definition, or a previously-registered entry whose definition is retired. A terminal state, not a deletion: the name is not reassigned, any definitional text already written is retained unedited as the historical record of the construction, and a later construction of the same kind registers under a different token. Nothing verifies against it — a verifier meeting it MUST fail closed. |
+| `withdrawn` | The token stays bound but will never (again) be carried forward to a live registration — whether it was a reserved token never assigned a definition, or a previously-registered entry whose definition is retired. A terminal state, not a deletion: the name is not reassigned, any definitional text already written is retained as the historical record, and a later construction of the same kind registers under a different token. A token that never had a definition cannot verify. A retired defined token verifies only where its own entry expressly defines an authenticated historical-vintage path; absent that evidence, a verifier MUST fail closed. |
 
 Statuses are not permanent — see [Entry Lifecycle](#entry-lifecycle) below.
 
@@ -379,10 +445,9 @@ live tables are the vocabulary terms above, used verbatim.
 vocabulary and are NOT rewritten to it; they are read through the following
 mapping so policy and record do not contradict:
 
-- An existing **`Registered`** status (the Payload Canonicalization Algorithm
-  Registry Status column, and the prose "Status: Registered" line on the
-  `agent-action-capsule` Artifact Type entry) maps to **`owner-confirmed`** — it
-  denotes an owner-confirmed, live entry.
+- An existing **`Registered`** status in the Payload Canonicalization Algorithm
+  Registry Status column maps to **`owner-confirmed`** — it denotes an
+  owner-confirmed, live entry.
 - **`Reserved`** is NOT a lifecycle status. It marks a pre-registration hold on a
   name whose definition is deferred to a subsequent revision, and sits outside this
   vocabulary entirely; it is neither `owner-confirmed`, `third-party-documented`,
@@ -390,18 +455,19 @@ mapping so policy and record do not contradict:
   registered as a live entry.
 
 **The legacy spellings are closed to new entries, and the list is finite.** Exactly
-two rows predate this vocabulary and keep a legacy spelling: the algorithm entry
-`as-transmitted` and the artifact type `agent-action-capsule`. (`jcs-n` and `cde-n`
-predate it too, but both now carry the vocabulary term `withdrawn` rather than a
-legacy spelling.) No other entry may
+one row predates this vocabulary and keeps a legacy spelling: the algorithm entry
+`as-transmitted`. (`jcs-n` and `cde-n` now carry `withdrawn`; the former
+`agent-action-capsule` legacy row was quarantined as `provisional` on 2026-09-05
+after its resolution coordinates were found ambiguous.) No other entry may
 carry `Registered` or `Reserved`. Naming them here rather than describing them is
 deliberate: the generator has no history to consult, so without a closed list it
 cannot tell a pre-existing row from a new one writing a legacy spelling — and a new
 entry spelled `Registered — owner-confirmed (…)` would pass validation while
 violating the verbatim rule two paragraphs above.
 
-Existing rows keep their current wording; the mapping above is the reconciliation,
-not a relabeling.
+The remaining legacy row keeps its wording; the mapping above is the reconciliation,
+not a relabeling. A fail-closed quarantine is recorded explicitly rather than hidden
+behind that compatibility rule.
 
 ---
 
@@ -577,7 +643,8 @@ satisfy Gate A — it demonstrates compatibility, not distinguishability.
    scoped to `lib/**` and `spec/**` respectively. `registry` is the one that will read a
    registry PR: it is scoped to `REGISTRY.md`, the generator, the schema, and `registry.json`,
    and it runs `gen_registry.py --check`, the cell-fidelity test, JSON Schema validation, and a
-   `snapshot_sha256` integrity check.
+   internal-consistency check for `snapshot_sha256` (origin authentication
+   still requires an independently trusted pin or trusted distribution channel).
 
    **What `registry` does catch — the failure most likely to bite you.** A table row whose
    cell count does not match its headers is a hard error, not a warning: `gen_registry.py`
@@ -637,13 +704,17 @@ Registry PRs from forks get the same verdict automatically in CI — see the
 
 The flat single-row templates below are the shape for the Payload Canonicalization
 Algorithm Registry, and for simple Artifact Type entries. They are **not the only
-shape.** An Artifact Type entry MAY instead take the form the live
-`agent-action-capsule` entry uses: a **named subsection** (`### <name>`) carrying a
-multi-column **Digest Context** sub-table (one row per digest context) plus a
-`Reference:` line, with the entry's **Status expressed as a prose
-`Status:` line** rather than a per-row Status column. Use the flat row for a simple
-one-context artifact type; use the named-subsection form when an entry has multiple
-digest contexts or otherwise does not fit a single flat row. In both shapes the
+shape.** An Artifact Type entry MAY instead take the form the `machine-mandate`
+entry demonstrates: a **named subsection** (`### <name>`) carrying a multi-column
+**Digest Context** sub-table (one row per digest context) plus a `Reference:`
+line, with the entry's **Status expressed as a prose `Status:` line** rather
+than a per-row Status column. `agent-action-capsule` uses the same named-subsection
+shape with a single digest-context row, because its `Reference:` is a pointer
+into the owning profile's own draft rather than a flat citation — the named
+form is also the right one whenever the prose around an entry (a pointer, a
+repair note, a historical note) does not fit a flat row, not only when there
+are multiple contexts. Use the flat row for a simple one-context artifact type
+that needs no such prose; use the named-subsection form otherwise. In both shapes the
 same required fields (below) and the same status vocabulary apply.
 
 For a flat-row entry, add one row to the appropriate registry table per entry.
@@ -725,9 +796,9 @@ as prose lines immediately following the table row (matching the pattern used by
 ```
 
 **Required fields for new entries.** These fields apply to entries registered under
-this template going forward. The live rows that predate it — `jcs-n`, `cde-n`,
-`as-transmitted`, and `agent-action-capsule` — are read through the same legacy
-treatment [Entry Status Vocabulary](#entry-status-vocabulary) gives their Status: they
+this template going forward. The rows that predate it — `jcs-n`, `cde-n`,
+`as-transmitted`, and `agent-action-capsule` — retain their historical field
+exemption even when a later correction changes lifecycle status. They
 are not retroactively required to backfill Discriminating-vector, Consuming-profile, or
 a Vectors field.
 
@@ -778,8 +849,11 @@ provisional  →  third-party-documented  →  owner-confirmed
   registered rather than modifying the existing one; factual corrections remain possible
   under [Removal and Correction](#removal-and-correction).
 
-No backward transitions. A `third-party-documented` entry does not revert to `provisional`
-if new concerns arise — the registrant opens a correction PR instead (see below).
+No backward provenance transitions occur in the ordinary ladder. This does not
+override fail-closed quarantine: an entry discovered to be structurally
+unresolvable or unsafe MUST immediately become non-live, with the reason recorded
+as a correction, until repaired. A merely incomplete acknowledgment or new concern
+still uses the normal correction process rather than relabeling provenance.
 
 ---
 

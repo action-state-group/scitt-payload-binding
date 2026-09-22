@@ -14,7 +14,7 @@
       "name": "cpb-day2-artifact",
       "algorithm": "jcs-n",
       "exclusion_set": [],
-      "representation": "bare_hex",
+      "representation": "bare-hex",
       "digest_context": "jcs-n; empty exclusion set; 64-char lowercase hex"
     },
     "correct_derived_id_bare_hex": "2f9bba43e30273e2e87c7ef659a0f36f1e11f8e0c10489afe4d267c996505c37"

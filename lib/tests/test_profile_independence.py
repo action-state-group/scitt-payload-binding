@@ -5,14 +5,14 @@ Round-2 gap (Anton): vectors/profile-independence/ was never loaded by any
 test in this suite -- neither the PASS vector nor the MUST-FAIL vector was
 ever exercised against the library, despite both being on disk.
 """
-from cpb import ArtifactTypeRegistryEntry, TypedRef, verify_typed_ref
+from cpb import ArtifactTypeRegistryEntry, TypedRef, evaluate_typed_ref_digest
 
 from .conftest import load_vectors
 
 
 def test_profile_independence_pass():
     """profile-independence-pass-01: Profile A cites Profile B only through a
-    typed reference. verify_typed_ref resolves the binding using only
+    typed reference. The historical digest evaluator resolves the binding using only
     type/digest_alg/digest -- it has no parameter through which it could read
     Profile B's internal fields (subject/scope/issued_at)."""
     vectors = load_vectors("profile-independence/pass")
@@ -22,14 +22,15 @@ def test_profile_independence_pass():
     profile_b = v["profile_b"]
     entry_b = ArtifactTypeRegistryEntry(
         name=profile_b["name"],
-        exclusion_set=frozenset(profile_b["exclusion_set"]),
+        algorithm="jcs-n",
+        whole_object_exclusion_set=frozenset(profile_b["exclusion_set"]),
     )
     ref_fields = v["profile_a"]["payload"]["authorization"]
     ref = TypedRef(
         type=ref_fields["type"], digest_alg=ref_fields["digest_alg"], digest=ref_fields["digest"]
     )
 
-    recomputed = verify_typed_ref(ref, profile_b["payload"], entry_b)
+    recomputed = evaluate_typed_ref_digest(ref, profile_b["payload"], entry_b)
     assert recomputed == profile_b["derived_id"]
 
 
@@ -39,7 +40,7 @@ def test_profile_independence_violation_conforming_alternative():
     Profile-B's internal fields) that cannot itself be invoked as a function
     call; there is no library entry point for "the wrong way." Its
     executable contract is therefore the vector's own documented CONFORMING
-    alternative: verify_typed_ref resolves the decision-record's
+    alternative: digest evaluation resolves the decision-record's
     authorization binding using only the typed reference's digest, and
     succeeds without authorization_doc.subject/scope ever being read --
     those fields are never passed to it at all.
@@ -58,8 +59,12 @@ def test_profile_independence_violation_conforming_alternative():
         type=ref_fields["type"], digest_alg=ref_fields["digest_alg"], digest=ref_fields["digest"]
     )
 
-    entry = ArtifactTypeRegistryEntry(name="authorization-doc", exclusion_set=frozenset(["doc_id"]))
-    # Only auth_doc["payload"] is passed in; verify_typed_ref never reads
+    entry = ArtifactTypeRegistryEntry(
+        name="authorization-doc",
+        algorithm="jcs-n",
+        whole_object_exclusion_set=frozenset(["doc_id"]),
+    )
+    # Only auth_doc["payload"] is passed in; the digest evaluator never reads
     # subject/scope from it -- it only recomputes and compares digests.
-    recomputed = verify_typed_ref(ref, auth_doc["payload"], entry)
+    recomputed = evaluate_typed_ref_digest(ref, auth_doc["payload"], entry)
     assert recomputed == auth_doc["derived_id"]

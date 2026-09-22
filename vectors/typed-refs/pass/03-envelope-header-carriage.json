@@ -1,0 +1,64 @@
+{
+  "id": "typed-ref-pass-03",
+  "description": "PASS: a typed digest reference using the live jcs algorithm is encoded in cpb-refs in a COSE_Sign1 protected header. The fixture pins the complete tagged COSE object, protected bytes, Sig_structure, Ed25519 public key, and signature so implementations can verify both carrier decoding and signature coverage before independently resolving the target.",
+  "spec_ref": "draft-mih-sokolov-scitt-payload-binding-03, Envelope Carriage and Reference Verification",
+  "must_fail": false,
+  "carriage": "envelope-header",
+  "header_parameter": "cpb-refs",
+  "statement_mode": "rfc9943-full-content",
+  "cpb_refs_label_status": "test-only Private Use value; not an IANA assignment",
+  "profile_requires_cpb_refs": true,
+  "protected_header": {
+    "bytes_hex": "a6012702813a0001000003706170706c69636174696f6e2f6a736f6e044c6370622d746573742d6b65790fa2017668747470733a2f2f6973737565722e6578616d706c6502782175726e3a6578616d706c653a73746174656d656e743a6370622d706173732d30333a0001000081a30171617574686f72697a6174696f6e2d646f6303675348412d32353604784030633833376430316661613431303663363333363766313939616639626661373239643139313766333664633931663964666562366465366563376336626462",
+    "cpb_refs_label": -65537,
+    "entry_index": 0
+  },
+  "cose_sign1_bytes_hex": "d28458cea6012702813a0001000003706170706c69636174696f6e2f6a736f6e044c6370622d746573742d6b65790fa2017668747470733a2f2f6973737565722e6578616d706c6502782175726e3a6578616d706c653a73746174656d656e743a6370622d706173732d30333a0001000081a30171617574686f72697a6174696f6e2d646f6303675348412d32353604784030633833376430316661613431303663363333363766313939616639626661373239643139313766333664633931663964666562366465366563376336626462a058237b22616374696f6e223a2263697465222c227375626a656374223a2257532d3432227d58406594b78d85c25317fd81ff61cb8094b61ba796ff8559611143894240fbe877a78a2ce87fa3866b3dbb1cc83cf9bd0aea8661bab18780d16365922f4f8aa3270f",
+  "payload_hex": "7b22616374696f6e223a2263697465222c227375626a656374223a2257532d3432227d",
+  "signature_structure_hex": "846a5369676e61747572653158cea6012702813a0001000003706170706c69636174696f6e2f6a736f6e044c6370622d746573742d6b65790fa2017668747470733a2f2f6973737565722e6578616d706c6502782175726e3a6578616d706c653a73746174656d656e743a6370622d706173732d30333a0001000081a30171617574686f72697a6174696f6e2d646f6303675348412d323536047840306338333764303166616134313036633633333637663139396166396266613732396431393137663336646339316639646665623664653665633763366264624058237b22616374696f6e223a2263697465222c227375626a656374223a2257532d3432227d",
+  "signature": {
+    "algorithm": "EdDSA",
+    "curve": "Ed25519",
+    "public_key_hex": "79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664",
+    "signature_hex": "6594b78d85c25317fd81ff61cb8094b61ba796ff8559611143894240fbe877a78a2ce87fa3866b3dbb1cc83cf9bd0aea8661bab18780d16365922f4f8aa3270f"
+  },
+  "cbor_map_entry": {
+    "1": "authorization-doc",
+    "3": "SHA-256",
+    "4": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+  },
+  "typed_reference": {
+    "type": "authorization-doc",
+    "digest_alg": "SHA-256",
+    "digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+  },
+  "digest_context_declaration": {
+    "type": "authorization-doc",
+    "stable_reference": "this-vector/example-profile-v1",
+    "contexts": [
+      {
+        "purpose": "identifier",
+        "algorithm": "jcs",
+        "exclusion_set": ["doc_id"],
+        "representation": "bare-hex",
+        "digest_alg": "SHA-256"
+      }
+    ]
+  },
+  "cited_artifact": {
+    "payload": {
+      "doc_id": null,
+      "subject": "WS-42",
+      "scope": "temperature-write",
+      "issued_at": "2026-07-24T00:00:00Z"
+    },
+    "canonical_pre_image": "{\"issued_at\":\"2026-07-24T00:00:00Z\",\"scope\":\"temperature-write\",\"subject\":\"WS-42\"}",
+    "raw_digest_hex": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+  },
+  "verification": {
+    "carrier_result": "SIGNATURE VALID",
+    "reference_result": "VERIFIED",
+    "recomputed_digest": "0c837d01faa4106c63367f199af9bfa729d1917f36dc91f9dfeb6de6ec7c6bdb"
+  },
+  "provenance": "Deterministically generated from Ed25519 seed 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20 for interoperability testing only. The private seed is intentionally public and MUST NOT be used outside tests."
+}
