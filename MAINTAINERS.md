@@ -19,7 +19,9 @@ is worth more to this document than any amount of internal review.
 ## Internet-Draft authors
 
 `draft-mih-sokolov-scitt-payload-binding` — *Canonicalization Declaration for SCITT Signed
-Statements*
+Statements*, and `draft-mih-sokolov-cose-hash-envelope-preimage-encoding` — *Preimage Encoding for
+COSE Hash Envelopes* (`spec/cose/`). Both are individual Internet-Drafts; the submission rule
+applies to each separately.
 
 | Name | Affiliation | Contact |
 | --- | --- | --- |
@@ -34,8 +36,9 @@ maintainer equally and do not depend on which one is unavailable.
 | Change | What is required |
 | --- | --- |
 | Editorial, examples, vectors, tooling, CI, registry housekeeping | **Land it.** No maintainer waits for another. |
-| Normative change — anything altering what a conforming implementation MUST, SHOULD or MAY do | **Issue first, 14-day comment window.** Lands if unopposed. Silence is consent. |
-| **Submission to the IETF Datatracker** | **Every author agrees. No exceptions** — including editorial and acknowledgments-only revisions. |
+| Normative change — anything altering what a conforming implementation MUST, SHOULD or MAY do | **Issue first, 14-day comment window.** Lands if unopposed; silence is consent **for the repository only** — it does not carry into a submission. |
+| **Submission to the IETF Datatracker** | **Every author agrees. No exceptions** — including editorial and acknowledgments-only revisions. Each normative change since the previous revision carries an explicit yes from each author, named by commit. |
+| Adding or removing a maintainer, or amending `GOVERNANCE.md` | **Both authors agree.** Not a lazy-consensus decision. |
 
 Agreement to a submission attaches to **bytes**: a pinned commit, the built `.xml`/`.txt` as it will
 be submitted, or the exact version uploaded to the Datatracker. **An agreement never carries to

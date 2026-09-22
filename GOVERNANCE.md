@@ -5,6 +5,12 @@ Declaration for SCITT Signed Statements* — together with its registry material
 vectors and reference code. The document is an **individual IETF Internet-Draft**. It is not a
 Working Group document and it is not an RFC.
 
+It also carries **`draft-mih-sokolov-cose-hash-envelope-preimage-encoding`** under `spec/cose/`,
+an individual Internet-Draft intended for the COSE Working Group. **This file governs both
+documents**, and in particular the submission rule below applies to each of them separately: a
+submission of either requires the agreement of every author of that document. Where a rule names
+"the draft", read it as the draft being changed.
+
 This file states how the project is run. It is modeled on the governance practice used across the
 sibling repositories, adapted to the fact that this document has **two authors**.
 
@@ -80,8 +86,6 @@ A revision is a statement made in both authors' names to a standards body. It is
 this project that cannot be undone by a later pull request, and it is therefore the one thing that
 always waits.
 
-
-
 ### What agreement attaches to
 
 Agreement attaches to **bytes**, not to a branch or a revision number:
@@ -111,8 +115,16 @@ record of quality contributions, the existing maintainers may invite you to beco
 Maintainership is not tied to employer; contributors from any organization are welcome, and a second
 implementing organization is worth more to this document than any amount of internal review.
 
+**Adding or removing a maintainer requires the agreement of both authors.** It is not a
+lazy-consensus decision and it does not land under the 14-day window. The reason is mechanical
+rather than territorial: a normative change lands when no maintainer objects, so who counts as a
+maintainer determines what can land in an author's silence.
+
 Becoming a **maintainer** of this repository is separate from becoming an **author** of the
 Internet-Draft. The second follows IETF practice and the existing authors' agreement, not this file.
+
+**Amending this file requires the agreement of both authors**, under the same rule and for the
+same reason.
 
 ## What this document does not change
 
