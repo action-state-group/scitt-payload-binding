@@ -386,6 +386,16 @@ Normative reference:
   double-precision value therefore produce byte-identical output; see
   {{floats}}.
 
+Duplicate member names:
+: Before converting the input JSON text to a data model, a producer or verifier
+  MUST reject a duplicate member name in any object. Equality is tested on
+  decoded Unicode member-name strings after JSON escape processing, with no
+  Unicode normalization; NFC-equivalent but distinct strings are not duplicate
+  names. RFC 8785 {{RFC8785}} operates on the post-parse data model and RFC 8259
+  {{RFC8259}} leaves the handling of duplicate names unpredictable, so without
+  this rule two conforming implementations could produce different canonical
+  octets.
+
 Digest context:
 : This entry fixes the canonicalization, the hash function, and the output
   representation of any digest context that names it; the field set and the
