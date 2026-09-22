@@ -265,8 +265,11 @@ artifact type.
 
 ### `agent-action-capsule`
 
-**Reference:** draft-mih-scitt-agent-action-capsule, §5.1 "Identity and parties"
-(the `canonicalization_id`/`capsule_id` field-table rule) — **normative there**.
+**Reference:** draft-mih-scitt-agent-action-capsule, §2 (the format-4 declaration rule) and §5.1 "Identity and parties" (the `canonicalization_id`/`capsule_id` field table) — **normative there**.
+§2 is the section that carries the MUST: a conforming Capsule MUST declare
+`format_version: "4"` and `canonicalization_id: "jcs"`, and any other
+`format_version`, or an absent, null, non-string, empty, unknown or `jcs-n`
+`canonicalization_id`, MUST fail closed for producers and verifiers.
 This entry is a pointer into that text, not a restatement of it: per the
 current CPB draft's Cross-Profile Comparability section, artifact-type and
 digest-context declarations are owned and selected by the citing profile, and
@@ -290,7 +293,7 @@ registered:**
 
 | Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
 |---|---|---|---|---|---|---|---|
-| `identifier` | any profile version whose §5.1 field table states this construction (current: `draft-mih-scitt-agent-action-capsule-04`; unchanged by the pending `-05` cut) | `jcs` | all capsule fields | `{capsule_id}` | none | JCS UTF-8 octets (per `jcs`) | `bare-hex` |
+| `identifier` | any profile version whose §2 and §5.1 state this construction; the only such version published at the time of this entry is `draft-mih-scitt-agent-action-capsule-04` | `jcs` | all capsule fields | `{capsule_id}` | none | JCS UTF-8 octets (per `jcs`) | `bare-hex` |
 
 `(agent-action-capsule, identifier)` now selects exactly one row. A record
 declaring `canonicalization_id: "jcs"` (format 4) resolves to it; any other
@@ -337,9 +340,15 @@ interchangeable, not as an active selection candidate.
   provisional until both are on record.
 ⌙ Discriminating-vector: `test-vectors/pos-v4-jcs-chain-committed/` in the
   artifact type's own repository — *"Format 4 plain JCS commits the chain
-  block and a present empty array to capsule_id"*, recomputed identifier
-  `862024869f00481bb4f59d9528a45c2d4885f64c5222a9324a38ac2c2cd119f2`, matching
-  the live row above.
+  block and a present empty array to capsule_id"*. Recomputed from that
+  vector's input, the live row's exclusion set and the historical one do not
+  agree, which is what makes them distinct digest contexts rather than
+  restatements of each other:
+
+  | Exclusion set | SHA-256 over JCS of the remainder |
+  |---|---|
+  | `{capsule_id}` (the live row) | `862024869f00481bb4f59d9528a45c2d4885f64c5222a9324a38ac2c2cd119f2` — matches the vector |
+  | `{capsule_id, chain}` (historical, `jcs-n`) | `1164b5696cf27d9c13965de1929b8e2b14097b7824f25e63f9ac7e954369d886` — does not |
 
 ### `machine-mandate`
 

@@ -24,12 +24,12 @@
   },
   "artifact_types": {
     "agent-action-capsule": {
-      "reference": "draft-mih-scitt-agent-action-capsule, \u00a75.1 \"Identity and parties\"",
+      "reference": "draft-mih-scitt-agent-action-capsule, \u00a72 (the format-4 declaration rule) and \u00a75.1 \"Identity and parties\" (the canonicalization_id/capsule_id field table) \u2014 normative there.",
       "status": "provisional",
       "digest_contexts": [
         {
           "purpose": "identifier",
-          "profile_version": "any profile version whose \u00a75.1 field table states this construction (current: draft-mih-scitt-agent-action-capsule-04; unchanged by the pending -05 cut)",
+          "profile_version": "any profile version whose \u00a72 and \u00a75.1 state this construction; the only such version published at the time of this entry is draft-mih-scitt-agent-action-capsule-04",
           "algorithm": "jcs",
           "field_set": "all capsule fields",
           "exclusion_set": "{capsule_id}",
@@ -68,5 +68,5 @@
       "consuming_profile": "action-state-group/scitt-cose @ 04cf97a8d143459b7dd4193ba4d8c065c3783071 \u2014 the hosted verification surface at verify.agentactioncapsule.org. It parses and renders this type under the name machine-mandate (hosted_profiles/machine_mandate.py, PROFILE_PARSERS[\"machine-mandate\"]), against fixtures copied byte-verbatim from tyche-institute/machine-mandate@524e6a3 \u2014 the same commit this entry's Reference pins. What it does not do, stated plainly so the Designated Expert can weigh it: it detects the profile by the owner-controlled VCT URI and by pinned fixture digests, not by resolving the type through this registry, and its own module text disclaims endorsement. Whether a deployment that consumes the vocabulary without resolving the artifact type satisfies Gate B is the DE's call, not the registrant's \u2014 and the registrant is the owner, which is why it is put this way rather than asserted."
     }
   },
-  "snapshot_sha256": "3d7ae3485bf157cc4e265cbbdc21e7df6a8950fa84bf3a9c389f80a59facfcd3"
+  "snapshot_sha256": "aab7633637b81466ff3efcabdfe1531b6f51d4d4d703ee6d9befb89fc0b22eb8"
 }
