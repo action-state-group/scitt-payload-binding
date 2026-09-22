@@ -898,8 +898,9 @@ confirmed 2026-09-11, on-issue)\]:
   independently derived identifiers agree byte-for-byte under this
   document's canonicalization rules.
 
-* Imran Siddique (Opaque Systems) — the plain-JCS subject-binding divergence
-  that led to the withdrawal of `jcs-n` and the registration of `jcs` (#34);
+* Imran Siddique (Opaque Systems) — identifying that the `jcs-n` normalization
+  pass was not needed, which led to its withdrawal and the registration of
+  plain `jcs` (#34);
   the `digest_alg` consistency-declaration clarification and the withdrawal
   of `cde-n` (#36); and the verifier-behaviour rules for unregistered
   external artifact types (#35).
