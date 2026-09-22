@@ -1,0 +1,146 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Conforms the existing provisional filing in
+# spec/cpb-provisional-registry.md ("Proposed: mesh-inference-exchange", as
+# revised 2026-08-31 per Anton's CHANGES_REQUESTED review on PR #70) to this
+# template. Same construction, same two open items — neither resolved here.
+name: mesh-inference-exchange
+target_registry: artifact_types
+rung: provisional
+status: provisional
+reference: >
+  action-state-group/capsule-emit-mesh @ 9be03df — mesh_record_emitter.py,
+  mesh_record_verifier.py (the x-mesh-lifecycle-v1 record);
+  plugins/capsule-producer/src/capsule.rs,
+  plugins/admission-policy/src/capsule_emit.rs (the generic
+  compute_attestation sub-digest placement for reasoning_digest /
+  tool_calls_digest)
+owner:
+  name: Action State Group
+  affiliation: Action State Group, Inc.
+
+disclosure: >
+  The proposer is a co-editor of this registry; this entry is
+  owner-authored and is not independent or third-party validation.
+
+de_reviewer: "Anton Sokolov (Tyche Institute) — entry promotes only on his confirmation of the two open items below"
+
+open_questions:
+  - >
+    ALGORITHM SCOPE (item 1) — the record bytes a verifier receives
+    (capsule_to_bytes(): json.dumps(capsule, sort_keys=True,
+    separators=(",", ":")).encode("utf-8")) are deterministic but are
+    neither jcs/jcs-n (RFC 8785 escaping/number-formatting rules differ
+    from Python's json.dumps) nor a byte-boundary selector in the
+    as-transmitted sense (a Python convention is not a cited wire
+    production). TBD — the DE must pick one of: (a) this record is already
+    an agent-action-capsule instance, so the existing entry's jcs-n
+    identifier context already covers it; (b) register
+    capsule_to_bytes()'s exact construction as its own algorithm token; or
+    (c) scope as-transmitted narrowly to the x-mesh-lifecycle-v1 block's
+    own request_digest/response_digest sub-fields only (literally
+    sha256(raw_body), no canonicalization) — explicitly NOT the
+    AAC-level agent_input_digest/agent_output_digest. Not decided here.
+  - >
+    LEDGER-LIVE EXAMPLE (item 2) — the only committed real-traffic example
+    set (capsule-emit-mesh/ledger-live/capsules.jsonl, four records,
+    2026-08-11) predates the current x-mesh-lifecycle-v1 block name and
+    carries the earlier x-mesh-poc-v1 shape instead. TBD — the DE should
+    confirm whether a fresh x-mesh-lifecycle-v1 ledger-live/ example is
+    needed before this can cite ledger-live/ as its Gate-B consuming
+    profile.
+  - >
+    ROLE FIELD (related, not a promotion blocker for this entry) — an
+    earlier revision of this filing carried a role field ({requested,
+    served}); WITHDRAWN 2026-08-31 per Anton's review point #3, since role
+    is not present anywhere in mesh_record_emitter.py/mesh_record_verifier.py
+    at the pinned commit and neither existing role vocabulary elsewhere in
+    this repo (capsule_sidecar.py's ROLE_PROVIDER/ROLE_REQUESTER;
+    TopologyEntry.role) belongs to this artifact. Tracked separately as
+    issue #69, deferred rather than closed.
+
+seven_questions:
+  digest_input_bytes: >
+    The x-mesh-lifecycle-v1 block: terminal_state (closed 8-value set),
+    terminal_reason, observation_point (closed 4-value set, nullable),
+    exchange_id, hop_id, attempt, local_peer_id,
+    transcript.{event_count, expected_count, complete}. role is NOT a
+    member (withdrawn — see open_questions). reasoning_digest /
+    tool_calls_digest are NOT members of this block either — they are
+    generic compute_attestation sibling fields (same class as
+    agent_input_digest/agent_output_digest), documented under
+    digest_contexts[] below rather than as part of this artifact's own
+    field set.
+  exclusion_set: "N/A pending the algorithm-scope decision (open_questions item 1)."
+  canonicalization_profile: "TBD — see open_questions item 1 (options a/b/c)."
+  hash_algorithm: SHA-256
+  representation: >
+    request_digest/response_digest sub-fields: bare 64-char lowercase hex.
+  composite_or_not:
+    is_composite: false
+    statement: >
+      The x-mesh-lifecycle-v1 record does not embed another registered
+      artifact type's payload bytes. The coordinator receipt is a
+      SEPARATE artifact type (its own x-mesh-coordinator-receipt-v1
+      namespace) that cites per-hop bundles by typed digest reference
+      ({type, digest_alg, digest}) — confirmed out of scope for this
+      entry per Anton's review point #4, filed separately when ready.
+      reasoning_digest/tool_calls_digest (generic compute_attestation
+      siblings, not members of this artifact's own field set) are each
+      the AAC JSON-DIGEST of a flattened array of labeled response
+      content — a digest, never an inlined copy of the tool-call/reasoning
+      bytes themselves.
+  cross_language_parity:
+    statement: >
+      Not yet demonstrated across independent implementations — single
+      implementation (capsule-emit-mesh) to date. The
+      reasoning_digest/tool_calls_digest construction has one committed
+      positive-vector parity check against a Python reference
+      (capsule_emit.rs::output_sub_digests_over_real_seti_response_matches_python_reference),
+      which is a same-family Rust/Python parity check, not an independent
+      third-party implementation.
+    implementations: []
+
+digest_contexts:
+  - purpose: identifier
+    profile_version: "N/A"
+    algorithm: "as-transmitted — provisionally; scope pending DE confirmation (open_questions item 1)"
+    field_set: >
+      the x-mesh-lifecycle-v1 block (see seven_questions.digest_input_bytes)
+    exclusion_set: "N/A pending open_questions item 1"
+    domain_separation: "none observed in code"
+    pre_image_encoding: "N/A pending open_questions item 1"
+    representation: "request_digest/response_digest sub-fields: bare 64-char lowercase hex (SHA-256)"
+
+fixtures: {}
+  # No committed CPB-shaped vectors yet — Rung 3 does not require one. Two
+  # candidate discriminating vectors already exist as running-code tests
+  # (not yet in CPB vector format): the transcript-completeness invariant
+  # (tests/test_record_side_state_binding.py case 4, "DELIBERATELY-BROKEN
+  # TRUNCATION") and the reasoning/tool-call sub-digest positive + MUST-FAIL
+  # triples (capsule_emit.rs tests + the F2/F3 null/empty-array MUST-FAIL
+  # invariants derived from the producer's Option-typed construction).
+
+discriminating_vector: >
+  Candidate (not yet committed in CPB vector format; Rung 3 does not
+  require one for provisional status): a record asserting
+  transcript.complete=true with event_count < expected_count verifies as
+  failed under mesh_record_verifier.verify_record_bytes and would pass
+  under a naive verifier that trusts the flag — already exercised in
+  tests/test_record_side_state_binding.py case 4.
+
+consuming_profile: >
+  Candidate: capsule-emit-mesh ledger-live/ (demo-grade, self-attested key
+  — see open_questions item 2 on why this isn't cited outright yet); the
+  mesh-llm PoC gateway (mesh-llm#1233) once that engagement's own
+  documentation cites this registered name.
+
+notes: >
+  Mirrors spec/cpb-provisional-registry.md's "Proposed: mesh-inference-exchange"
+  entry (2026-08-31 revision) in this template's shape. GO for filing
+  recorded 2026-08-21 (action-state-strategy/docs/decisions-log.md).
+  Promotion path unchanged by this filing: once the DE resolves the
+  algorithm scope (item 1) and a fresh ledger-live/ example lands (item 2),
+  this can move directly to owner-confirmed (Rung 3 -> owner-direct,
+  skipping Rung 2) with a committed two-sided vector set built from the
+  truncation-guard case above.
