@@ -12,6 +12,15 @@ possible. Fields not stated in the owner's draft are marked
 `[OWNER TO CONFIRM]` literally. CPB editors MUST NOT fill in digest-context
 parameters on behalf of an owner.
 
+**Promoted semantic rows route to `capsule-registry`.** An entry below may
+carry semantic content (vocabulary, producer invariants) alongside its
+Digest Context table while provisional. On that entry's own promotion
+ruling, the Digest Context table stays in this registry; the semantic
+content routes to
+[`capsule-registry`](https://github.com/action-state-group/capsule-registry),
+the composition/semantics registry (Home-2) — see `REGISTRY.md`'s
+"Mechanical only" note.
+
 ---
 
 ## Proposed: `verifiable-agent-conversation`
