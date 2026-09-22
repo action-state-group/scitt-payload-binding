@@ -1,0 +1,448 @@
+
+
+
+
+TBD                                                               S. Mih
+Internet-Draft                                  Action State Group, Inc.
+Intended status: Standards Track                              A. Sokolov
+Expires: 26 March 2027                                   Tyche Institute
+                                                       22 September 2026
+
+
+          The COSE payload-preimage-encoding Header Parameter
+          draft-mih-sokolov-cose-payload-preimage-encoding-00
+
+Abstract
+
+   The COSE Hash Envelope carries the hash of content held elsewhere.
+   When that content is structured, more than one deterministic
+   serialization of it may be in use, and the Hash Envelope does not
+   identify which one produced the hashed bytes -- so a verifier cannot
+   reliably recompute the hash.  This document defines a protected-
+   header parameter, payload-preimage-encoding, that names the
+   deterministic encoding a producer applied before hashing a Hash
+   Envelope payload, and a small IANA registry of encoding identifiers
+   whose initial entry is the Core Deterministic Encoding Requirements
+   of RFC 8949.  It extends the COSE Hash Envelope through the existing
+   extension point.
+
+Note to Readers
+
+   This document is an individual submission; the intended working group
+   is to be determined. *This revision is a draft for co-author and
+   working-group review only; it has not been submitted to the
+   datatracker.*
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 26 March 2027.
+
+
+
+
+Mih & Sokolov             Expires 26 March 2027                 [Page 1]
+
+Internet-Draft       COSE payload-preimage-encoding       September 2026
+
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
+   3.  The payload-preimage-encoding Header Parameter  . . . . . . .   3
+   4.  Producer and Verifier Behavior  . . . . . . . . . . . . . . .   3
+   5.  Examples  . . . . . . . . . . . . . . . . . . . . . . . . . .   4
+   6.  Security Considerations . . . . . . . . . . . . . . . . . . .   4
+     6.1.  Preimages Are Bytes, Not Renderings . . . . . . . . . . .   5
+     6.2.  Encoding Agility  . . . . . . . . . . . . . . . . . . . .   5
+   7.  Privacy Considerations  . . . . . . . . . . . . . . . . . . .   5
+   8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   5
+     8.1.  COSE Header Parameters  . . . . . . . . . . . . . . . . .   5
+     8.2.  COSE Preimage Encodings Registry  . . . . . . . . . . . .   6
+   9.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   7
+     9.1.  Normative References  . . . . . . . . . . . . . . . . . .   7
+     9.2.  Informative References  . . . . . . . . . . . . . . . . .   7
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .   8
+
+1.  Introduction
+
+   Structured content commonly has more than one deterministic
+   serialization in use.  The COSE Hash Envelope [RFC9995] identifies
+   the hash function (258) and the content type of the hashed bytes
+   (259), but not which of those serializations produced them -- which a
+   verifier needs to recompute the hash of structured content, such as
+   CBOR, and compare it to the payload.
+
+   This document defines one new protected-header parameter, payload-
+   preimage-encoding, naming that deterministic encoding, and a small
+   IANA registry of encoding identifiers.  It changes nothing in
+   [RFC9995]: the Hash Envelope protected header already admits
+   extension parameters through its open CDDL member (* (int / tstr) =>
+   any), and this document adds a value through that existing extension
+
+
+
+Mih & Sokolov             Expires 26 March 2027                 [Page 2]
+
+Internet-Draft       COSE payload-preimage-encoding       September 2026
+
+
+   point.  It names the deterministic encoding a producer applied before
+   hashing a Hash Envelope payload.  The SCITT Signed Statement
+   [RFC9943] is one principal user of the Hash Envelope.
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   "COSE", "COSE_Sign1", and "protected header" are defined in
+   [RFC9052]; "CDDL" in [RFC8610]; "Hash Envelope" and "preimage" in
+   [RFC9995].  The Hash Envelope labels this document builds on are 258
+   (payload-hash-alg) and 259 (preimage-content-type).
+
+3.  The payload-preimage-encoding Header Parameter
+
+   This document defines the parameter as:
+
+   TBD:  payload-preimage-encoding.  The deterministic encoding applied
+      to structured content to produce the octets identified by
+      preimage-content-type (259) and hashed to produce the payload
+      identified by payload-hash-alg (258).  The value is the integer
+      Value (not the Name) assigned to an encoding in the COSE Preimage
+      Encodings registry (Section 8.2).
+
+   It amends the Hash_Envelope_Protected_Header CDDL of [RFC9995]
+   Section 4 with one optional member, alongside the members for labels
+   258-260:
+
+   ? &(payload_preimage_encoding: TBD) => int,
+
+   Label TBD MAY be present in the protected header and MUST NOT be
+   present in the unprotected header, following the placement rule
+   [RFC9995] states for labels 258 through 260.  It names the encoding
+   applied before hashing a Hash Envelope payload.
+
+4.  Producer and Verifier Behavior
+
+   When the preimage is structured content that was canonicalized before
+   hashing, the producer MUST set payload-preimage-encoding; the value
+   MUST be the encoding actually applied to produce the hashed octets.
+
+   A verifier MUST NOT infer the preimage encoding from preimage-
+   content-type (259) or from the shape of the recomputed content.  If
+   payload-preimage-encoding is absent or carries an unrecognized value,
+
+
+
+Mih & Sokolov             Expires 26 March 2027                 [Page 3]
+
+Internet-Draft       COSE payload-preimage-encoding       September 2026
+
+
+   the content binding cannot be verified by recomputation: the verifier
+   MUST NOT report that binding as verified, and MUST report it as
+   unverified rather than as failed.  Unverified means the verifier
+   lacked the information needed to recompute; failed means a
+   recomputation was performed and did not match.  A Hash Envelope
+   sealed before this parameter was registered is expected to lack it,
+   and that absence is not a defect.  Signature validity is unaffected
+   -- a verifier that has not established the content binding can still
+   report Signature-Valid status for the COSE_Sign1 itself.
+
+   An encoding's definition constrains the preimage-content-type (259)
+   it may be used with.  A producer MUST NOT pair an encoding with an
+   incompatible content type (for example, cde with a non-CBOR content
+   type such as application/json), and a verifier MUST reject a Hash
+   Envelope whose payload-preimage-encoding and preimage-content-type
+   (259) are inconsistent.
+
+5.  Examples
+
+   These use Extended Diagnostic Notation ([RFC8610] Appendix G), in the
+   style of [RFC9995] Section 4.1; signature and key material are
+   truncated.
+
+   The preimage {"b": 2, "a": 1}, encoded per the Core Deterministic
+   Encoding Requirements of [RFC8949] Section 4.2.1 (bytewise key order,
+   placing "a" before "b"), is the 7-octet string a2616101616202, whose
+   SHA-256 digest is
+   a0d3af9e86e5517f729bad0657e2c6f3b7d03899894c8d6b33759074c893b5e3:
+
+   18([ # COSE_Sign1
+     <<{
+       / alg               / 1: -7, # ES256
+       / hash algorithm    / 258: -16, # sha-256
+       / preimage type     / 259: "application/cbor",
+       / preimage encoding / TBD: 1, # cde
+     }>>
+     / unprotected / {},
+     / payload     / h'a0d3af9e...c893b5e3', # digest above
+     / signature   / h'304502210...3b1c9f0e'
+   ])
+
+6.  Security Considerations
+
+
+
+
+
+
+
+
+
+Mih & Sokolov             Expires 26 March 2027                 [Page 4]
+
+Internet-Draft       COSE payload-preimage-encoding       September 2026
+
+
+6.1.  Preimages Are Bytes, Not Renderings
+
+   The preimage identified by 259 and encoded per TBD is the exact octet
+   string the named encoding produces -- not a rendered form or a string
+   differing from it by whitespace, newlines, or character-encoding
+   choices.
+
+   A producer that re-reads stored content before hashing MUST ensure
+   the octets entering the hash function are byte-identical to the
+   encoding's own output; a deserialize-then-reserialize round trip is
+   not guaranteed to reproduce it, even for deterministic encodings
+   (Section 8.2).
+
+   Likewise, the Hash Envelope payload is the raw digest octets the hash
+   function (258) produces, not a textual representation of that digest.
+   Whether a digest is rendered -- for example as 64-character lowercase
+   hexadecimal -- is a profile-level concern and is out of scope for
+   this document.
+
+6.2.  Encoding Agility
+
+   The COSE Preimage Encodings registry (Section 8.2) grows by
+   registering a new value for a new encoding, never by reinterpreting
+   the octets an existing value governs; each entry's definition, once
+   registered, is immutable.  A registered value MAY be withdrawn
+   through the same Specification Required review.  Withdrawal is
+   terminal: the token stays bound, no definition is ever assigned or
+   reassigned to it, and the value is not reused.
+
+7.  Privacy Considerations
+
+   A digest over deterministically encoded content is a stable function
+   of that content, making the payload linkable across contexts where it
+   recurs.  When the preimage is drawn from a low-entropy value space,
+   encoding a candidate with TBD and hashing it with 258 can recover the
+   preimage by comparison to the payload -- a risk that already exists
+   wherever [RFC9995] is used; naming the encoding removes ambiguity
+   that might have slowed such an attempt.
+
+8.  IANA Considerations
+
+8.1.  COSE Header Parameters
+
+   IANA is requested to register the following entry in the "COSE Header
+   Parameters" registry, in the "Integer values from 256 to 65535"
+   range, under the Specification Required policy ([RFC8126]
+   Section 4.6) that governs that range:
+
+
+
+
+Mih & Sokolov             Expires 26 March 2027                 [Page 5]
+
+Internet-Draft       COSE payload-preimage-encoding       September 2026
+
+
+   +=========+=============+=====+=========+===============+===========+
+   |Name     | Label       |Value|Value    | Description   | Reference |
+   |         |             |Type |Registry |               |           |
+   +=========+=============+=====+=========+===============+===========+
+   |payload- | TBD         |int  |COSE     | Encoding      | This      |
+   |preimage-| (requested) |     |Preimage | applied       | document  |
+   |encoding |             |     |Encodings| before        |           |
+   |         |             |     |(Section | hashing a     |           |
+   |         |             |     |8.2)     | Hash          |           |
+   |         |             |     |         | Envelope      |           |
+   |         |             |     |         | payload       |           |
+   +---------+-------------+-----+---------+---------------+-----------+
+
+                                  Table 1
+
+   The suggested value is 271, the lowest unassigned integer in the COSE
+   Header Parameters registry as of 2026-09-22.
+
+8.2.  COSE Preimage Encodings Registry
+
+   IANA is requested to create a new registry, "COSE Preimage
+   Encodings".  A registry, rather than a fixed reference, is used
+   because more than one deterministic encoding of structured content is
+   expected to be named for Hash Envelope use over time, and
+   Specification Required keeps each addition reviewed and immutable.
+   Registration policy: Specification Required ([RFC8126] Section 4.6),
+   with Designated Expert review.  Registration template: Value, Name,
+   Description, Applicable Content Types, Reference.  Initial contents:
+
+   +=======+======+========================+==============+===========+
+   | Value | Name | Description            | Applicable   | Reference |
+   |       |      |                        | Content      |           |
+   |       |      |                        | Types        |           |
+   +=======+======+========================+==============+===========+
+   | 1     | cde  | CBOR deterministic     | CBOR content | [RFC8949] |
+   |       |      | encoding per the core  | types, such  | Section   |
+   |       |      | deterministic encoding | as           | 4.2.1     |
+   |       |      | requirements of RFC    | application/ |           |
+   |       |      | 8949 Section 4.2.1     | cbor         |           |
+   +-------+------+------------------------+--------------+-----------+
+   | 2     | jcs  | JSON Canonicalization  | JSON content | [RFC8785] |
+   |       |      | Scheme                 | types, such  |           |
+   |       |      |                        | as           |           |
+   |       |      |                        | application/ |           |
+   |       |      |                        | json         |           |
+   +-------+------+------------------------+--------------+-----------+
+
+                                 Table 2
+
+
+
+Mih & Sokolov             Expires 26 March 2027                 [Page 6]
+
+Internet-Draft       COSE payload-preimage-encoding       September 2026
+
+
+   Value 1, cde, is the lead entry: the Core Deterministic Encoding
+   Requirements of [RFC8949] Section 4.2.1, part of STD 94.  Value 2,
+   jcs, is the JSON Canonicalization Scheme [RFC8785]; it lets producers
+   that canonicalize JSON declare that encoding.  The registry is open
+   under the policy above, so encodings for other structured content
+   types can be added by later registrations, each citing its own
+   reference.
+
+9.  References
+
+9.1.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/rfc/rfc2119>.
+
+   [RFC8126]  Cotton, M., Leiba, B., and T. Narten, "Guidelines for
+              Writing an IANA Considerations Section in RFCs", BCP 26,
+              RFC 8126, DOI 10.17487/RFC8126, June 2017,
+              <https://www.rfc-editor.org/rfc/rfc8126>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
+
+   [RFC8610]  Birkholz, H., Vigano, C., and C. Bormann, "Concise Data
+              Definition Language (CDDL): A Notational Convention to
+              Express Concise Binary Object Representation (CBOR) and
+              JSON Data Structures", RFC 8610, DOI 10.17487/RFC8610,
+              June 2019, <https://www.rfc-editor.org/rfc/rfc8610>.
+
+   [RFC8949]  Bormann, C. and P. Hoffman, "Concise Binary Object
+              Representation (CBOR)", STD 94, RFC 8949,
+              DOI 10.17487/RFC8949, December 2020,
+              <https://www.rfc-editor.org/rfc/rfc8949>.
+
+   [RFC9052]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
+              Structures and Process", STD 96, RFC 9052,
+              DOI 10.17487/RFC9052, August 2022,
+              <https://www.rfc-editor.org/rfc/rfc9052>.
+
+   [RFC9995]  Steele, O., Lasker, S., and H. Birkholz, "CBOR Object
+              Signing and Encryption (COSE) Hash Envelope", RFC 9995,
+              DOI 10.17487/RFC9995, July 2026,
+              <https://www.rfc-editor.org/rfc/rfc9995>.
+
+9.2.  Informative References
+
+
+
+Mih & Sokolov             Expires 26 March 2027                 [Page 7]
+
+Internet-Draft       COSE payload-preimage-encoding       September 2026
+
+
+   [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
+              Canonicalization Scheme (JCS)", RFC 8785,
+              DOI 10.17487/RFC8785, June 2020,
+              <https://www.rfc-editor.org/rfc/rfc8785>.
+
+   [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
+              Y., and S. Lasker, "An Architecture for Trustworthy and
+              Transparent Digital Supply Chains", RFC 9943,
+              DOI 10.17487/RFC9943, June 2026,
+              <https://www.rfc-editor.org/rfc/rfc9943>.
+
+Authors' Addresses
+
+   Steven Mih
+   Action State Group, Inc.
+   Email: spec@actionstate.ai
+
+
+   Anton Sokolov
+   Tyche Institute
+   Tallinn
+   Estonia
+   Email: anton.sokolov@tyche.institute
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih & Sokolov             Expires 26 March 2027                 [Page 8]
