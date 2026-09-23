@@ -80,7 +80,7 @@ Table of Contents
    4.  Producer and Verifier Behavior  . . . . . . . . . . . . . . .   3
    5.  Examples  . . . . . . . . . . . . . . . . . . . . . . . . . .   4
    6.  Security Considerations . . . . . . . . . . . . . . . . . . .   4
-     6.1.  Preimages Are Bytes, Not Renderings . . . . . . . . . . .   4
+     6.1.  Preimages Are Bytes, Not Renderings . . . . . . . . . . .   5
      6.2.  Encoding Agility  . . . . . . . . . . . . . . . . . . . .   5
    7.  Privacy Considerations  . . . . . . . . . . . . . . . . . . .   5
    8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   5
@@ -157,11 +157,11 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
    When the preimage is structured content that was canonicalized before
    hashing, the producer MUST set payload-preimage-encoding; the value
    MUST be the encoding actually applied to produce the hashed octets.
+   An unstructured preimage -- for example application/octet-stream, an
+   image, or an archive -- has no deterministic encoding to name, and
+   the parameter is simply absent.
 
-   A verifier MUST NOT infer the preimage encoding from preimage-
-   content-type (259) or from the shape of the recomputed content.  If
-   payload-preimage-encoding is absent or carries an unrecognized value,
-   the content binding cannot be verified by recomputation: the verifier
+
 
 
 
@@ -170,6 +170,10 @@ Mih & Sokolov             Expires 26 March 2027                 [Page 3]
 Internet-Draft       COSE payload-preimage-encoding       September 2026
 
 
+   A verifier MUST NOT infer the preimage encoding from preimage-
+   content-type (259) or from the shape of the recomputed content.  If
+   payload-preimage-encoding is absent or carries an unrecognized value,
+   the content binding cannot be verified by recomputation: the verifier
    MUST NOT report that binding as verified, and MUST report it as
    unverified rather than as failed.  Unverified means the verifier
    lacked the information needed to recompute; failed means a
@@ -212,12 +216,8 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
 
 6.  Security Considerations
 
-6.1.  Preimages Are Bytes, Not Renderings
 
-   The preimage identified by 259 and encoded per TBD is the exact octet
-   string the named encoding produces -- not a rendered form or a string
-   differing from it by whitespace, newlines, or character-encoding
-   choices.
+
 
 
 
@@ -225,6 +225,13 @@ Mih & Sokolov             Expires 26 March 2027                 [Page 4]
 
 Internet-Draft       COSE payload-preimage-encoding       September 2026
 
+
+6.1.  Preimages Are Bytes, Not Renderings
+
+   The preimage identified by 259 and encoded per TBD is the exact octet
+   string the named encoding produces -- not a rendered form or a string
+   differing from it by whitespace, newlines, or character-encoding
+   choices.
 
    A producer that re-reads stored content before hashing MUST ensure
    the octets entering the hash function are byte-identical to the
@@ -253,10 +260,10 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
    A digest over deterministically encoded content is a stable function
    of that content, making the payload linkable across contexts where it
    recurs.  When the preimage is drawn from a low-entropy value space,
-   encoding a candidate with TBD and hashing it with 258 can recover the
-   preimage by comparison to the payload -- a risk that already exists
-   wherever [RFC9995] is used; naming the encoding removes ambiguity
-   that might have slowed such an attempt.
+   encoding a candidate under the named encoding and hashing it with 258
+   can recover the preimage by comparison to the payload -- a risk that
+   already exists wherever [RFC9995] is used; naming the encoding
+   removes ambiguity that might have slowed such an attempt.
 
 8.  IANA Considerations
 
@@ -266,13 +273,6 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
    Parameters" registry, in the "Integer values from 256 to 65535"
    range, under the Specification Required policy ([RFC8126]
    Section 4.6) that governs that range:
-
-
-
-
-
-
-
 
 
 
@@ -305,11 +305,15 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
    IANA is requested to create a new registry, "COSE Preimage
    Encodings".  A registry, rather than a fixed reference, is used
    because more than one deterministic encoding of structured content is
-   expected to be named for Hash Envelope use over time, and
-   Specification Required keeps each addition reviewed and immutable.
-   Registration policy: Specification Required ([RFC8126] Section 4.6),
-   with Designated Expert review.  Registration template: Value, Name,
-   Description, Applicable Content Types, Reference.  Initial contents:
+   expected to be named for Hash Envelope use over time -- for example,
+   the CBOR Common Deterministic Encoding [I-D.ietf-cbor-cde], in
+   progress in the CBOR Working Group and distinct from the core
+   requirements RFC 8949 Section 4.2.1 defines, is an anticipated future
+   registration -- and Specification Required keeps each addition
+   reviewed and immutable.  Registration policy: Specification Required
+   ([RFC8126] Section 4.6), with Designated Expert review.  Registration
+   template: Value, Name, Description, Applicable Content Types,
+   Reference.  Initial contents:
 
    +=======+======+========================+==============+===========+
    | Value | Name | Description            | Applicable   | Reference |
@@ -325,11 +329,7 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
 
                                  Table 2
 
-   Value 1, cde, is the lead entry: the Core Deterministic Encoding
-   Requirements of [RFC8949] Section 4.2.1, part of STD 94.  The
-   registry is open under the policy above, so encodings for other
-   structured content types can be added by later registrations, each
-   citing its own reference.
+
 
 
 
@@ -337,6 +337,12 @@ Mih & Sokolov             Expires 26 March 2027                 [Page 6]
 
 Internet-Draft       COSE payload-preimage-encoding       September 2026
 
+
+   Value 1, cde, is the lead entry: the Core Deterministic Encoding
+   Requirements of [RFC8949] Section 4.2.1, part of STD 94.  The
+   registry is open under the policy above, so encodings for other
+   structured content types can be added by later registrations, each
+   citing its own reference.
 
 9.  References
 
@@ -379,12 +385,6 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
 
 9.2.  Informative References
 
-   [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
-              Y., and S. Lasker, "An Architecture for Trustworthy and
-              Transparent Digital Supply Chains", RFC 9943,
-              DOI 10.17487/RFC9943, June 2026,
-              <https://www.rfc-editor.org/rfc/rfc9943>.
-
 
 
 
@@ -393,6 +393,18 @@ Mih & Sokolov             Expires 26 March 2027                 [Page 7]
 
 Internet-Draft       COSE payload-preimage-encoding       September 2026
 
+
+   [I-D.ietf-cbor-cde]
+              Bormann, C., "CBOR Common Deterministic Encoding (CDE)",
+              Work in Progress, Internet-Draft, draft-ietf-cbor-cde-13,
+              13 October 2025, <https://datatracker.ietf.org/doc/html/
+              draft-ietf-cbor-cde-13>.
+
+   [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
+              Y., and S. Lasker, "An Architecture for Trustworthy and
+              Transparent Digital Supply Chains", RFC 9943,
+              DOI 10.17487/RFC9943, June 2026,
+              <https://www.rfc-editor.org/rfc/rfc9943>.
 
 Authors' Addresses
 
@@ -406,18 +418,6 @@ Authors' Addresses
    Tallinn
    Estonia
    Email: anton.sokolov@tyche.institute
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

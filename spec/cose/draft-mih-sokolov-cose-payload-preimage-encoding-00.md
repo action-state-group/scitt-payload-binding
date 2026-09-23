@@ -40,6 +40,7 @@ normative:
 
 informative:
   RFC9943:
+  I-D.ietf-cbor-cde:
 
 --- abstract
 
@@ -119,6 +120,9 @@ labels 258 through 260.
 When the preimage is structured content that was canonicalized before
 hashing, the producer MUST set payload-preimage-encoding; the value MUST be
 the encoding actually applied to produce the hashed octets.
+An unstructured preimage -- for example application/octet-stream, an image,
+or an archive -- has no deterministic encoding to name, and the parameter is
+simply absent.
 
 A verifier MUST NOT infer the preimage encoding from preimage-content-type
 (259) or from the shape of the recomputed content. If
@@ -196,7 +200,7 @@ assigned or reassigned to it, and the value is not reused.
 A digest over deterministically encoded content is a stable function of
 that content, making the payload linkable across contexts where it recurs.
 When the preimage is drawn from a low-entropy value space, encoding a
-candidate with TBD and hashing it with 258 can recover the preimage by
+candidate under the named encoding and hashing it with 258 can recover the preimage by
 comparison to the payload -- a risk that already exists wherever {{RFC9995}}
 is used; naming the encoding removes ambiguity that might have slowed such an
 attempt.
@@ -222,8 +226,11 @@ Header Parameters registry as of 2026-09-22.
 IANA is requested to create a new registry, "COSE Preimage Encodings".
 A registry, rather than a fixed reference, is used because more than one
 deterministic encoding of structured content is expected to be named for
-Hash Envelope use over time, and Specification Required keeps each addition
-reviewed and immutable.
+Hash Envelope use over time -- for example, the CBOR Common Deterministic
+Encoding {{I-D.ietf-cbor-cde}}, in progress in the CBOR Working Group and
+distinct from the core requirements RFC 8949 Section 4.2.1 defines, is an
+anticipated future registration -- and Specification Required keeps each
+addition reviewed and immutable.
 Registration policy: Specification Required ({{RFC8126}} Section 4.6), with
 Designated Expert review. Registration template: Value, Name, Description,
 Applicable Content Types, Reference. Initial contents:
