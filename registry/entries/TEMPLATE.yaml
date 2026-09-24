@@ -26,8 +26,7 @@
 #
 # THE SEVEN QUESTIONS this template exists to force an answer to, verbatim as
 # they were put to registrants (Manu Sheel Gupta / libp2p VTO thread,
-# 2026-08-05 — see action-state-strategy/docs/outbound/manu-libp2p-followup-
-# 2026-08-05.md for the original context): construction as data — (1) what
+# 2026-08-05): construction as data — (1) what
 # are the digest-input bytes, (2) what is excluded, (3) what canonicalization
 # profile applies, (4) what hash function, (5) what representation; (6) is
 # this composite or not — composites are NEVER inlined, only carried by

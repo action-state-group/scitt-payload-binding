@@ -76,8 +76,7 @@ seven_questions:
       for machine-mandate. A Vienna SCITT hackathon record (Jul 2026)
       reported multiple independent implementations reaching byte-identical
       jcs-n digests; the exact count was under reconfirmation as of
-      2026-08-05 (action-state-strategy/docs/outbound/manu-libp2p-followup-2026-08-05.md,
-      item 5) and is not restated here as a specific figure until confirmed.
+      2026-08-05 and is not restated here as a specific figure until confirmed.
     implementations: []
 
 digest_contexts:

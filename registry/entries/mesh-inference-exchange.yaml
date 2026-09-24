@@ -138,7 +138,7 @@ consuming_profile: >
 notes: >
   Mirrors spec/cpb-provisional-registry.md's "Proposed: mesh-inference-exchange"
   entry (2026-08-31 revision) in this template's shape. GO for filing
-  recorded 2026-08-21 (action-state-strategy/docs/decisions-log.md).
+  recorded 2026-08-21.
   Promotion path unchanged by this filing: once the DE resolves the
   algorithm scope (item 1) and a fresh ledger-live/ example lands (item 2),
   this can move directly to owner-confirmed (Rung 3 -> owner-direct,
