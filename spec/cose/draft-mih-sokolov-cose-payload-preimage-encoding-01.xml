@@ -37,7 +37,7 @@
     <keyword>canonicalization</keyword>
     <keyword>deterministic encoding</keyword>
     <abstract>
-      <?line 58?>
+      <?line 51?>
 
 <t>The COSE Hash Envelope carries the hash of content held elsewhere. When that
 content is structured, more than one deterministic serialization of it may be
@@ -46,13 +46,13 @@ bytes -- so a verifier cannot reliably recompute the hash. This document
 defines a protected-header parameter, payload-preimage-encoding, that names
 the deterministic encoding a producer applied before hashing a Hash Envelope
 payload, and a small IANA registry of deterministic encoding identifiers,
-populated at issuance with entries for the Core Deterministic Encoding
-Requirements of RFC 8949 and the JSON Canonicalization Scheme of RFC 8785.
+populated at issuance with an entry for the Core Deterministic Encoding
+Requirements of RFC 8949.
 It extends the COSE Hash Envelope through the existing extension point.</t>
     </abstract>
     <note>
       <name>Note to Readers</name>
-      <?line 71?>
+      <?line 64?>
 
 <t>This document is an individual submission; the intended working group is the
 COSE Working Group (cose@ietf.org). <strong>This revision is a draft for co-author and working-group
@@ -60,7 +60,7 @@ review only; it has not been submitted to the datatracker.</strong></t>
     </note>
   </front>
   <middle>
-    <?line 77?>
+    <?line 70?>
 
 <section anchor="intro">
       <name>Introduction</name>
@@ -162,7 +162,7 @@ SHA-256 digest is
 ]]></artwork>
       <section anchor="examples-deployed">
         <name>Where These Encodings Already Apply</name>
-        <t>Neither entry in the registry (<xref target="iana-encodings"/>) is hypothetical; each names an
+        <t>The entry in the registry (<xref target="iana-encodings"/>) is not hypothetical; it names an
 encoding that a deployed specification, in a domain unrelated to the one that
 motivated this document, already applies before hashing or signing structured
 content.</t>
@@ -173,12 +173,6 @@ signature. A Hash Envelope carrying such a claim as its preimage would set
 payload-preimage-encoding to cde (Value 1) for exactly the reason <xref target="C2PASpec"/>
 imposes that requirement: a verifier recomputing the claim's hash has to know
 which deterministic encoding produced the bytes it is re-deriving.</t>
-        <t>jcs: <xref target="ECMA424"/> defines the CycloneDX Cryptography Bill of Materials (CBOM), a
-JSON format cataloging an organization's cryptographic assets for
-supply-chain and post-quantum migration reporting. A Hash Envelope carrying a
-CBOM document as its preimage would set payload-preimage-encoding to jcs
-(Value 2), since JSON has no single canonical byte serialization of its own
-and <xref target="RFC8785"/> is the encoding registered for that content-type family.</t>
       </section>
     </section>
     <section anchor="security">
@@ -206,23 +200,6 @@ octets an existing value governs; each entry's definition, once registered,
 is immutable. A registered value MAY be withdrawn through the same Specification Required
 review. Withdrawal is terminal: the token stays bound, no definition is ever
 assigned or reassigned to it, and the value is not reused.</t>
-      </section>
-      <section anchor="security-precision">
-        <name>Deterministic Encoding Precision</name>
-        <t>Naming an encoding in the registry (<xref target="iana-encodings"/>) closes the
-interoperability gap this document exists to close only if the encoding's
-own definition is pinned tightly enough that independent implementations
-agree on its output for every input. <xref target="RFC8785"/> Appendix B, Note 1, states
-that for maximum compliance with the ECMAScript "JSON" object, a value
-interpreted as an integer SHOULD be in the range -9007199254740991 to
-9007199254740991 -- the IEEE 754 double-precision safe integer range.
-<xref target="RFC8785"/> does not require every implementation to reject a value outside
-that range, and independently maintained implementations are observed to
-diverge on exactly this input: given a JSON integer outside the safe range,
-one canonicalizes it without complaint, another raises an error rather than
-canonicalize a value it cannot represent exactly. Both behaviors are
-conforming under <xref target="RFC8785"/>, and only one of them is safe to hash. See
-<xref target="iana-encodings"/> for the resulting requirement on the jcs entry.</t>
       </section>
     </section>
     <section anchor="privacy">
@@ -277,8 +254,7 @@ meaningful only through a parameter, such as payload-preimage-encoding
 (<xref target="header-param"/>), that gives the name a role. A registry, rather than a
 fixed reference, is used because more than one deterministic encoding is
 expected to be named for Hash Envelope use over time, from more than one
-content-type family: the initial contents below already span two -- CBOR and
-JSON -- and the CBOR Common Deterministic Encoding <xref target="I-D.ietf-cbor-cde"/>, in
+content-type family: the CBOR Common Deterministic Encoding <xref target="I-D.ietf-cbor-cde"/>, in
 progress in the CBOR Working Group and distinct from the core requirements
 RFC 8949 Section 4.2.1 defines, is an anticipated future registration.
 Specification Required keeps each addition reviewed and immutable.
@@ -304,33 +280,10 @@ Applicable Content Types, Reference. Initial contents:</t>
               <td align="left">
                 <xref target="RFC8949"/> Section 4.2.1</td>
             </tr>
-            <tr>
-              <td align="left">2</td>
-              <td align="left">jcs</td>
-              <td align="left">JSON Canonicalization Scheme</td>
-              <td align="left">JSON content types, such as application/json</td>
-              <td align="left">
-                <xref target="RFC8785"/></td>
-            </tr>
           </tbody>
         </table>
         <t>Value 1, cde, is the Core Deterministic Encoding Requirements of
-<xref target="RFC8949"/> Section 4.2.1, part of STD 94. Value 2, jcs, is the JSON
-Canonicalization Scheme <xref target="RFC8785"/>. The two initial entries are drawn from
-different content-type families -- CBOR and JSON -- so the registry's
-generality does not rest on argument alone.</t>
-        <t>Registering jcs surfaces a constraint that belongs to the encoding, not to
-this document (<xref target="security-precision"/>). A producer applying jcs to preimage
-content MUST NOT include a JSON value that <xref target="RFC8785"/> interprets as an
-integer outside the range -9007199254740991 to 9007199254740991 unless it
-first confirms that every verifier's <xref target="RFC8785"/> implementation treats that
-value identically; content that cannot make this guarantee MUST represent
-the value as a JSON string instead, per <xref target="RFC8785"/>'s own recommendation.
-This is not a caveat against registering jcs -- naming an encoding only
-delivers the interoperable recomputation this document exists to provide
-when the encoding's own definition is pinned tightly enough that independent
-implementations agree, and <xref target="RFC8785"/>'s own text already marks the one
-place where that pinning runs out.</t>
+<xref target="RFC8949"/> Section 4.2.1, part of STD 94.</t>
         <t>The registry is open under the policy above, so encodings for other
 structured content types can be added by later registrations, each citing
 its own reference.</t>
@@ -445,21 +398,6 @@ its own reference.</t>
       </references>
       <references anchor="sec-informative-references">
         <name>Informative References</name>
-        <reference anchor="RFC8785">
-          <front>
-            <title>JSON Canonicalization Scheme (JCS)</title>
-            <author fullname="A. Rundgren" initials="A." surname="Rundgren"/>
-            <author fullname="B. Jordan" initials="B." surname="Jordan"/>
-            <author fullname="S. Erdtman" initials="S." surname="Erdtman"/>
-            <date month="June" year="2020"/>
-            <abstract>
-              <t>Cryptographic operations like hashing and signing need the data to be expressed in an invariant format so that the operations are reliably repeatable. One way to address this is to create a canonical representation of the data. Canonicalization also permits data to be exchanged in its original form on the "wire" while cryptographic operations performed on the canonicalized counterpart of the data in the producer and consumer endpoints generate consistent results.</t>
-              <t>This document describes the JSON Canonicalization Scheme (JCS). This specification defines how to create a canonical representation of JSON data by building on the strict serialization methods for JSON primitives defined by ECMAScript, constraining JSON data to the Internet JSON (I-JSON) subset, and by using deterministic property sorting.</t>
-            </abstract>
-          </front>
-          <seriesInfo name="RFC" value="8785"/>
-          <seriesInfo name="DOI" value="10.17487/RFC8785"/>
-        </reference>
         <reference anchor="RFC9943">
           <front>
             <title>An Architecture for Trustworthy and Transparent Digital Supply Chains</title>
@@ -517,15 +455,6 @@ its own reference.</t>
           </front>
           <seriesInfo name="Internet-Draft" value="draft-ietf-cbor-cde-13"/>
         </reference>
-        <reference anchor="ECMA424" target="https://ecma-international.org/wp-content/uploads/ECMA-424_2nd_edition_december_2025.pdf">
-          <front>
-            <title>CycloneDX Bill of Materials Specification</title>
-            <author>
-              <organization>Ecma International</organization>
-            </author>
-            <date year="2025" month="December"/>
-          </front>
-        </reference>
         <reference anchor="C2PASpec" target="https://spec.c2pa.org/specifications/specifications/2.2/specs/_attachments/C2PA_Specification.pdf">
           <front>
             <title>Content Credentials: C2PA Technical Specification 2.2</title>
@@ -539,135 +468,111 @@ its own reference.</t>
     </references>
   </back>
   <!-- ##markdown-source:
-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
+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
 
 -->
 
