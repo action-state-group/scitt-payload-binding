@@ -47,6 +47,11 @@ informative:
     date: 2025-05-01
     author:
       - organization: Coalition for Content Provenance and Authenticity (C2PA)
+  VTOSpec:
+    title: "libp2p Verified Telemetry Object (VTO) Specification (work in progress)"
+    target: https://github.com/seetadev/libp2p-vto-spec
+    author:
+      - organization: libp2p / seetadev (in-progress specification)
 
 --- abstract
 
@@ -188,6 +193,16 @@ signature. A Hash Envelope carrying such a claim as its preimage would set
 payload-preimage-encoding to cde (Value 1) for exactly the reason {{C2PASpec}}
 imposes that requirement: a verifier recomputing the claim's hash has to know
 which deterministic encoding produced the bytes it is re-deriving.
+
+cde: {{VTOSpec}}, an in-progress libp2p specification for the Verified
+Telemetry Object (VTO), encodes each telemetry object with "definite-length
+CBOR maps, deterministic key ordering by encoded-key bytes, IEEE 754 binary64
+floats, and SHA-256 multihashes over the raw CBOR item" -- the Core
+Deterministic Encoding Requirements of {{RFC8949}} Section 4.2.1 applied
+before hashing. A producer emitting a VTO as a Hash Envelope preimage would set
+payload-preimage-encoding to cde (Value 1), because VTO already encodes its
+telemetry objects with that deterministic CBOR encoding before hashing, and a
+verifier re-deriving the SHA-256 over the raw CBOR item has to know it.
 
 # Security Considerations {#security}
 

@@ -82,15 +82,15 @@ Table of Contents
      5.1.  Where These Encodings Already Apply . . . . . . . . . . .   5
    6.  Security Considerations . . . . . . . . . . . . . . . . . . .   5
      6.1.  Preimages Are Bytes, Not Renderings . . . . . . . . . . .   5
-     6.2.  Encoding Agility  . . . . . . . . . . . . . . . . . . . .   5
+     6.2.  Encoding Agility  . . . . . . . . . . . . . . . . . . . .   6
    7.  Privacy Considerations  . . . . . . . . . . . . . . . . . . .   6
    8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   6
      8.1.  COSE Header Parameters  . . . . . . . . . . . . . . . . .   6
-     8.2.  COSE Deterministic Encodings Registry . . . . . . . . . .   6
+     8.2.  COSE Deterministic Encodings Registry . . . . . . . . . .   7
    9.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   7
      9.1.  Normative References  . . . . . . . . . . . . . . . . . .   7
      9.2.  Informative References  . . . . . . . . . . . . . . . . .   8
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .   8
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .   9
 
 1.  Introduction
 
@@ -242,6 +242,17 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
    a verifier recomputing the claim's hash has to know which
    deterministic encoding produced the bytes it is re-deriving.
 
+   cde: [VTOSpec], an in-progress libp2p specification for the Verified
+   Telemetry Object (VTO), encodes each telemetry object with "definite-
+   length CBOR maps, deterministic key ordering by encoded-key bytes,
+   IEEE 754 binary64 floats, and SHA-256 multihashes over the raw CBOR
+   item" -- the Core Deterministic Encoding Requirements of [RFC8949]
+   Section 4.2.1 applied before hashing.  A producer emitting a VTO as a
+   Hash Envelope preimage would set payload-preimage-encoding to cde
+   (Value 1), because VTO already encodes its telemetry objects with
+   that deterministic CBOR encoding before hashing, and a verifier re-
+   deriving the SHA-256 over the raw CBOR item has to know it.
+
 6.  Security Considerations
 
 6.1.  Preimages Are Bytes, Not Renderings
@@ -263,6 +274,14 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
    hexadecimal -- is a profile-level concern and is out of scope for
    this document.
 
+
+
+
+Mih & Sokolov             Expires 27 March 2027                 [Page 5]
+
+Internet-Draft       COSE payload-preimage-encoding       September 2026
+
+
 6.2.  Encoding Agility
 
    The COSE Deterministic Encodings registry (Section 8.2) grows by
@@ -272,15 +291,6 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
    through the same Specification Required review.  Withdrawal is
    terminal: the token stays bound, no definition is ever assigned or
    reassigned to it, and the value is not reused.
-
-
-
-
-
-Mih & Sokolov             Expires 27 March 2027                 [Page 5]
-
-Internet-Draft       COSE payload-preimage-encoding       September 2026
-
 
 7.  Privacy Considerations
 
@@ -319,6 +329,15 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
    The suggested value is 271, the lowest unassigned integer in the COSE
    Header Parameters registry as of 2026-09-22.
 
+
+
+
+
+Mih & Sokolov             Expires 27 March 2027                 [Page 6]
+
+Internet-Draft       COSE payload-preimage-encoding       September 2026
+
+
 8.2.  COSE Deterministic Encodings Registry
 
    IANA is requested to create a new registry, "COSE Deterministic
@@ -330,14 +349,6 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
    one deterministic encoding is expected to be named for Hash Envelope
    use over time, from more than one content-type family: the CBOR
    Common Deterministic Encoding [I-D.ietf-cbor-cde], in progress in the
-
-
-
-Mih & Sokolov             Expires 27 March 2027                 [Page 6]
-
-Internet-Draft       COSE payload-preimage-encoding       September 2026
-
-
    CBOR Working Group and distinct from the core requirements RFC 8949
    Section 4.2.1 defines, is an anticipated future registration.
    Specification Required keeps each addition reviewed and immutable.
@@ -375,6 +386,14 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
               DOI 10.17487/RFC2119, March 1997,
               <https://www.rfc-editor.org/rfc/rfc2119>.
 
+
+
+
+Mih & Sokolov             Expires 27 March 2027                 [Page 7]
+
+Internet-Draft       COSE payload-preimage-encoding       September 2026
+
+
    [RFC8126]  Cotton, M., Leiba, B., and T. Narten, "Guidelines for
               Writing an IANA Considerations Section in RFCs", BCP 26,
               RFC 8126, DOI 10.17487/RFC8126, June 2017,
@@ -383,16 +402,6 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
    [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
-
-
-
-
-
-
-Mih & Sokolov             Expires 27 March 2027                 [Page 7]
-
-Internet-Draft       COSE payload-preimage-encoding       September 2026
-
 
    [RFC8610]  Birkholz, H., Vigano, C., and C. Bormann, "Concise Data
               Definition Language (CDDL): A Notational Convention to
@@ -429,17 +438,8 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
               13 October 2025, <https://datatracker.ietf.org/doc/html/
               draft-ietf-cbor-cde-13>.
 
-   [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
-              Y., and S. Lasker, "An Architecture for Trustworthy and
-              Transparent Digital Supply Chains", RFC 9943,
-              DOI 10.17487/RFC9943, June 2026,
-              <https://www.rfc-editor.org/rfc/rfc9943>.
 
-Authors' Addresses
 
-   Steven Mih
-   Action State Group, Inc.
-   Email: spec@actionstate.ai
 
 
 
@@ -450,29 +450,29 @@ Mih & Sokolov             Expires 27 March 2027                 [Page 8]
 Internet-Draft       COSE payload-preimage-encoding       September 2026
 
 
+   [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
+              Y., and S. Lasker, "An Architecture for Trustworthy and
+              Transparent Digital Supply Chains", RFC 9943,
+              DOI 10.17487/RFC9943, June 2026,
+              <https://www.rfc-editor.org/rfc/rfc9943>.
+
+   [VTOSpec]  libp2p / seetadev (in-progress specification), "libp2p
+              Verified Telemetry Object (VTO) Specification (work in
+              progress)", n.d.,
+              <https://github.com/seetadev/libp2p-vto-spec>.
+
+Authors' Addresses
+
+   Steven Mih
+   Action State Group, Inc.
+   Email: spec@actionstate.ai
+
+
    Anton Sokolov
    Tyche Institute
    Tallinn
    Estonia
    Email: anton.sokolov@tyche.institute
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
