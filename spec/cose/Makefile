@@ -4,7 +4,7 @@
 #   gem install kramdown-rfc
 #   python3 -m pip install xml2rfc
 
-DRAFT   = draft-mih-sokolov-cose-payload-preimage-encoding-00
+DRAFT   = draft-mih-sokolov-cose-payload-preimage-encoding-01
 XML2RFC ?= xml2rfc
 KDRFC   ?= kramdown-rfc
 

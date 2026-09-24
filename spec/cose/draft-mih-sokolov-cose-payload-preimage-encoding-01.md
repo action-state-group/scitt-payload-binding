@@ -1,8 +1,8 @@
 ---
 title: "The COSE payload-preimage-encoding Header Parameter"
 abbrev: "COSE payload-preimage-encoding"
-docname: draft-mih-sokolov-cose-payload-preimage-encoding-00
-date: 2026-09-22
+docname: draft-mih-sokolov-cose-payload-preimage-encoding-01
+date: 2026-09-23
 category: std
 submissiontype: IETF
 ipr: trust200902
@@ -39,8 +39,21 @@ normative:
   RFC9995:
 
 informative:
+  RFC8785:
   RFC9943:
   I-D.ietf-cbor-cde:
+  ECMA424:
+    title: "CycloneDX Bill of Materials Specification"
+    target: https://ecma-international.org/wp-content/uploads/ECMA-424_2nd_edition_december_2025.pdf
+    date: 2025-12
+    author:
+      - organization: Ecma International
+  C2PASpec:
+    title: "Content Credentials: C2PA Technical Specification 2.2"
+    target: https://spec.c2pa.org/specifications/specifications/2.2/specs/_attachments/C2PA_Specification.pdf
+    date: 2025-05-01
+    author:
+      - organization: Coalition for Content Provenance and Authenticity (C2PA)
 
 --- abstract
 
@@ -50,9 +63,10 @@ in use, and the Hash Envelope does not identify which one produced the hashed
 bytes -- so a verifier cannot reliably recompute the hash. This document
 defines a protected-header parameter, payload-preimage-encoding, that names
 the deterministic encoding a producer applied before hashing a Hash Envelope
-payload, and a small IANA registry of encoding identifiers whose initial
-entry is the Core Deterministic Encoding Requirements of RFC 8949. It extends
-the COSE Hash Envelope through the existing extension point.
+payload, and a small IANA registry of deterministic encoding identifiers,
+populated at issuance with entries for the Core Deterministic Encoding
+Requirements of RFC 8949 and the JSON Canonicalization Scheme of RFC 8785.
+It extends the COSE Hash Envelope through the existing extension point.
 
 --- note_Note_to_Readers
 
@@ -101,7 +115,7 @@ TBD:
   structured content to produce the octets identified by
   preimage-content-type (259) and hashed to produce the payload identified
   by payload-hash-alg (258). The value is the integer Value (not the Name)
-  assigned to an encoding in the COSE Preimage Encodings registry
+  assigned to an encoding in the COSE Deterministic Encodings registry
   ({{iana-encodings}}).
 
 It amends the Hash_Envelope_Protected_Header CDDL of {{RFC9995}} Section 4
@@ -167,6 +181,28 @@ SHA-256 digest is
 ])
 ~~~
 
+## Where These Encodings Already Apply {#examples-deployed}
+
+Neither entry in the registry ({{iana-encodings}}) is hypothetical; each names an
+encoding that a deployed specification, in a domain unrelated to the one that
+motivated this document, already applies before hashing or signing structured
+content.
+
+cde: {{C2PASpec}} Section 10.1 states that a C2PA claim is encoded as CBOR and,
+as such, "shall comply with the Core Deterministic Encoding Requirements of
+CBOR (see RFC 8949, clause 4.2.1)" before it is hashed into the claim
+signature. A Hash Envelope carrying such a claim as its preimage would set
+payload-preimage-encoding to cde (Value 1) for exactly the reason {{C2PASpec}}
+imposes that requirement: a verifier recomputing the claim's hash has to know
+which deterministic encoding produced the bytes it is re-deriving.
+
+jcs: {{ECMA424}} defines the CycloneDX Cryptography Bill of Materials (CBOM), a
+JSON format cataloging an organization's cryptographic assets for
+supply-chain and post-quantum migration reporting. A Hash Envelope carrying a
+CBOM document as its preimage would set payload-preimage-encoding to jcs
+(Value 2), since JSON has no single canonical byte serialization of its own
+and {{RFC8785}} is the encoding registered for that content-type family.
+
 # Security Considerations {#security}
 
 ## Preimages Are Bytes, Not Renderings {#security-bytes}
@@ -188,12 +224,29 @@ document.
 
 ## Encoding Agility {#security-agility}
 
-The COSE Preimage Encodings registry ({{iana-encodings}}) grows by
+The COSE Deterministic Encodings registry ({{iana-encodings}}) grows by
 registering a new value for a new encoding, never by reinterpreting the
 octets an existing value governs; each entry's definition, once registered,
 is immutable. A registered value MAY be withdrawn through the same Specification Required
 review. Withdrawal is terminal: the token stays bound, no definition is ever
 assigned or reassigned to it, and the value is not reused.
+
+## Deterministic Encoding Precision {#security-precision}
+
+Naming an encoding in the registry ({{iana-encodings}}) closes the
+interoperability gap this document exists to close only if the encoding's
+own definition is pinned tightly enough that independent implementations
+agree on its output for every input. {{RFC8785}} Appendix B, Note 1, states
+that for maximum compliance with the ECMAScript "JSON" object, a value
+interpreted as an integer SHOULD be in the range -9007199254740991 to
+9007199254740991 -- the IEEE 754 double-precision safe integer range.
+{{RFC8785}} does not require every implementation to reject a value outside
+that range, and independently maintained implementations are observed to
+diverge on exactly this input: given a JSON integer outside the safe range,
+one canonicalizes it without complaint, another raises an error rather than
+canonicalize a value it cannot represent exactly. Both behaviors are
+conforming under {{RFC8785}}, and only one of them is safe to hash. See
+{{iana-encodings}} for the resulting requirement on the jcs entry.
 
 # Privacy Considerations {#privacy}
 
@@ -216,21 +269,25 @@ governs that range:
 
 | Name | Label | Value Type | Value Registry | Description | Reference |
 |---|---|---|---|---|---|
-| payload-preimage-encoding | TBD (requested) | int | COSE Preimage Encodings ({{iana-encodings}}) | Encoding applied before hashing a Hash Envelope payload | This document |
+| payload-preimage-encoding | TBD (requested) | int | COSE Deterministic Encodings ({{iana-encodings}}) | Encoding applied before hashing a Hash Envelope payload | This document |
 
 The suggested value is 271, the lowest unassigned integer in the COSE
 Header Parameters registry as of 2026-09-22.
 
-## COSE Preimage Encodings Registry {#iana-encodings}
+## COSE Deterministic Encodings Registry {#iana-encodings}
 
-IANA is requested to create a new registry, "COSE Preimage Encodings".
-A registry, rather than a fixed reference, is used because more than one
-deterministic encoding of structured content is expected to be named for
-Hash Envelope use over time -- for example, the CBOR Common Deterministic
-Encoding {{I-D.ietf-cbor-cde}}, in progress in the CBOR Working Group and
-distinct from the core requirements RFC 8949 Section 4.2.1 defines, is an
-anticipated future registration -- and Specification Required keeps each
-addition reviewed and immutable.
+IANA is requested to create a new registry, "COSE Deterministic Encodings".
+The registry names deterministic encodings of structured content; it carries
+no Hash Envelope semantics of its own, and a value registered in it is
+meaningful only through a parameter, such as payload-preimage-encoding
+({{header-param}}), that gives the name a role. A registry, rather than a
+fixed reference, is used because more than one deterministic encoding is
+expected to be named for Hash Envelope use over time, from more than one
+content-type family: the initial contents below already span two -- CBOR and
+JSON -- and the CBOR Common Deterministic Encoding {{I-D.ietf-cbor-cde}}, in
+progress in the CBOR Working Group and distinct from the core requirements
+RFC 8949 Section 4.2.1 defines, is an anticipated future registration.
+Specification Required keeps each addition reviewed and immutable.
 Registration policy: Specification Required ({{RFC8126}} Section 4.6), with
 Designated Expert review. Registration template: Value, Name, Description,
 Applicable Content Types, Reference. Initial contents:
@@ -238,9 +295,27 @@ Applicable Content Types, Reference. Initial contents:
 | Value | Name | Description | Applicable Content Types | Reference |
 |---|---|---|---|---|
 | 1 | cde | CBOR deterministic encoding per the core deterministic encoding requirements of RFC 8949 Section 4.2.1 | CBOR content types, such as application/cbor | {{RFC8949}} Section 4.2.1 |
+| 2 | jcs | JSON Canonicalization Scheme | JSON content types, such as application/json | {{RFC8785}} |
 
-Value 1, cde, is the lead entry: the Core Deterministic
-Encoding Requirements of {{RFC8949}} Section 4.2.1, part of STD 94.
+Value 1, cde, is the Core Deterministic Encoding Requirements of
+{{RFC8949}} Section 4.2.1, part of STD 94. Value 2, jcs, is the JSON
+Canonicalization Scheme {{RFC8785}}. The two initial entries are drawn from
+different content-type families -- CBOR and JSON -- so the registry's
+generality does not rest on argument alone.
+
+Registering jcs surfaces a constraint that belongs to the encoding, not to
+this document ({{security-precision}}). A producer applying jcs to preimage
+content MUST NOT include a JSON value that {{RFC8785}} interprets as an
+integer outside the range -9007199254740991 to 9007199254740991 unless it
+first confirms that every verifier's {{RFC8785}} implementation treats that
+value identically; content that cannot make this guarantee MUST represent
+the value as a JSON string instead, per {{RFC8785}}'s own recommendation.
+This is not a caveat against registering jcs -- naming an encoding only
+delivers the interoperable recomputation this document exists to provide
+when the encoding's own definition is pinned tightly enough that independent
+implementations agree, and {{RFC8785}}'s own text already marks the one
+place where that pinning runs out.
+
 The registry is open under the policy above, so encodings for other
 structured content types can be added by later registrations, each citing
 its own reference.
