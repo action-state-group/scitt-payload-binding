@@ -43,7 +43,7 @@
 content is structured, more than one deterministic serialization of it may be
 in use, and the Hash Envelope does not identify which one produced the hashed
 bytes -- so a verifier cannot reliably recompute the hash. This document
-defines a protected-header parameter, payload-preimage-encoding, that names
+defines a protected-header parameter, preimage-encoding, that names
 the deterministic encoding a producer applied before hashing a Hash Envelope
 payload, and a small IANA registry of deterministic encoding identifiers,
 populated at issuance with an entry for the Core Deterministic Encoding
@@ -70,7 +70,7 @@ in use. The COSE Hash Envelope <xref target="RFC9995"/> identifies the hash func
 serializations produced them -- which a verifier needs to recompute the hash
 of structured content, such as CBOR, and compare it to the payload.</t>
       <t>This document defines one new protected-header parameter,
-payload-preimage-encoding, naming that deterministic encoding, and a small
+preimage-encoding, naming that deterministic encoding, and a small
 IANA registry of encoding identifiers. It changes nothing in <xref target="RFC9995"/>: the
 Hash Envelope protected header already admits extension parameters through its
 open CDDL member (<tt>* (int / tstr) =&gt; any</tt>), and this document adds a value
@@ -91,12 +91,12 @@ The Hash Envelope labels this document builds on are 258 (payload-hash-alg)
 and 259 (preimage-content-type).</t>
     </section>
     <section anchor="header-param">
-      <name>The payload-preimage-encoding Header Parameter</name>
+      <name>The preimage-encoding Header Parameter</name>
       <t>This document defines the parameter as:</t>
       <dl>
         <dt>TBD:</dt>
         <dd>
-          <t>payload-preimage-encoding. The deterministic encoding applied to
+          <t>preimage-encoding. The deterministic encoding applied to
 structured content to produce the octets identified by
 preimage-content-type (259) and hashed to produce the payload identified
 by payload-hash-alg (258). The value is the integer Value (not the Name)
@@ -107,7 +107,7 @@ assigned to an encoding in the COSE Deterministic Encodings registry
       <t>It amends the Hash_Envelope_Protected_Header CDDL of <xref target="RFC9995"/> Section 4
 with one optional member, alongside the members for labels 258-260:</t>
       <sourcecode type="cddl"><![CDATA[
-? &(payload_preimage_encoding: TBD) => int,
+? &(preimage_encoding: TBD) => int,
 ]]></sourcecode>
       <t>Label TBD MAY be present in the protected header and MUST NOT be present in
 the unprotected header, following the placement rule <xref target="RFC9995"/> states for
@@ -116,14 +116,14 @@ labels 258 through 260.</t>
     <section anchor="behavior">
       <name>Producer and Verifier Behavior</name>
       <t>When the preimage is structured content that was canonicalized before
-hashing, the producer MUST set payload-preimage-encoding; the value MUST be
+hashing, the producer MUST set preimage-encoding; the value MUST be
 the encoding actually applied to produce the hashed octets.
 An unstructured preimage -- for example application/octet-stream, an image,
 or an archive -- has no deterministic encoding to name, and the parameter is
 simply absent.</t>
       <t>A verifier MUST NOT infer the preimage encoding from preimage-content-type
 (259) or from the shape of the recomputed content. If
-payload-preimage-encoding is absent or carries an unrecognized value, the
+preimage-encoding is absent or carries an unrecognized value, the
 content binding cannot be verified by recomputation: the verifier MUST NOT
 report that binding as verified, and MUST report it as unverified rather
 than as failed. Unverified means the verifier lacked the information
@@ -136,7 +136,7 @@ can still report Signature-Valid status for the COSE_Sign1 itself.</t>
 be used with. A producer MUST NOT pair an encoding with an incompatible
 content type (for example, cde with a non-CBOR content type such as
 application/json), and a verifier MUST reject a Hash Envelope whose
-payload-preimage-encoding and preimage-content-type (259) are inconsistent.</t>
+preimage-encoding and preimage-content-type (259) are inconsistent.</t>
     </section>
     <section anchor="examples">
       <name>Examples</name>
@@ -170,7 +170,7 @@ content.</t>
 as such, "shall comply with the Core Deterministic Encoding Requirements of
 CBOR (see RFC 8949, clause 4.2.1)" before it is hashed into the claim
 signature. A Hash Envelope carrying such a claim as its preimage would set
-payload-preimage-encoding to cde (Value 1) for exactly the reason <xref target="C2PASpec"/>
+preimage-encoding to cde (Value 1) for exactly the reason <xref target="C2PASpec"/>
 imposes that requirement: a verifier recomputing the claim's hash has to know
 which deterministic encoding produced the bytes it is re-deriving.</t>
         <t>cde: <xref target="VTOSpec"/>, an in-progress libp2p specification for the Verified
@@ -179,7 +179,7 @@ CBOR maps, deterministic key ordering by encoded-key bytes, IEEE 754 binary64
 floats, and SHA-256 multihashes over the raw CBOR item" -- the Core
 Deterministic Encoding Requirements of <xref target="RFC8949"/> Section 4.2.1 applied
 before hashing. A producer emitting a VTO as a Hash Envelope preimage would set
-payload-preimage-encoding to cde (Value 1), because VTO already encodes its
+preimage-encoding to cde (Value 1), because VTO already encodes its
 telemetry objects with that deterministic CBOR encoding before hashing, and a
 verifier re-deriving the SHA-256 over the raw CBOR item has to know it.</t>
       </section>
@@ -242,7 +242,7 @@ governs that range:</t>
           </thead>
           <tbody>
             <tr>
-              <td align="left">payload-preimage-encoding</td>
+              <td align="left">preimage-encoding</td>
               <td align="left">TBD (requested)</td>
               <td align="left">int</td>
               <td align="left">COSE Deterministic Encodings (<xref target="iana-encodings"/>)</td>
@@ -259,7 +259,7 @@ Header Parameters registry as of 2026-09-22.</t>
         <t>IANA is requested to create a new registry, "COSE Deterministic Encodings".
 The registry names deterministic encodings of structured content; it carries
 no Hash Envelope semantics of its own, and a value registered in it is
-meaningful only through a parameter, such as payload-preimage-encoding
+meaningful only through a parameter, such as preimage-encoding
 (<xref target="header-param"/>), that gives the name a role. A registry, rather than a
 fixed reference, is used because more than one deterministic encoding is
 expected to be named for Hash Envelope use over time, from more than one
@@ -486,118 +486,118 @@ its own reference.</t>
     </references>
   </back>
   <!-- ##markdown-source:
-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
-JQnCo2uNUv5j0ZGK78T/Af6BBSJYMgAA
+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
+xbfi/wDFIHG9+DEAAA==
 
 -->
 
