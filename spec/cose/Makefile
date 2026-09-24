@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
-# Build draft-mih-sokolov-cose-payload-preimage-encoding from the
+# Build draft-mih-sokolov-cose-deterministic-encodings from the
 # kramdown-rfc source. Toolchain (one-time):
 #   gem install kramdown-rfc
 #   python3 -m pip install xml2rfc
 
-DRAFT   = draft-mih-sokolov-cose-payload-preimage-encoding-01
+DRAFT   = draft-mih-sokolov-cose-deterministic-encodings-00
 XML2RFC ?= xml2rfc
 KDRFC   ?= kramdown-rfc
 

@@ -1,7 +1,7 @@
 ---
-title: "The COSE payload-preimage-encoding Header Parameter"
-abbrev: "COSE payload-preimage-encoding"
-docname: draft-mih-sokolov-cose-payload-preimage-encoding-01
+title: "Declaring the Deterministic Encoding of Hashed Content in COSE"
+abbrev: "COSE Deterministic Encoding Declaration"
+docname: draft-mih-sokolov-cose-deterministic-encodings-00
 date: 2026-09-23
 category: std
 submissiontype: IETF

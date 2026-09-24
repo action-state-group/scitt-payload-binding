@@ -9,8 +9,8 @@ Expires: 27 March 2027                                   Tyche Institute
                                                        23 September 2026
 
 
-          The COSE payload-preimage-encoding Header Parameter
-          draft-mih-sokolov-cose-payload-preimage-encoding-01
+     Declaring the Deterministic Encoding of Hashed Content in COSE
+           draft-mih-sokolov-cose-deterministic-encodings-00
 
 Abstract
 
@@ -55,7 +55,7 @@ Status of This Memo
 
 Mih & Sokolov             Expires 27 March 2027                 [Page 1]
 
-Internet-Draft       COSE payload-preimage-encoding       September 2026
+Internet-Draft   COSE Deterministic Encoding Declaration  September 2026
 
 
 Copyright Notice
@@ -111,7 +111,7 @@ Table of Contents
 
 Mih & Sokolov             Expires 27 March 2027                 [Page 2]
 
-Internet-Draft       COSE payload-preimage-encoding       September 2026
+Internet-Draft   COSE Deterministic Encoding Declaration  September 2026
 
 
    any), and this document adds a value through that existing extension
@@ -167,7 +167,7 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
 
 Mih & Sokolov             Expires 27 March 2027                 [Page 3]
 
-Internet-Draft       COSE payload-preimage-encoding       September 2026
+Internet-Draft   COSE Deterministic Encoding Declaration  September 2026
 
 
    A verifier MUST NOT infer the preimage encoding from preimage-
@@ -223,7 +223,7 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
 
 Mih & Sokolov             Expires 27 March 2027                 [Page 4]
 
-Internet-Draft       COSE payload-preimage-encoding       September 2026
+Internet-Draft   COSE Deterministic Encoding Declaration  September 2026
 
 
 5.1.  Where These Encodings Already Apply
@@ -279,7 +279,7 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
 
 Mih & Sokolov             Expires 27 March 2027                 [Page 5]
 
-Internet-Draft       COSE payload-preimage-encoding       September 2026
+Internet-Draft   COSE Deterministic Encoding Declaration  September 2026
 
 
 6.2.  Encoding Agility
@@ -335,7 +335,7 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
 
 Mih & Sokolov             Expires 27 March 2027                 [Page 6]
 
-Internet-Draft       COSE payload-preimage-encoding       September 2026
+Internet-Draft   COSE Deterministic Encoding Declaration  September 2026
 
 
 8.2.  COSE Deterministic Encodings Registry
@@ -391,7 +391,7 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
 
 Mih & Sokolov             Expires 27 March 2027                 [Page 7]
 
-Internet-Draft       COSE payload-preimage-encoding       September 2026
+Internet-Draft   COSE Deterministic Encoding Declaration  September 2026
 
 
    [RFC8126]  Cotton, M., Leiba, B., and T. Narten, "Guidelines for
@@ -447,7 +447,7 @@ Internet-Draft       COSE payload-preimage-encoding       September 2026
 
 Mih & Sokolov             Expires 27 March 2027                 [Page 8]
 
-Internet-Draft       COSE payload-preimage-encoding       September 2026
+Internet-Draft   COSE Deterministic Encoding Declaration  September 2026
 
 
    [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
