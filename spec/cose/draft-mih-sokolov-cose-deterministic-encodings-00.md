@@ -11,7 +11,6 @@ workgroup: "COSE"
 keyword:
  - COSE
  - hash envelope
- - preimage
  - canonicalization
  - deterministic encoding
 stand_alone: yes
@@ -59,7 +58,7 @@ The COSE Hash Envelope carries the hash of content held elsewhere. When that
 content is structured, more than one deterministic serialization of it may be
 in use, and the Hash Envelope does not identify which one produced the hashed
 bytes -- so a verifier cannot reliably recompute the hash. This document
-defines a protected-header parameter, preimage-encoding, that names
+defines a protected-header parameter, deterministic-encoding, that names
 the deterministic encoding a producer applied before hashing a Hash Envelope
 payload, and a small IANA registry of deterministic encoding identifiers,
 populated at issuance with an entry for the Core Deterministic Encoding
@@ -83,7 +82,7 @@ serializations produced them -- which a verifier needs to recompute the hash
 of structured content, such as CBOR, and compare it to the payload.
 
 This document defines one new protected-header parameter,
-preimage-encoding, naming that deterministic encoding, and a small
+deterministic-encoding, naming that encoding, and a small
 IANA registry of encoding identifiers. It changes nothing in {{RFC9995}}: the
 Hash Envelope protected header already admits extension parameters through its
 open CDDL member (`* (int / tstr) => any`), and this document adds a value
@@ -104,12 +103,12 @@ shown here.
 The Hash Envelope labels this document builds on are 258 (payload-hash-alg)
 and 259 (preimage-content-type).
 
-# The preimage-encoding Header Parameter {#header-param}
+# The deterministic-encoding Header Parameter {#header-param}
 
 This document defines the parameter as:
 
 TBD:
-: preimage-encoding. The deterministic encoding applied to
+: deterministic-encoding. The deterministic encoding applied to
   structured content to produce the octets identified by
   preimage-content-type (259) and hashed to produce the payload identified
   by payload-hash-alg (258). The value is the integer Value (not the Name)
@@ -120,7 +119,7 @@ It amends the Hash_Envelope_Protected_Header CDDL of {{RFC9995}} Section 4
 with one optional member, alongside the members for labels 258-260:
 
 ~~~ cddl
-? &(preimage_encoding: TBD) => int,
+? &(deterministic_encoding: TBD) => int,
 ~~~
 
 Label TBD MAY be present in the protected header and MUST NOT be present in
@@ -129,16 +128,16 @@ labels 258 through 260.
 
 # Producer and Verifier Behavior {#behavior}
 
-When the preimage is structured content that was canonicalized before
-hashing, the producer MUST set preimage-encoding; the value MUST be
+When the hashed content is structured content that was canonicalized before
+hashing, the producer MUST set deterministic-encoding; the value MUST be
 the encoding actually applied to produce the hashed octets.
-An unstructured preimage -- for example application/octet-stream, an image,
+Unstructured content -- for example application/octet-stream, an image,
 or an archive -- has no deterministic encoding to name, and the parameter is
 simply absent.
 
-A verifier MUST NOT infer the preimage encoding from preimage-content-type
+A verifier MUST NOT infer the encoding from preimage-content-type
 (259) or from the shape of the recomputed content. If
-preimage-encoding is absent or carries an unrecognized value, the
+deterministic-encoding is absent or carries an unrecognized value, the
 content binding cannot be verified by recomputation: the verifier MUST NOT
 report that binding as verified, and MUST report it as unverified rather
 than as failed. Unverified means the verifier lacked the information
@@ -152,14 +151,14 @@ An encoding's definition constrains the preimage-content-type (259) it may
 be used with. A producer MUST NOT pair an encoding with an incompatible
 content type (for example, cde with a non-CBOR content type such as
 application/json), and a verifier MUST reject a Hash Envelope whose
-preimage-encoding and preimage-content-type (259) are inconsistent.
+deterministic-encoding and preimage-content-type (259) are inconsistent.
 
 # Examples {#examples}
 
 These use Extended Diagnostic Notation ({{RFC8610}} Appendix G), in the
 style of {{RFC9995}} Section 4.1; signature and key material are truncated.
 
-The preimage `{"b": 2, "a": 1}`, encoded per the Core Deterministic
+The content `{"b": 2, "a": 1}`, encoded per the Core Deterministic
 Encoding Requirements of {{RFC8949}} Section 4.2.1 (bytewise key order,
 placing "a" before "b"), is the 7-octet string `a2616101616202`, whose
 SHA-256 digest is
@@ -170,8 +169,8 @@ SHA-256 digest is
   <<{
     / alg               / 1: -7, # ES256
     / hash algorithm    / 258: -16, # sha-256
-    / preimage type     / 259: "application/cbor",
-    / preimage encoding / TBD: 1, # cde
+    / content type      / 259: "application/cbor",
+    / det. encoding     / TBD: 1, # cde
   }>>
   / unprotected / {},
   / payload     / h'a0d3af9e...c893b5e3', # digest above
@@ -189,8 +188,8 @@ content.
 cde: {{C2PASpec}} Section 10.1 states that a C2PA claim is encoded as CBOR and,
 as such, "shall comply with the Core Deterministic Encoding Requirements of
 CBOR (see RFC 8949, clause 4.2.1)" before it is hashed into the claim
-signature. A Hash Envelope carrying such a claim as its preimage would set
-preimage-encoding to cde (Value 1) for exactly the reason {{C2PASpec}}
+signature. A Hash Envelope carrying such a claim as its hashed content would set
+deterministic-encoding to cde (Value 1) for exactly the reason {{C2PASpec}}
 imposes that requirement: a verifier recomputing the claim's hash has to know
 which deterministic encoding produced the bytes it is re-deriving.
 
@@ -199,16 +198,16 @@ Telemetry Object (VTO), encodes each telemetry object with "definite-length
 CBOR maps, deterministic key ordering by encoded-key bytes, IEEE 754 binary64
 floats, and SHA-256 multihashes over the raw CBOR item" -- the Core
 Deterministic Encoding Requirements of {{RFC8949}} Section 4.2.1 applied
-before hashing. A producer emitting a VTO as a Hash Envelope preimage would set
-preimage-encoding to cde (Value 1), because VTO already encodes its
+before hashing. A producer emitting a VTO as a Hash Envelope's hashed content would set
+deterministic-encoding to cde (Value 1), because VTO already encodes its
 telemetry objects with that deterministic CBOR encoding before hashing, and a
 verifier re-deriving the SHA-256 over the raw CBOR item has to know it.
 
 # Security Considerations {#security}
 
-## Preimages Are Bytes, Not Renderings {#security-bytes}
+## Hashed Content Is Bytes, Not Renderings {#security-bytes}
 
-The preimage identified by 259 and encoded per TBD is the exact octet
+The content identified by 259 and encoded per TBD is the exact octet
 string the named encoding produces -- not a rendered form or a string
 differing from it by whitespace, newlines, or character-encoding choices.
 
@@ -236,8 +235,8 @@ assigned or reassigned to it, and the value is not reused.
 
 A digest over deterministically encoded content is a stable function of
 that content, making the payload linkable across contexts where it recurs.
-When the preimage is drawn from a low-entropy value space, encoding a
-candidate under the named encoding and hashing it with 258 can recover the preimage by
+When the hashed content is drawn from a low-entropy value space, encoding a
+candidate under the named encoding and hashing it with 258 can recover the content by
 comparison to the payload -- a risk that already exists wherever {{RFC9995}}
 is used; naming the encoding removes ambiguity that might have slowed such an
 attempt.
@@ -253,7 +252,7 @@ governs that range:
 
 | Name | Label | Value Type | Value Registry | Description | Reference |
 |---|---|---|---|---|---|
-| preimage-encoding | TBD (requested) | int | COSE Deterministic Encodings ({{iana-encodings}}) | Encoding applied before hashing a Hash Envelope payload | This document |
+| deterministic-encoding | TBD | int | COSE Deterministic Encodings ({{iana-encodings}}) | Encoding applied before hashing a Hash Envelope payload | This document |
 
 The suggested value is 271, the lowest unassigned integer in the COSE
 Header Parameters registry as of 2026-09-22.
@@ -263,7 +262,7 @@ Header Parameters registry as of 2026-09-22.
 IANA is requested to create a new registry, "COSE Deterministic Encodings".
 The registry names deterministic encodings of structured content; it carries
 no Hash Envelope semantics of its own, and a value registered in it is
-meaningful only through a parameter, such as preimage-encoding
+meaningful only through a parameter, such as deterministic-encoding
 ({{header-param}}), that gives the name a role. A registry, rather than a
 fixed reference, is used because more than one deterministic encoding is
 expected to be named for Hash Envelope use over time, from more than one
