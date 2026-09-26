@@ -1,8 +1,8 @@
 ---
 title: "Canonicalization Declaration for SCITT Signed Statements"
 abbrev: "SCITT Canonicalization Declaration"
-docname: draft-mih-sokolov-scitt-payload-binding-05
-date: 2026-09-11
+docname: draft-mih-sokolov-scitt-payload-binding-06
+date: 2026-09-26
 category: std
 submissiontype: IETF
 ipr: trust200902
@@ -304,6 +304,14 @@ This document does not define:
 
 * Transports — how registration requests or retrieval queries travel between
   producers, Transparency Services, or verifiers.
+
+# Changes from -05 {#changes-05}
+
+This revision updates the Acknowledgments only. It makes no normative change,
+no registry entry changes, and the vectors at the locations in
+{{test-vector-locations}} are unchanged. The Acknowledgments now credit
+contributions made through public review after the IETF 126 hackathon, and
+add Imran Siddique.
 
 # Changes from -04 {#changes-04}
 
@@ -1716,16 +1724,17 @@ Signed Statement.
 # Acknowledgments {#acknowledgments}
 {:numbered="false"}
 
-The following individuals contributed findings from the IETF 126 hackathon in
-Vienna that directly shaped the rules in this document. All attributions
-cite public artifacts.
+The following individuals contributed findings that directly shaped the rules
+in this document, whether raised at the IETF 126 hackathon in Vienna or
+through public review afterward. All attributions cite public artifacts.
 
 **Contributors** \[all named attributions and contributor acknowledgments
 individually confirmed: Anton Sokolov (confirmed 2026-07-24), Iman Schrock
 (confirmed 2026-07-24), Tom Sato (confirmed 2026-07-25), Yong Bok Lee (Scott
 Lee) (contributor attribution confirmed 2026-07-27), Tymofii Pidlisnyi (Agent Passport System,
 confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero, confirmed
-2026-07-25, email, with corrections)\]:
+2026-07-25, email, with corrections), Imran Siddique (Opaque Systems,
+confirmed 2026-09-11, on-issue)\]:
 
 * Anton Sokolov (Tyche Institute) — assurance-boundary discipline; the A2A
   boundary-seal instance in {{appendix-c}}.
@@ -1753,6 +1762,12 @@ confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero, confirmed
 * Karthik Rampalli (Glyphzero) — independent JCS implementation
   byte-agreement on `subject_digest` `0b4da06b...`, demonstrating that
   RFC 8785 JCS is reproducible across separately written implementations.
+
+* Imran Siddique (Opaque Systems) — the plain-JCS subject-binding divergence
+  that led to the withdrawal of `jcs-n` and the registration of `jcs` (#34);
+  the `digest_alg` consistency-declaration clarification and the withdrawal
+  of `cde-n` (#36); and the verifier-behaviour rules for unregistered
+  external artifact types (#35).
 
 * Iman Schrock (EMILIA/EP) — confirmed 2026-07-24; wording narrowed at the
   contributor's request 2026-09-07 — the single-digest composition instance

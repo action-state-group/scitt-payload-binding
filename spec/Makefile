@@ -4,7 +4,7 @@
 #   gem install kramdown-rfc
 #   python3 -m pip install xml2rfc
 
-DRAFT   = draft-mih-sokolov-scitt-payload-binding-05
+DRAFT   = draft-mih-sokolov-scitt-payload-binding-06
 XML2RFC ?= xml2rfc
 KDRFC   ?= kramdown-rfc
 
