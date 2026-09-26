@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<reference anchor="I-D.ietf-scitt-receipts-ccf-profile" target="https://datatracker.ietf.org/doc/html/draft-ietf-scitt-receipts-ccf-profile-04">
+<reference anchor="I-D.ietf-scitt-receipts-ccf-profile" target="https://datatracker.ietf.org/doc/html/draft-ietf-scitt-receipts-ccf-profile-05">
    <front>
       <title>CCF Profile for COSE Receipts</title>
       <author initials="H." surname="Birkholz" fullname="Henk Birkholz">
@@ -14,16 +14,17 @@
       <author initials="A." surname="Chamayou" fullname="Amaury Chamayou">
          <organization>Microsoft Research</organization>
       </author>
-      <date month="June" day="24" year="2026" />
+      <date month="September" day="23" year="2026" />
       <abstract>
 	 <t>   This document defines a new verifiable data structure (VDS) type for
-   COSE Receipts and inclusion proofs specifically designed for append-
-   only logs produced by the Confidential Consortium Framework (CCF) to
-   provide stronger tamper-evidence guarantees.
+   COSE Receipts and the associated inclusion and consistency proofs,
+   specifically designed for append-only logs produced by the
+   Confidential Consortium Framework (CCF) to provide stronger tamper-
+   evidence guarantees.
 
 	 </t>
       </abstract>
    </front>
-   <seriesInfo name="Internet-Draft" value="draft-ietf-scitt-receipts-ccf-profile-04" />
+   <seriesInfo name="Internet-Draft" value="draft-ietf-scitt-receipts-ccf-profile-05" />
    
 </reference>
