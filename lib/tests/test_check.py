@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 """Tests for the CPB P/R grammar conformance checker (Phase 1).
 
-Mutant discipline (§7 QUEUE_PROTOCOL)
---------------------------------------
+Mutant discipline
+------------------
 Every negative check must fail its mutant — a condition-removed variant that
 the test then shows is CAUGHT by the real check.  Each section below:
 

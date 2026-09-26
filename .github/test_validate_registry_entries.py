@@ -5,9 +5,8 @@
 Every hard-failure path here is proven to actually fail (not just asserted in
 prose): a missing vectors_dir, a vectors_dir whose vectors don't run clean, a
 one-sided set at a rung that requires two-sidedness, and a schema-invalid
-entry. That is the mutation-test discipline QUEUE_PROTOCOL.md §7 requires for
-any check that can reject something: a check that cannot be observed to fail
-is not evidence.
+entry. That is the mutation-test discipline any check that can reject
+something requires: a check that cannot be observed to fail is not evidence.
 """
 import importlib.util
 import json
@@ -104,7 +103,7 @@ def test_reserved_entry_needs_no_seven_questions():
         "target_registry": "artifact_types",
         "rung": "reserved",
         "status": "reserved",
-        "reference": "sibling filing [cpb-vto-provisional-entries]",
+        "reference": "sibling filing (name hold only, full entry pending)",
         "owner": {"name": "libp2p / VTO team"},
         "de_reviewer": "TBD",
         "open_questions": ["TBD — filed as a separate sibling entry"],
