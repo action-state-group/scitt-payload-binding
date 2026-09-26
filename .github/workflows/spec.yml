@@ -54,7 +54,7 @@ jobs:
           }
           strip_txt() {
             # Normalize ONLY the four build-day-derived date locations in RFC .txt output.
-            # Bibliographic reference dates (e.g. "24 June 2026" in [ccf-profile-04])
+            # Bibliographic reference dates (e.g. a cited Internet-Draft's publication date)
             # are content-derived — do NOT normalise them so a stale reference goes RED.
             #
             # The final rule collapses whitespace runs on lines a date rule already

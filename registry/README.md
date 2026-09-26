@@ -69,7 +69,7 @@ before their first PR can go green.
 | [`entries/agent-action-capsule.yaml`](entries/agent-action-capsule.yaml) | `agent-action-capsule` artifact type | owner_authored / owner-confirmed — conforms the existing live REGISTRY.md entry to this template; does not change its registered behavior |
 | [`entries/cll-checkpoint.yaml`](entries/cll-checkpoint.yaml) | `cll-checkpoint` artifact type (capsule-ledger's `CheckpointRecord`) | provisional — carries forward the open identifier-construction question from the `mmr-checkpoint` filing in `spec/cpb-provisional-registry.md`; DE reviewer Anton Sokolov |
 | [`entries/mesh-inference-exchange.yaml`](entries/mesh-inference-exchange.yaml) | `mesh-inference-exchange` artifact type | provisional — conforms the existing `spec/cpb-provisional-registry.md` filing (as revised for Anton's PR #70 review) to this template; open items unchanged |
-| [`entries/vto.yaml`](entries/vto.yaml) | `vto` artifact type | reserved — a name hold only; the full entry (plus its CBOR canonicalization profile) is a separate, sibling filing (`[cpb-vto-provisional-entries]`) blocked on the libp2p team's CDDL/instance/float-field artifacts |
+| [`entries/vto.yaml`](entries/vto.yaml) | `vto` artifact type | reserved — a name hold only; the full entry (plus its CBOR canonicalization profile) is a separate, sibling filing blocked on the libp2p team's CDDL/instance/float-field artifacts |
 
 Each of these is a worked example of the template — read them alongside
 `TEMPLATE.yaml` if a field's intent isn't obvious from the template comments

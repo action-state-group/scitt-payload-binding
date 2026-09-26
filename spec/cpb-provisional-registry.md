@@ -340,8 +340,8 @@ reference exists and the fields are validated in running code, but:
    explicitly **not** the AAC-level `agent_input_digest`/`agent_output_digest`
    in `compute_attestation`, which ARE the canonical JSON-DIGEST (see
    "Reasoning / tool-call sub-digests" below); it is (c)'s narrower pair of
-   fields, not the whole record, that would be scoped this way. The inbox
-   item that proposed this entry named `as-transmitted` as the identifier
+   fields, not the whole record, that would be scoped this way. The filing
+   that proposed this entry named `as-transmitted` as the identifier
    context; this note is the DE-facing detail needed to pin exactly what
    that means before it is immutable.
 2. **The one committed real-traffic example set predates the current block
@@ -386,13 +386,13 @@ elsewhere in this repo:
   (`"provider"`/`"requester"`, `capsule_sidecar.py:107-109`) label which half
   of one exchange a given sidecar seals — `provider` attests what it served,
   `requester` attests its own outbound half. This is a different mechanism
-  (own-half sealing, `[b6a-requester-seal]`), not the `x-mesh-lifecycle-v1`
+  (own-half sealing), not the `x-mesh-lifecycle-v1`
   record this entry registers.
 - The coordinator receipt's `TopologyEntry.role`
   (`mesh_coordinator_receipt_emitter.py:117-131`) takes free-string
   `"requester"`/`"responder"` values in its own tests, but the field is
   validated only as a non-empty string — its docstring says it "reuses
-  `[mesh-exchange-role-field]` A1's registry-defined enum once it lands in
+  this registry's role enum once it lands in
   this repo's code," i.e. it forward-references this very issue rather than
   establishing a settled vocabulary of its own.
 
@@ -540,12 +540,10 @@ ready for registry review.
 ### Notes for the CPB editor (non-normative)
 
 - This entry targets the provisional track per Rung 3 of the Registration
-  Ladder (`REGISTRY.md`). GO for filing recorded 2026-08-21
-  (`action-state-strategy/docs/decisions-log.md`, same-day PM session).
+  Ladder (`REGISTRY.md`). GO for filing recorded 2026-08-21.
 - The fields are captured and validated in running code today (closed-set
   enforcement + the transcript-completeness invariant); what is missing is
-  registry-level definition, not field design — see
-  `_work/mesh-llm-capsule-architecture-2026-08-21.md` §1.
+  registry-level definition, not field design.
 - Promotion path: once the DE resolves the algorithm scope (item 1) and a
   fresh `x-mesh-lifecycle-v1` `ledger-live/` example lands (item 2), this
   entry can move directly to `owner-confirmed` (Rung 3 → owner-direct,
@@ -596,8 +594,7 @@ CheckpointRecord = {
 ```
 
 **Note for the DE — a shape correction, corrected 2026-08-22.** The mesh
-integration doc that originally proposed this entry
-(`_work/mesh-llm-capsule-architecture-2026-08-21.md` §4) sketches a
+integration doc that originally proposed this entry sketches a
 `{log_id, peer_id, mmr_root(32B), mmr_size, prev_size, timestamp}` "checkpoint
 capsule" for posting a checkpoint off-node. `peer_id` is that sketch's own
 transport-wrapper field for a consuming profile (a peer may run several logs;
@@ -698,9 +695,9 @@ promoted.
 ### Candidate consuming profile
 
 `capsule-ledger`'s own checkpoint emit/verify path (self-consuming, ships
-today). The mesh-llm "checkpoint capsule" wrapper sketched in
-`_work/mesh-llm-capsule-architecture-2026-08-21.md` §4 is a future candidate
-once that engagement names this registered type rather than inventing its own
+today). The mesh-llm "checkpoint capsule" wrapper sketched above is a future
+candidate once that engagement names this registered type rather than
+inventing its own
 `mmr_root` digest context — see the shape-correction note above.
 
 ### Notes for the CPB editor (non-normative)
