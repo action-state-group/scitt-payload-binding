@@ -437,11 +437,11 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       as Verified.
 
    Unresolved:  A typed-reference processing state.  The reference is
-      well-formed, but the verifier cannot select exactly one authorized
-      digest context or cannot obtain the cited artifact, or it lacks
-      the implementation needed to execute an otherwise valid digest
-      context.  An Unresolved reference is not evidence of a content
-      binding.
+      well-formed, but verification did not reach a Verified or Failed
+      determination, for exactly one of three distinct causes: the
+      verifier cannot select exactly one authorized digest context for
+      the reference (context); exactly one context was selected but the
+      cited artifact could not be obtained (unavailable); or exactly one
 
 
 
@@ -449,6 +449,15 @@ Mih & Sokolov             Expires 30 March 2027                 [Page 8]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
+
+      context was selected and the artifact is available, but the
+      verifier lacks the implementation needed to execute that context's
+      construction (unimplemented).  An Unresolved reference is not
+      evidence of a content binding, regardless of cause.  A verifier
+      SHOULD report which cause applies: the three causes carry
+      different remediation -- retrying later can resolve unavailable,
+      but cannot resolve context or unimplemented, which persist until
+      the profile's declarations or the verifier's capabilities change.
 
    Failed:  A typed-reference processing state.  The reference is well-
       formed and exactly one authorized digest context is selected, but
@@ -488,15 +497,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    algorithm; verifiers MUST NOT guess the algorithm from the payload
    shape.
 
-   The identifiers registered by this document in the Canonicalization
-   Algorithm Registry (Section 15.1) are:
-
-
-
-
-
-
-
 
 
 
@@ -505,6 +505,9 @@ Mih & Sokolov             Expires 30 March 2027                 [Page 9]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
+
+   The identifiers registered by this document in the Canonicalization
+   Algorithm Registry (Section 15.1) are:
 
      +================+================================+=============+
      | Name           | Summary                        | Reference   |
@@ -551,9 +554,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       algorithm, with no normalization pass: no member is removed
       because its value is JSON null, an empty array, or an empty
       object. jcs places no additional restriction on JSON numbers
-      beyond RFC 8785 itself: a JSON floating-point number is permitted
-      and is serialized per the canonical ECMAScript-based number-to-
-      string procedure RFC 8785 [RFC8785] Section 3.2.2.3 defines for
 
 
 
@@ -562,6 +562,9 @@ Mih & Sokolov             Expires 30 March 2027                [Page 10]
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
+      beyond RFC 8785 itself: a JSON floating-point number is permitted
+      and is serialized per the canonical ECMAScript-based number-to-
+      string procedure RFC 8785 [RFC8785] Section 3.2.2.3 defines for
       IEEE 754 double-precision values.  Two conforming implementations
       that parse the same numeric literal into the same double-precision
       value therefore produce byte-identical output; see Section 13.3.
@@ -605,9 +608,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    follows.  Let P be the JSON object supplied by the applicable payload
    or artifact-type profile, and let E be that profile's set of top-
    level member names to exclude:
-
-
-
 
 
 
@@ -1152,22 +1152,22 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
    *  If exactly one context is accepted for type, purpose MAY be
       absent.  If it is present, it MUST exactly match that context's
-      declared purpose; otherwise the reference is Unresolved.
+      declared purpose; otherwise the reference is Unresolved (cause:
+      context).
 
    *  If multiple contexts are accepted for type, every context MUST
       have a distinct, non-empty purpose label and the reference MUST
       carry purpose.  An absent or non-matching value makes the
-      reference Unresolved.
+      reference Unresolved (cause: context).
 
    *  If no declaration matches, or declarations from more than one
       normative source leave the selection ambiguous, the reference is
-      Unresolved.  The verifier MUST NOT choose by entry order, apparent
-      recency, or preferred algorithm.
+      Unresolved (cause: context).  The verifier MUST NOT choose by
+      entry order, apparent recency, or preferred algorithm.
 
    *  A profile or deployment configuration containing duplicate (type,
       purpose) selections is invalid and MUST NOT be used for
       verification.
-
 
 
 
@@ -1199,13 +1199,14 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    The verifier MUST next check that the carried value uses the selected
    context's declared representation.  A mismatch is Failed.  If the
    representation matches but the cited artifact cannot be obtained, the
-   state is Unresolved.  If the context is valid but the verifier does
-   not implement its construction, the state is also Unresolved.
-   Otherwise, the verifier MUST recompute the digest using the selected
-   context and compare it byte-for-byte with digest.  Equal values
-   produce Verified; unequal values produce Failed.  A deterministic
-   conversion is permitted only when the selected context expressly
-   defines that conversion and its output comparison representation.
+   state is Unresolved (cause: unavailable).  If the context is valid
+   but the verifier does not implement its construction, the state is
+   also Unresolved (cause: unimplemented).  Otherwise, the verifier MUST
+   recompute the digest using the selected context and compare it byte-
+   for-byte with digest.  Equal values produce Verified; unequal values
+   produce Failed.  A deterministic conversion is permitted only when
+   the selected context expressly defines that conversion and its output
+   comparison representation.
 
    The citing record's own derived-identifier context need NOT be
    compatible with the referenced artifact's digest context; those
@@ -1224,8 +1225,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
    The consuming profile MUST define the disposition of every non-
    Verified state.  It MUST NOT rely on an Unresolved, Failed, or
-   Malformed reference as evidence of a content binding.
-
+   Malformed reference as evidence of a content binding.  A profile MAY
 
 
 
@@ -1233,6 +1233,10 @@ Mih & Sokolov             Expires 30 March 2027                [Page 22]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
+
+   define distinct dispositions for the three Unresolved causes above; a
+   profile that does not is unaffected -- the single disposition
+   required for Unresolved still covers all three causes, unchanged.
 
 9.2.  Carriage Selection
 
@@ -1267,10 +1271,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    digest-value = tstr .size (1..128) / bstr .size (1..128)
 
    The integer keys have these meanings:
-
-
-
-
 
 
 

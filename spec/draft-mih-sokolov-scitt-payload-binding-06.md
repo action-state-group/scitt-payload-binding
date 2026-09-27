@@ -420,11 +420,19 @@ Malformed:
   entry in a Malformed `cpb-refs` value as Verified.
 
 Unresolved:
-: A typed-reference processing state. The reference is well-formed, but the
-  verifier cannot select exactly one authorized digest context or cannot
-  obtain the cited artifact, or it lacks the implementation needed to execute
-  an otherwise valid digest context. An Unresolved reference is
-  not evidence of a content binding.
+: A typed-reference processing state. The reference is well-formed, but
+  verification did not reach a Verified or Failed determination, for exactly
+  one of three distinct causes: the verifier cannot select exactly one
+  authorized digest context for the reference (`context`); exactly one
+  context was selected but the cited artifact could not be obtained
+  (`unavailable`); or exactly one context was selected and the artifact is
+  available, but the verifier lacks the implementation needed to execute
+  that context's construction (`unimplemented`). An Unresolved reference is
+  not evidence of a content binding, regardless of cause. A verifier SHOULD
+  report which cause applies: the three causes carry different remediation
+  -- retrying later can resolve `unavailable`, but cannot resolve `context`
+  or `unimplemented`, which persist until the profile's declarations or the
+  verifier's capabilities change.
 
 Failed:
 : A typed-reference processing state. The reference is well-formed and exactly
@@ -928,14 +936,15 @@ one accepted context:
 
 * If exactly one context is accepted for `type`, `purpose` MAY be absent. If
   it is present, it MUST exactly match that context's declared purpose;
-  otherwise the reference is Unresolved.
+  otherwise the reference is Unresolved (cause: `context`).
 * If multiple contexts are accepted for `type`, every context MUST have a
   distinct, non-empty purpose label and the reference MUST carry `purpose`.
-  An absent or non-matching value makes the reference Unresolved.
+  An absent or non-matching value makes the reference Unresolved (cause:
+  `context`).
 * If no declaration matches, or declarations from more than one normative
-  source leave the selection ambiguous, the reference is Unresolved. The
-  verifier MUST NOT choose by entry order, apparent recency, or preferred
-  algorithm.
+  source leave the selection ambiguous, the reference is Unresolved (cause:
+  `context`). The verifier MUST NOT choose by entry order, apparent
+  recency, or preferred algorithm.
 * A profile or deployment configuration containing duplicate `(type,
   purpose)` selections is invalid and MUST NOT be used for verification.
 
@@ -958,8 +967,9 @@ algorithm agility and downgrade detection.
 The verifier MUST next check that the carried value uses the selected
 context's declared representation. A mismatch is Failed. If the
 representation matches but the cited artifact cannot be obtained, the state
-is Unresolved. If the context is valid but the verifier does not implement its
-construction, the state is also Unresolved. Otherwise, the verifier
+is Unresolved (cause: `unavailable`). If the context is valid but the
+verifier does not implement its construction, the state is also Unresolved
+(cause: `unimplemented`). Otherwise, the verifier
 MUST recompute the digest using the selected context and compare it
 byte-for-byte with `digest`. Equal values produce Verified; unequal values
 produce Failed. A deterministic conversion
@@ -984,7 +994,10 @@ not validate.
 
 The consuming profile MUST define the disposition of every non-Verified
 state. It MUST NOT rely on an Unresolved, Failed, or Malformed reference as
-evidence of a content binding.
+evidence of a content binding. A profile MAY define distinct dispositions
+for the three Unresolved causes above; a profile that does not is
+unaffected -- the single disposition required for Unresolved still covers
+all three causes, unchanged.
 
 ## Carriage Selection {#carriage-selection}
 
