@@ -5,7 +5,7 @@ Declaration for SCITT Signed Statements* — together with its registry material
 vectors and reference code. The document is an **individual IETF Internet-Draft**. It is not a
 Working Group document and it is not an RFC.
 
-It also carries **`draft-mih-sokolov-cose-hash-envelope-preimage-encoding`** under `spec/cose/`,
+It also carries **`draft-mih-sokolov-cose-det-encodings`** under `spec/cose/`,
 an individual Internet-Draft intended for the COSE Working Group. **This file governs both
 documents**, and in particular the submission rule below applies to each of them separately: a
 submission of either requires the agreement of every author of that document. Where a rule names

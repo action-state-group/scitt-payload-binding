@@ -19,7 +19,7 @@ is worth more to this document than any amount of internal review.
 ## Internet-Draft authors
 
 `draft-mih-sokolov-scitt-payload-binding` — *Canonicalization Declaration for SCITT Signed
-Statements*, and `draft-mih-sokolov-cose-hash-envelope-preimage-encoding` — *Preimage Encoding for
+Statements*, and `draft-mih-sokolov-cose-det-encodings` — *Preimage Encoding for
 COSE Hash Envelopes* (`spec/cose/`). Both are individual Internet-Drafts; the submission rule
 applies to each separately.
 

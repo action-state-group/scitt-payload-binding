@@ -10,7 +10,7 @@ Expires: 27 March 2027                                   Tyche Institute
 
 
           The COSE payload-preimage-encoding Header Parameter
-          draft-mih-sokolov-cose-payload-preimage-encoding-01
+                draft-mih-sokolov-cose-det-encodings-00
 
 Abstract
 
