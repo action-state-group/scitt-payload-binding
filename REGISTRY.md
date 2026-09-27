@@ -428,13 +428,19 @@ raise a record's strength. Neither registered neighbour (`agent-action-capsule`,
 `machine-mandate`) declares a closed reconciliation vocabulary, so a verifier that
 accepted unknown values would pass their cases and fail ours. Full two-sided vector set
 pinned under Conformance vectors below.
-**Consuming-profile:** `evidence-appraisal`, registered below — the verifier artifact
-that cites its subject by typed digest (`subject_record.digest`, bare 64-char lowercase
-hex over the JCS canonical form of the full record). Same specification family as this
-entry, which is why this field is stated this way rather than asserted: whether a
-same-family artifact type satisfies Gate B as a distinct consuming profile is the
-Designated Expert's call. Owner and consuming-profile maintainer are the same party
-(Empire Labs Pty Ltd / `narko4u`), so no separate consuming-profile ACK is required under Gate C.
+**Consuming-profile:** `narko4u/evidence-record-consumer` @ `02ff552f598ebf66b04920d9f9bd1f40d42aa6d6`
+(tag `v0.1.0`), Apache-2.0, a prototype consumer that sits outside this specification
+family. It resolves the registered name, re-derives the identifier from the
+derived-identifier context below with no member removal and no domain separation, applies
+the closed 14-member field set and the closed vocabularies fail-closed, and binds an
+appraisal to its subject record by typed digest re-derived from the record bytes rather
+than trusting the value it is handed. It reproduces all eight published positives byte for
+byte and rejects all twelve MUST-FAIL cases for the reason each vector states. It is a
+consumer, not a verifier: its README states that boundary and its code verifies no
+signature, timestamp or inclusion proof. `evidence-appraisal`, registered below, remains
+the verifier artifact that carries the grade for a record. Owner and consuming-profile
+maintainer are the same party (Empire Labs Pty Ltd / `narko4u`), so no separate
+consuming-profile ACK is required under Gate C.
 **Vectors:** the conformance-vector set pinned below.
 
 | Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
@@ -474,11 +480,13 @@ appraisal policy is the bridge, attestation results out) that neither registered
 neighbour expresses, and it is what makes an appraisal's grade checkable against a
 specific record version rather than a floating claim. Full two-sided vector set pinned
 under Conformance vectors below.
-**Consuming-profile:** this artifact type is the consumer named by `evidence-record`
-above: its `subject_record` field is a typed digest reference binding the appraisal to
-the exact record version appraised. As with that entry, owner and consuming-profile
-maintainer are the same party (Empire Labs Pty Ltd / `narko4u`), so no separate consuming-profile
-ACK is required under Gate C.
+**Consuming-profile:** `narko4u/evidence-record-consumer` @ `02ff552f598ebf66b04920d9f9bd1f40d42aa6d6`
+(tag `v0.1.0`), the same prototype consumer named by `evidence-record` above, which
+consumes this type as well: `subject_record` is a typed digest reference, and the consumer
+checks that digest against the identifier re-derived from the record bytes, so an appraisal
+cannot be paired with a record it does not appraise. Owner and consuming-profile maintainer
+are the same party (Empire Labs Pty Ltd / `narko4u`), so no separate consuming-profile ACK is
+required under Gate C.
 **Vectors:** the conformance-vector set pinned below.
 
 | Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
