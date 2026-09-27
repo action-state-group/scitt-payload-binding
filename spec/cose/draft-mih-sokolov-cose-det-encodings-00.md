@@ -1,7 +1,7 @@
 ---
 title: "The COSE payload-preimage-encoding Header Parameter"
 abbrev: "COSE payload-preimage-encoding"
-docname: draft-mih-sokolov-cose-payload-preimage-encoding-01
+docname: draft-mih-sokolov-cose-det-encodings-00
 date: 2026-09-23
 category: std
 submissiontype: IETF
