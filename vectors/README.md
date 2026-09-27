@@ -268,8 +268,37 @@ rule.
 | typed-ref-fail-03 | MUST-FAIL | Representation mismatch (`sha256-prefixed` vs `bare-hex`) |
 | typed-ref-fail-04 | MUST-FAIL | Identifier inconsistent with context (digest produced without exclusion set) |
 | typed-ref-fail-05 | MUST-FAIL | digest_alg inconsistent with the registered context (-01 §7.1) — SHA-512, MD5, an unregistered name, and the empty string, each carrying the otherwise-correct digest |
+| typed-ref-fail-07 | MUST-FAIL, Unresolved (cause: `context`) | `cpb-refs` header carriage, purpose absent on a multi-context type — the verifier cannot select exactly one digest context |
 | typed-ref-cpb01-01 | HISTORICAL EVALUATION PASS | ARP byte-agreement baseline (-01 §7, §7.1) — folded from Joel Hillier's `arp-typed-ref-cpb01-v0.1.json` (`88153dd1…673d`), vector 1 of 5; no authenticated vintage claim |
 | typed-ref-cpb01-02 | MUST-FAIL | digest_alg inconsistent with the registered context (-01 §7.1) — ARP's independent exercise of the same gap as typed-ref-fail-05; folded byte-for-byte from the same source, vector 2 of 5. Vectors 3 (specification question, withdrawn per PM ruling), 4 (not applicable — this library constructs no log leaf) and 5 (ARP/CAID-side, not a CPB finding) were not folded |
+
+### Unresolved cause taxonomy (issue #92)
+
+The Information Model (`{{typed-refs}}`, Definitions `{{conventions}}`) splits the
+Unresolved state into three distinct causes: `context` (the verifier cannot select
+exactly one authorized digest context), `unavailable` (a context was selected but
+the cited artifact could not be obtained), and `unimplemented` (a context was
+selected and the artifact is available, but the verifier cannot execute that
+context's construction). Only the first and third are within `lib/cpb`'s scope —
+fetching the cited artifact happens before the library is called, the same way CPB
+does not define the evidence format itself.
+
+`typed-ref-fail-07`'s `verification.cause` field (`"context"`) is the first vector
+to carry this label. The reference library already reports `context` and
+`unimplemented` as two distinct exception classes, not one collapsed error —
+`DigestContextResolutionError` / `PurposeRequiredError` for `context`, and
+`UnsupportedDigestContextError` for `unimplemented` (`lib/cpb/typed_ref.py`).
+`lib/tests/test_typed_refs.py::test_verification_resolves_the_complete_context_set`
+and `::test_unsupported_contexts_participate_in_resolution_without_blocking_a_sibling`
+already exercise one of each. A lenient implementation that reports both as one
+generic "unresolved"/"denied" value — collapsing the two the way a caller of this
+library would if it caught only the shared `TypedRefError` base class — loses the
+distinction an operator needs to respond correctly: `context` requires a profile or
+deployment fix; `unimplemented` requires a verifier update; neither resolves by
+retrying, unlike `unavailable`. This is the same collapse-is-forbidden invariant as
+`verify-failure-mode-ref-v1`'s `collapsed-unreachable-and-invalid` negative vector
+(giskard09/argentum-core), applied here to CPB's three causes instead of that
+spec's four reason codes.
 
 ## Representation contrast summary
 

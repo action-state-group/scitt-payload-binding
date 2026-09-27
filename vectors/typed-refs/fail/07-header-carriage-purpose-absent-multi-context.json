@@ -58,6 +58,7 @@
   "verification": {
     "carrier_result": "SIGNATURE VALID",
     "reference_result": "UNRESOLVED",
+    "cause": "context",
     "reason": "purpose is absent and two contexts match the type"
   },
   "provenance": "Deterministically generated from the intentionally public Ed25519 test key used by typed-ref-pass-03. The test-only cpb-refs label -65537 is in the IANA Private Use range and is not an assignment request."
