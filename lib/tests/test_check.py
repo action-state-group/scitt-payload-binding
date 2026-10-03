@@ -20,7 +20,8 @@ from typing import Any
 import pytest
 
 from cpb.check import CheckResult, Violation, check, check_p
-from cpb._lex import RawViolation, lex
+from cpb._lex import MAX_SAFE_INTEGER, RawViolation, lex
+from cpb.canonicalize import canonical_digest, canonical_digest_json
 
 VECTORS_DIR = pathlib.Path(__file__).parent.parent.parent / 'vectors' / 'cpb-check'
 _LIB_ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -104,6 +105,20 @@ def _mutant_check_no_r_number(raw: str | bytes) -> CheckResult:
     if all_violations:
         return CheckResult(verdict='non-conforming', violations=all_violations)
     return CheckResult(verdict='conforming', note='MUTANT: number-token check disabled')
+
+
+def _mutant_check_no_safe_bound(raw: str | bytes) -> CheckResult:
+    """Mutant: pattern-only R rule (pre-#49).  Accepts 2^53+1."""
+    value, raw_violations = lex(raw)
+    r_violations = [
+        Violation(rv.path, 'R', rv.detail)
+        for rv in raw_violations
+        if rv.code != 'unsafe_integer'
+    ]
+    all_violations = r_violations + check_p(value)
+    if all_violations:
+        return CheckResult(verdict='non-conforming', violations=all_violations)
+    return CheckResult(verdict='conforming', note='MUTANT: safe-integer bound disabled')
 
 
 def _mutant_check_no_r_duplicate(raw: str | bytes) -> CheckResult:
@@ -391,20 +406,58 @@ class TestRNumberTokenForm:
         assert result.verdict == 'conforming'
 
 
+class TestRSafeIntegerBound:
+    """#49: the checker applies the canonicalizer's bound, quoted from one place."""
+
+    @pytest.mark.parametrize('n', [MAX_SAFE_INTEGER, -MAX_SAFE_INTEGER, 0])
+    def test_boundary_passes_checker_and_canonicalizer(self, n: int) -> None:
+        raw = json.dumps({'n': n})
+        assert check(raw).verdict == 'conforming'
+        canonical_digest_json(raw, algorithm='jcs-n')  # must not raise
+
+    @pytest.mark.parametrize('n', [
+        MAX_SAFE_INTEGER + 1, MAX_SAFE_INTEGER + 2,
+        -(MAX_SAFE_INTEGER + 1), -(MAX_SAFE_INTEGER + 2), 10**21,
+    ])
+    def test_beyond_bound_rejected_by_checker_and_canonicalizer(self, n: int) -> None:
+        raw = json.dumps({'n': n})
+        result = check(raw)
+        assert result.verdict == 'non-conforming'
+        assert [(v.path, v.rule) for v in result.violations] == [('$["n"]', 'R')]
+        with pytest.raises(ValueError):
+            canonical_digest({'n': n}, algorithm='jcs-n')
+        with pytest.raises(ValueError):
+            canonical_digest_json(raw, algorithm='jcs-n')
+
+    def test_unsafe_integer_nested_in_array_rejected(self) -> None:
+        _, violations = lex(b'{"a":[1,{"b":[9007199254740992]}]}')
+        assert [(v.path, v.code) for v in violations] == [
+            ('$["a"][1]["b"][0]', 'unsafe_integer'),
+        ]
+
+    def test_mutant_without_bound_accepts_what_real_rejects(self) -> None:
+        raw = b'{"n":9007199254740993}'
+        assert _mutant_check_no_safe_bound(raw).verdict == 'conforming'
+        assert check(raw).verdict == 'non-conforming'
+
+    def test_checker_and_canonicalizer_share_one_bound(self) -> None:
+        from cpb import _lex, canonicalize
+        assert canonicalize.MAX_SAFE_INTEGER is _lex.MAX_SAFE_INTEGER == 2**53 - 1
+
+
 # =============================================================================
 # Vector-suite runner — run the built-in cpb-check vectors
 # =============================================================================
 
 def _load_check_vectors() -> list[tuple[str, dict]]:
-    vectors = []
-    if not VECTORS_DIR.is_dir():
-        return vectors
-    for f in sorted(VECTORS_DIR.rglob('*.json')):
-        try:
-            vec = json.loads(f.read_text(encoding='utf-8'))
-            vectors.append((f.name, vec))
-        except Exception:
-            pass
+    # No silent fallbacks: a missing directory or an unreadable vector used to
+    # yield an empty parametrization, which pytest reports as a pass (#50).
+    assert VECTORS_DIR.is_dir(), f'cpb-check vector directory missing: {VECTORS_DIR}'
+    vectors = [
+        (f.name, json.loads(f.read_text(encoding='utf-8')))
+        for f in sorted(VECTORS_DIR.rglob('*.json'))
+    ]
+    assert vectors, f'no cpb-check vectors found under {VECTORS_DIR}'
     return vectors
 
 
@@ -412,15 +465,13 @@ def _load_check_vectors() -> list[tuple[str, dict]]:
 def test_check_vector_suite(name: str, vec: dict) -> None:
     """Every cpb-check vector produces the expected verdict."""
     expected = vec.get('expected_verdict')
-    if expected is None:
-        pytest.skip(f'{name}: no expected_verdict field')
+    assert expected is not None, f'{name}: no expected_verdict field'
 
     if 'record_raw' in vec:
         raw: str | bytes = vec['record_raw']
-    elif 'record' in vec:
-        raw = json.dumps(vec['record'])
     else:
-        pytest.skip(f'{name}: no record or record_raw field')
+        assert 'record' in vec, f'{name}: no record or record_raw field'
+        raw = json.dumps(vec['record'])
 
     result = check(raw)
     assert result.verdict == expected, (
@@ -670,3 +721,57 @@ def test_cli_exit_codes_do_not_fail_open(tmp_path):
 
     missing = tmp_path / 'nope.json'
     assert run(str(missing)).returncode == 2
+
+
+# =============================================================================
+# --self-test must not pass vacuously (#50)
+# =============================================================================
+
+def _write_vec(path: pathlib.Path, vec: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(vec), encoding='utf-8')
+
+
+def test_self_test_fails_on_empty_corpus(tmp_path, capsys) -> None:
+    from cpb._cli import _self_test
+
+    (tmp_path / 'cpb-check').mkdir()
+    assert _self_test(tmp_path / 'cpb-check') == 1
+    assert 'no vector was checked' in capsys.readouterr().err
+
+
+def test_self_test_fails_when_every_vector_is_skipped(tmp_path, capsys) -> None:
+    """A renamed key or format change that skips everything must not exit 0."""
+    from cpb._cli import _self_test
+
+    root = tmp_path / 'cpb-check'
+    # Renamed verdict key -> skipped; missing record -> skipped.
+    _write_vec(root / 'conforming' / '01.json', {'verdict': 'conforming', 'record': {'a': 1}})
+    _write_vec(root / 'non-conforming' / '01.json', {'expected_verdict': 'non-conforming'})
+    assert _self_test(root) == 1
+    out = capsys.readouterr()
+    assert '2 skipped' in out.out
+    assert '0 checked' in out.out
+    assert 'no vector was checked' in out.err
+
+
+def test_self_test_fails_when_a_verdict_category_is_unexercised(tmp_path, capsys) -> None:
+    """Passing conforming vectors alone never show the checker can reject."""
+    from cpb._cli import _self_test
+
+    root = tmp_path / 'cpb-check'
+    _write_vec(root / 'conforming' / '01.json',
+               {'expected_verdict': 'conforming', 'record': {'a': 1}})
+    _write_vec(root / 'non-conforming' / '01.json',
+               {'verdict': 'non-conforming', 'record': {'a': None}})
+    assert _self_test(root) == 1
+    assert "['non-conforming']" in capsys.readouterr().err
+
+
+def test_self_test_passes_on_packaged_corpus_and_reports_counts(capsys) -> None:
+    from cpb._cli import _self_test
+
+    assert _self_test() == 0
+    out = capsys.readouterr().out
+    assert '0 skipped' in out
+    assert 'conforming=' in out and 'non-conforming=' in out

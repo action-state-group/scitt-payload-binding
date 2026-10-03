@@ -71,7 +71,9 @@ The reference library is in `lib/cpb/`. Conformance vectors live in
 `jcs-n` construction. The broader `jcs-n/kats/` suite is retained as the
 historical record for that withdrawn construction; `cpb-check/` covers the
 grammar checker. Run `cpb-check --self-test` to execute the grammar-checker
-suite.
+suite; it reports checked and skipped counts and exits non-zero if no vector
+was checked or if either expected verdict (`conforming`, `non-conforming`)
+went unexercised.
 
 ## Registries
 
