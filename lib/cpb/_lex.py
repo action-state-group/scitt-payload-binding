@@ -26,6 +26,13 @@ __all__ = ['RawViolation', 'lex']
 # Rejects:  -0  01  1.5  1e2  1E2  0.0  1.0  -0.5
 _STRICT_INT_RE = re.compile(r'^(?:0|-?[1-9][0-9]*)$')
 
+# Inclusive magnitude bound on an integer token: ECMAScript
+# Number.MAX_SAFE_INTEGER, the largest integer every IEEE 754 double reader
+# recovers exactly. Same bound as draft -06 jcs-n step 2 and
+# vectors/CANONICALIZATION_DECLARATION.md section 2; canonicalize.py imports
+# it from here so the checker and the canonicalizer cannot disagree (#49, #52).
+MAX_SAFE_INTEGER = 2**53 - 1  # 9007199254740991
+
 # Full JSON number grammar (RFC 8259 §6) — used to consume a token.
 _JSON_NUM_RE = re.compile(r'-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?')
 
@@ -45,7 +52,7 @@ _MAX_DEPTH = 300
 class RawViolation:
     """An R-layer violation found by the raw-bytes scanner."""
     path: str    # JSON path, e.g. '$["payload"]["amount"]'
-    code: str    # 'duplicate_key' | 'number_token_form'
+    code: str    # 'duplicate_key' | 'number_token_form' | 'unsafe_integer'
     detail: str  # human-readable description
 
 
@@ -276,10 +283,24 @@ class _Scanner:
                     '(no floats, no -0, no leading zeros, no exponent notation)'
                 ),
             ))
-        # Return the numeric value for use in P checks
-        if '.' in tok or 'e' in tok.lower():
-            return float(tok)
-        return int(tok)
+            # Return the numeric value for use in P checks
+            if '.' in tok or 'e' in tok.lower():
+                return float(tok)
+            return int(tok)
+        val = int(tok)
+        if val > MAX_SAFE_INTEGER or val < -MAX_SAFE_INTEGER:
+            # The token form is fine but the value is not: the canonicalizer
+            # refuses to digest it, so the checker must not call it conforming.
+            self.violations.append(RawViolation(
+                path=path,
+                code='unsafe_integer',
+                detail=(
+                    f'integer {tok} is outside the safe range '
+                    f'[-{MAX_SAFE_INTEGER}, {MAX_SAFE_INTEGER}] '
+                    '(represent it as an exact decimal string)'
+                ),
+            ))
+        return val
 
 
 def lex(raw: str | bytes) -> tuple[Any, list[RawViolation]]:
@@ -297,8 +318,9 @@ def lex(raw: str | bytes) -> tuple[Any, list[RawViolation]]:
         ``json.loads`` behaviour).
     violations:
         List of :class:`RawViolation` describing every R-layer violation:
-        duplicate object keys and number tokens outside the integer-only form
-        ``^(?:0|-?[1-9][0-9]*)$``.
+        duplicate object keys, number tokens outside the integer-only form
+        ``^(?:0|-?[1-9][0-9]*)$``, and integer tokens whose value is outside
+        ``[-MAX_SAFE_INTEGER, MAX_SAFE_INTEGER]``.
 
     Security note
     -------------

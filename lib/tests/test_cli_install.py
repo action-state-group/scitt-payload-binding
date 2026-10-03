@@ -67,4 +67,5 @@ def test_noneditable_install_can_run_self_test_outside_checkout(tmp_path: Path) 
         timeout=30,
     )
     assert run.returncode == 0, run.stdout + run.stderr
-    assert "13/13 passed, 0 failed" in run.stdout
+    n = len(list(_SOURCE_VECTORS.rglob("*.json")))
+    assert f"{n}/{n} passed, 0 failed, 0 skipped" in run.stdout

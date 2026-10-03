@@ -20,7 +20,8 @@ from typing import Any
 import pytest
 
 from cpb.check import CheckResult, Violation, check, check_p
-from cpb._lex import RawViolation, lex
+from cpb._lex import MAX_SAFE_INTEGER, RawViolation, lex
+from cpb.canonicalize import canonical_digest, canonical_digest_json
 
 VECTORS_DIR = pathlib.Path(__file__).parent.parent.parent / 'vectors' / 'cpb-check'
 _LIB_ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -104,6 +105,20 @@ def _mutant_check_no_r_number(raw: str | bytes) -> CheckResult:
     if all_violations:
         return CheckResult(verdict='non-conforming', violations=all_violations)
     return CheckResult(verdict='conforming', note='MUTANT: number-token check disabled')
+
+
+def _mutant_check_no_safe_bound(raw: str | bytes) -> CheckResult:
+    """Mutant: pattern-only R rule (pre-#49).  Accepts 2^53+1."""
+    value, raw_violations = lex(raw)
+    r_violations = [
+        Violation(rv.path, 'R', rv.detail)
+        for rv in raw_violations
+        if rv.code != 'unsafe_integer'
+    ]
+    all_violations = r_violations + check_p(value)
+    if all_violations:
+        return CheckResult(verdict='non-conforming', violations=all_violations)
+    return CheckResult(verdict='conforming', note='MUTANT: safe-integer bound disabled')
 
 
 def _mutant_check_no_r_duplicate(raw: str | bytes) -> CheckResult:
@@ -389,6 +404,45 @@ class TestRNumberTokenForm:
     def test_large_integer_accepted(self) -> None:
         result = check(b'{"n":9007199254740991}')
         assert result.verdict == 'conforming'
+
+
+class TestRSafeIntegerBound:
+    """#49: the checker applies the canonicalizer's bound, quoted from one place."""
+
+    @pytest.mark.parametrize('n', [MAX_SAFE_INTEGER, -MAX_SAFE_INTEGER, 0])
+    def test_boundary_passes_checker_and_canonicalizer(self, n: int) -> None:
+        raw = json.dumps({'n': n})
+        assert check(raw).verdict == 'conforming'
+        canonical_digest_json(raw, algorithm='jcs-n')  # must not raise
+
+    @pytest.mark.parametrize('n', [
+        MAX_SAFE_INTEGER + 1, MAX_SAFE_INTEGER + 2,
+        -(MAX_SAFE_INTEGER + 1), -(MAX_SAFE_INTEGER + 2), 10**21,
+    ])
+    def test_beyond_bound_rejected_by_checker_and_canonicalizer(self, n: int) -> None:
+        raw = json.dumps({'n': n})
+        result = check(raw)
+        assert result.verdict == 'non-conforming'
+        assert [(v.path, v.rule) for v in result.violations] == [('$["n"]', 'R')]
+        with pytest.raises(ValueError):
+            canonical_digest({'n': n}, algorithm='jcs-n')
+        with pytest.raises(ValueError):
+            canonical_digest_json(raw, algorithm='jcs-n')
+
+    def test_unsafe_integer_nested_in_array_rejected(self) -> None:
+        _, violations = lex(b'{"a":[1,{"b":[9007199254740992]}]}')
+        assert [(v.path, v.code) for v in violations] == [
+            ('$["a"][1]["b"][0]', 'unsafe_integer'),
+        ]
+
+    def test_mutant_without_bound_accepts_what_real_rejects(self) -> None:
+        raw = b'{"n":9007199254740993}'
+        assert _mutant_check_no_safe_bound(raw).verdict == 'conforming'
+        assert check(raw).verdict == 'non-conforming'
+
+    def test_checker_and_canonicalizer_share_one_bound(self) -> None:
+        from cpb import _lex, canonicalize
+        assert canonicalize.MAX_SAFE_INTEGER is _lex.MAX_SAFE_INTEGER == 2**53 - 1
 
 
 # =============================================================================
