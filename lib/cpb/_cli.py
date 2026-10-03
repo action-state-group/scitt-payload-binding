@@ -63,13 +63,21 @@ def _vector_files(root) -> Iterable:
             yield child
 
 
-def _self_test() -> int:
-    vectors_root = resources.files('cpb').joinpath('_vectors', 'cpb-check')
+# Every verdict the suite is built to exercise. A self-test run that checks no
+# vector for one of these has not shown that the checker can produce it, so it
+# fails rather than passing vacuously (#50).
+_REQUIRED_VERDICTS = ('conforming', 'non-conforming')
+
+
+def _self_test(vectors_root=None) -> int:
+    if vectors_root is None:
+        vectors_root = resources.files('cpb').joinpath('_vectors', 'cpb-check')
     if not vectors_root.is_dir():
         print('self-test: packaged vector directory not found', file=sys.stderr)
         return _EXIT_ERROR
 
     passed = failed = skipped = 0
+    checked_by_verdict = dict.fromkeys(_REQUIRED_VERDICTS, 0)
 
     for vec_file in _vector_files(vectors_root):
         try:
@@ -96,6 +104,8 @@ def _self_test() -> int:
             skipped += 1
             continue
 
+        checked_by_verdict[expected] = checked_by_verdict.get(expected, 0) + 1
+
         try:
             result = check(raw)
         except (RecursionError, TypeError, UnicodeError, ValueError) as exc:
@@ -117,7 +127,31 @@ def _self_test() -> int:
             failed += 1
 
     total = passed + failed + skipped
-    print(f'\nself-test: {passed}/{total} passed, {failed} failed, {skipped} skipped')
+    checked = sum(checked_by_verdict.values())
+    print(
+        f'\nself-test: {passed}/{total} passed, {failed} failed, {skipped} skipped '
+        f'({checked} checked: '
+        + ', '.join(f'{v}={n}' for v, n in checked_by_verdict.items())
+        + ')'
+    )
+
+    # A run that checked nothing says nothing about the checker. Without these
+    # guards an empty, moved, or reformatted corpus exited 0 (#50).
+    unexercised = [v for v in _REQUIRED_VERDICTS if checked_by_verdict[v] == 0]
+    if checked == 0:
+        print(
+            'self-test: FAILED -- no vector was checked '
+            f'({skipped} skipped); the run cannot vouch for the checker',
+            file=sys.stderr,
+        )
+        return _EXIT_NON_CONFORMING
+    if unexercised:
+        print(
+            'self-test: FAILED -- no vector exercised expected verdict(s) '
+            f'{unexercised}; the run cannot vouch for the checker producing them',
+            file=sys.stderr,
+        )
+        return _EXIT_NON_CONFORMING
     return _EXIT_CONFORMING if failed == 0 else _EXIT_NON_CONFORMING
 
 

@@ -396,15 +396,14 @@ class TestRNumberTokenForm:
 # =============================================================================
 
 def _load_check_vectors() -> list[tuple[str, dict]]:
-    vectors = []
-    if not VECTORS_DIR.is_dir():
-        return vectors
-    for f in sorted(VECTORS_DIR.rglob('*.json')):
-        try:
-            vec = json.loads(f.read_text(encoding='utf-8'))
-            vectors.append((f.name, vec))
-        except Exception:
-            pass
+    # No silent fallbacks: a missing directory or an unreadable vector used to
+    # yield an empty parametrization, which pytest reports as a pass (#50).
+    assert VECTORS_DIR.is_dir(), f'cpb-check vector directory missing: {VECTORS_DIR}'
+    vectors = [
+        (f.name, json.loads(f.read_text(encoding='utf-8')))
+        for f in sorted(VECTORS_DIR.rglob('*.json'))
+    ]
+    assert vectors, f'no cpb-check vectors found under {VECTORS_DIR}'
     return vectors
 
 
@@ -412,15 +411,13 @@ def _load_check_vectors() -> list[tuple[str, dict]]:
 def test_check_vector_suite(name: str, vec: dict) -> None:
     """Every cpb-check vector produces the expected verdict."""
     expected = vec.get('expected_verdict')
-    if expected is None:
-        pytest.skip(f'{name}: no expected_verdict field')
+    assert expected is not None, f'{name}: no expected_verdict field'
 
     if 'record_raw' in vec:
         raw: str | bytes = vec['record_raw']
-    elif 'record' in vec:
-        raw = json.dumps(vec['record'])
     else:
-        pytest.skip(f'{name}: no record or record_raw field')
+        assert 'record' in vec, f'{name}: no record or record_raw field'
+        raw = json.dumps(vec['record'])
 
     result = check(raw)
     assert result.verdict == expected, (
@@ -670,3 +667,57 @@ def test_cli_exit_codes_do_not_fail_open(tmp_path):
 
     missing = tmp_path / 'nope.json'
     assert run(str(missing)).returncode == 2
+
+
+# =============================================================================
+# --self-test must not pass vacuously (#50)
+# =============================================================================
+
+def _write_vec(path: pathlib.Path, vec: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(vec), encoding='utf-8')
+
+
+def test_self_test_fails_on_empty_corpus(tmp_path, capsys) -> None:
+    from cpb._cli import _self_test
+
+    (tmp_path / 'cpb-check').mkdir()
+    assert _self_test(tmp_path / 'cpb-check') == 1
+    assert 'no vector was checked' in capsys.readouterr().err
+
+
+def test_self_test_fails_when_every_vector_is_skipped(tmp_path, capsys) -> None:
+    """A renamed key or format change that skips everything must not exit 0."""
+    from cpb._cli import _self_test
+
+    root = tmp_path / 'cpb-check'
+    # Renamed verdict key -> skipped; missing record -> skipped.
+    _write_vec(root / 'conforming' / '01.json', {'verdict': 'conforming', 'record': {'a': 1}})
+    _write_vec(root / 'non-conforming' / '01.json', {'expected_verdict': 'non-conforming'})
+    assert _self_test(root) == 1
+    out = capsys.readouterr()
+    assert '2 skipped' in out.out
+    assert '0 checked' in out.out
+    assert 'no vector was checked' in out.err
+
+
+def test_self_test_fails_when_a_verdict_category_is_unexercised(tmp_path, capsys) -> None:
+    """Passing conforming vectors alone never show the checker can reject."""
+    from cpb._cli import _self_test
+
+    root = tmp_path / 'cpb-check'
+    _write_vec(root / 'conforming' / '01.json',
+               {'expected_verdict': 'conforming', 'record': {'a': 1}})
+    _write_vec(root / 'non-conforming' / '01.json',
+               {'verdict': 'non-conforming', 'record': {'a': None}})
+    assert _self_test(root) == 1
+    assert "['non-conforming']" in capsys.readouterr().err
+
+
+def test_self_test_passes_on_packaged_corpus_and_reports_counts(capsys) -> None:
+    from cpb._cli import _self_test
+
+    assert _self_test() == 0
+    out = capsys.readouterr().out
+    assert '0 skipped' in out
+    assert 'conforming=' in out and 'non-conforming=' in out
