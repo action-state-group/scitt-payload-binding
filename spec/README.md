@@ -24,3 +24,12 @@ archived one.
 | -03 | dc991c2 | `3359e910053c01a7f3f6e8a8cc472db569a24a83c1478774a1514203e666a9a0` | `d303e6e4ec4c4bf3b9c483bcabbd720309f952a5e77d912968bef39c1f245d13` |
 | -04 | c4b3e29 | `fa1a79f1443736ebc642740a1aa70fde1c7e5d124f3bb51ccf189b4c874e6ac1` | `de06a6eade0306c46b2c1d0f1987a1a7d2d544909a1299e9af9053959cedb376` |
 | -05 | ed5ec5d | `9392f96f5122e82de378012c4c55db9dfdafa51c61c014eb6203a194ef9c80ac` | `938073e7ce4f4289ca6d45bebac0b319f2a701804eac5c32203124e65f2fb4fa` |
+
+## Revision -06 is not posted on its own (decision, 2026-10-04)
+
+The working revision -06 differs from the posted -05 only in the
+Acknowledgments, a new "Changes from -05" section, and one updated
+informative reference; it makes no normative change. Every Datatracker
+submission needs fresh agreement from every author, so -06 will not be
+submitted by itself. Its changes go out with the next revision that carries
+normative text. Until then, -05 is the operative normative revision.
