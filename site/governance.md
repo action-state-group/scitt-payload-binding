@@ -2,32 +2,33 @@
 
 ## Change controller today, and at RFC publication
 
-CPB's two registries (Payload Canonicalization Algorithm Registry, Artifact
-Type Registry) are interim: **Action State Group, Inc.** is the change
-controller today, hosted in this GitHub repository. Registration follows
-Specification Required ([RFC 8126 §4.6](https://www.rfc-editor.org/rfc/rfc8126#section-4.6)),
-with Designated Expert review for each entry.
+CPB (posted revision -05) asks IANA for **one** new registry, the
+Canonicalization Algorithm Registry, under Specification Required
+([RFC 8126 §4.6](https://www.rfc-editor.org/rfc/rfc8126#section-4.6)) with a
+Designated Expert for each registration. It also asks for one `cpb-refs`
+entry in the existing COSE Header Parameters registry. **CPB creates no
+artifact-type registry.** Artifact types and their digest contexts are owned
+by the profiles that define them.
 
-On IETF working-group adoption of the specification, the registry moves with
-the document to a repository of the working group's choosing. **At RFC
-publication, change control transfers to IANA**, and the registries this
-repository maintains become the normative IANA registries CPB's IANA
-Considerations section establishes.
+**IANA is the registry maintainer.** Before RFC publication, the names in the
+draft are draft-local, and its table is only the requested initial contents.
+This repository keeps a working record and history, not an interim registry
+of record.
 
 **What the editors undertake about identifier stability.** The IANA
-Considerations section will ask that an identifier registered here — live or
-provisional — be carried forward under the same name and the same registered
-semantics, and the editors will not themselves rename or reassign one. What
-an IANA registry contains at establishment is settled by IANA and by the
+Considerations section will ask that each canonicalization-algorithm token in
+its initial contents be established under the same name, with the same
+semantics and status. The editors will not themselves rename or reassign one.
+What an IANA registry contains at establishment is settled by IANA and by the
 responsible working group, not by the authors of an individual
-Internet-Draft, so this is an undertaking rather than a guarantee, and
-building on a pre-IANA identifier carries that residual risk. See the
-IANA-forwarding clause in
-[`spec/cpb-registry-policy.md`](https://github.com/action-state-group/scitt-payload-binding/blob/main/spec/cpb-registry-policy.md)
-for the full statement, including why it is weaker than RFC 7120 early
-allocation rather than its counterpart. **That policy document is currently a
-DRAFT, held pending sign-off from both co-authors** — it is not yet ratified,
-and this page will be updated once it is.
+Internet-Draft. This is therefore an undertaking rather than a guarantee, and
+building on a pre-IANA token carries that residual risk. Artifact-type names
+are outside the undertaking; they belong to their profiles. The full
+statement is the IANA-forwarding clause in
+[`spec/cpb-registry-policy.md`](https://github.com/action-state-group/scitt-payload-binding/blob/main/spec/cpb-registry-policy.md),
+which also explains why it is weaker than RFC 7120 early allocation rather
+than a counterpart to it. That policy takes effect when its ratification pull
+request merges with both co-authors' approval at the exact head SHA.
 
 ## Designated Expert review
 
@@ -53,12 +54,11 @@ reason.
 
 ## Neutrality
 
-The draft registry policy proposes a firm neutrality commitment: that CPB
-never be branded to any single registrant's product, and that Agent Action
-Capsule stand as one registered artifact type among peers — the same
-standing as `machine-mandate`, `mesh-inference-exchange`, `cll-checkpoint`,
-the provisional `trace-trust-record`, or the reserved `vto` name. As
-proposed, nothing in CPB's specification text, registries, or this site
-would favor one registrant's vocabulary, commercial terms, or governance
-over another's. This is the intended posture; the policy that fixes it is
-**currently a DRAFT pending both co-authors' sign-off** (see above).
+The registry policy makes a firm neutrality commitment: CPB is never
+branded to any single registrant's product. Agent Action Capsule has the same
+standing as every other profile: it owns its own artifact-type declaration,
+in its own draft, as `machine-mandate`, `trace-trust-record` and `vto` own
+theirs. Nothing in CPB's specification text, its registry, or this site
+favors one registrant's vocabulary, commercial terms or governance over
+another's. The policy takes effect when its ratification pull request merges
+(see above).

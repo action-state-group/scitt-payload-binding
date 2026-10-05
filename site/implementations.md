@@ -37,26 +37,20 @@ SD-JWT-carried construction with two digest contexts: an `as-transmitted`
 identifier over the issuer-signed JWS component, and a `jcs` equivalence
 digest over a closed two-member field set.
 
-## Action State Group's own registrations
+## Action State Group's own declarations
 
-### `agent-action-capsule`
-**Status:** owner-confirmed — live. The Agent Action Capsule specification's
-own payload construction; two digest contexts (a withdrawn vintage `jcs-n`
-context retained as a historical verification path, and the live `jcs`
-context for profile version -04).
+Action State Group currently has no entry in this repository's tables.
 
-### `mesh-inference-exchange`
-**Status:** provisional (`capsule-emit-mesh`) — a mesh-LLM inference-exchange
-lifecycle record. Two open items gate promotion: the identifier's
-serialization is not yet a registered algorithm, and the one committed
-real-traffic example set predates the current record shape.
-
-### `cll-checkpoint`
-**Status:** provisional (`checkpointed-local-log`) — a Checkpointed Local Log
-checkpoint record (an MMR peak-set commitment). Gated on a Designated Expert
-choice of algorithm-registry treatment for the MMR peak-bagging
-construction, which fits neither of CPB's two currently registered
-canonicalization families cleanly.
+- **`agent-action-capsule`**: the declaration is owned and stated
+  normatively by the Agent Action Capsule draft itself
+  (`draft-mih-scitt-agent-action-capsule`, §2 and §5.1). Under the
+  2026-09-15 ruling, artifact types live in their owning profiles. The former
+  record here was removed on 2026-10-04.
+- **`cll-checkpoint`**: registered in the Checkpointed Local Log draft's own
+  IANA Considerations section, with digest token `as-transmitted` over the
+  commitment claim.
+- **`mesh-inference-exchange`**: removed by its owner on 2026-10-04. It was
+  not withdrawn, so the name is not bound.
 
 ---
 

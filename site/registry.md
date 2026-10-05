@@ -23,7 +23,6 @@ summary.
 
 | Name | Status | Reference |
 | --- | --- | --- |
-| `agent-action-capsule` | Registered | draft-mih-scitt-agent-action-capsule |
 | `machine-mandate` | owner-confirmed | tyche-institute/machine-mandate @ 524e6a3129b7f1ab850dd9471967458d3cb6f4cd |
 
 ## Provisional & reserved filings
@@ -32,6 +31,4 @@ Not yet in the live tables above. See each entry's own file under `registry/entr
 
 | Name | Registry | Status | Owner | Open questions |
 | --- | --- | --- | --- | --- |
-| `cll-checkpoint` | artifact_types | provisional | Action State Group | 2 open |
-| `mesh-inference-exchange` | artifact_types | provisional | Action State Group | 3 open |
 | `vto` | artifact_types | reserved | Manu Sheel Gupta, Johana (libp2p / VTO team) | 1 open |

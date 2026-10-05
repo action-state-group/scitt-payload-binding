@@ -23,7 +23,7 @@ reference: >
   ordering, which differ for mixed-length keys) before promotion.
 owner:
   name: Manu Sheel Gupta, Johana (libp2p / VTO team)
-de_reviewer: "TBD — not yet assigned; entry not yet filed"
+de_reviewer: "Anton Sokolov (Tyche Institute), reviewing alone; Manu Sheel Gupta recuses (his own team's filing) per spec/cpb-registry-policy.md §3"
 open_questions:
   - >
     Not filed here by design — see the sibling filing for the actual entry
