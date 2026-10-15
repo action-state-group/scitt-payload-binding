@@ -422,17 +422,14 @@ Malformed:
 Unresolved:
 : A typed-reference processing state. The reference is well-formed, but
   verification did not reach a Verified or Failed determination, for exactly
-  one of three distinct causes: the verifier cannot select exactly one
-  authorized digest context for the reference (`context`); exactly one
-  context was selected but the cited artifact could not be obtained
-  (`unavailable`); or exactly one context was selected and the artifact is
-  available, but the verifier lacks the implementation needed to execute
-  that context's construction (`unimplemented`). An Unresolved reference is
-  not evidence of a content binding, regardless of cause. A verifier SHOULD
-  report which cause applies: the three causes carry different remediation
-  -- retrying later can resolve `unavailable`, but cannot resolve `context`
-  or `unimplemented`, which persist until the profile's declarations or the
-  verifier's capabilities change.
+  one of three causes: the verifier cannot select exactly one authorized
+  digest context for the reference (`context`); exactly one context was
+  selected, but the verifier lacks the implementation needed to execute its
+  construction (`unimplemented`); or exactly one context was selected and
+  implemented, but the cited artifact could not be obtained (`unavailable`).
+  Retrying the same reference later can resolve `unavailable`, but not
+  `context` or `unimplemented`. An Unresolved reference is not evidence of a
+  content binding, whatever its cause.
 
 Failed:
 : A typed-reference processing state. The reference is well-formed and exactly
@@ -619,7 +616,7 @@ pre-cutoff vintage MAY a verifier apply the historical construction above.
 If the construction is available, its ordinary digest comparison determines
 whether the typed reference is Verified or Failed. A verifier that lacks an
 implementation of the otherwise eligible historical construction reports the
-typed reference as Unresolved. A historical identifier MUST NOT be relabelled
+typed reference as Unresolved (cause: `unimplemented`). A historical identifier MUST NOT be relabelled
 to another algorithm token or recomputed under another algorithm.
 
 ## Algorithm cde-n (Withdrawn) {#algo-cde-n}
@@ -966,10 +963,11 @@ algorithm agility and downgrade detection.
 
 The verifier MUST next check that the carried value uses the selected
 context's declared representation. A mismatch is Failed. If the
-representation matches but the cited artifact cannot be obtained, the state
-is Unresolved (cause: `unavailable`). If the context is valid but the
-verifier does not implement its construction, the state is also Unresolved
-(cause: `unimplemented`). Otherwise, the verifier
+representation matches and the context is valid but the verifier does not
+implement its construction, the state is Unresolved (cause:
+`unimplemented`), whether or not the cited artifact can be obtained. If the
+construction is implemented but the cited artifact cannot be obtained, the
+state is Unresolved (cause: `unavailable`). Otherwise, the verifier
 MUST recompute the digest using the selected context and compare it
 byte-for-byte with `digest`. Equal values produce Verified; unequal values
 produce Failed. A deterministic conversion
@@ -994,10 +992,10 @@ not validate.
 
 The consuming profile MUST define the disposition of every non-Verified
 state. It MUST NOT rely on an Unresolved, Failed, or Malformed reference as
-evidence of a content binding. A profile MAY define distinct dispositions
-for the three Unresolved causes above; a profile that does not is
-unaffected -- the single disposition required for Unresolved still covers
-all three causes, unchanged.
+evidence of a content binding. A verifier SHOULD report the cause of each
+Unresolved reference. A profile MAY define a distinct disposition for each
+cause; a profile that does not define them applies its single Unresolved
+disposition to all three.
 
 ## Carriage Selection {#carriage-selection}
 
@@ -1228,7 +1226,7 @@ weight.
 
 When an artifact type cited in an immutable coordinate has no uniquely
 resolvable, profile-authorized digest-context declaration, the reference is
-Unresolved and the consuming profile determines the disposition
+Unresolved (cause: `context`) and the consuming profile determines the disposition
 ({{comparability}}). A verifier MUST NOT invent a mapping or reinterpret an
 existing type token to make an earlier citation verifiable.
 

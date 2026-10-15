@@ -274,31 +274,27 @@ rule.
 
 ### Unresolved cause taxonomy (issue #92)
 
-The Information Model (`{{typed-refs}}`, Definitions `{{conventions}}`) splits the
-Unresolved state into three distinct causes: `context` (the verifier cannot select
-exactly one authorized digest context), `unavailable` (a context was selected but
-the cited artifact could not be obtained), and `unimplemented` (a context was
-selected and the artifact is available, but the verifier cannot execute that
-context's construction). Only the first and third are within `lib/cpb`'s scope —
-fetching the cited artifact happens before the library is called, the same way CPB
-does not define the evidence format itself.
+The Information Model (Section 4, Conventions and Definitions, and Section 9.1 of
+-06) splits the Unresolved state into three causes: `context` (the verifier cannot
+select exactly one authorized digest context), `unimplemented` (a context was
+selected, but the verifier cannot execute its construction), and `unavailable` (a
+context was selected and implemented, but the cited artifact could not be
+obtained). Only `context` and `unimplemented` are within `lib/cpb`'s scope:
+fetching the cited artifact happens before the library is called.
 
 `typed-ref-fail-07`'s `verification.cause` field (`"context"`) is the first vector
 to carry this label. The reference library already reports `context` and
 `unimplemented` as two distinct exception classes, not one collapsed error —
-`DigestContextResolutionError` / `PurposeRequiredError` for `context`, and
-`UnsupportedDigestContextError` for `unimplemented` (`lib/cpb/typed_ref.py`).
+`DigestContextResolutionError` / `PurposeRequiredError` / `PurposeMismatchError` for
+`context`, and `UnsupportedDigestContextError` for `unimplemented` (`lib/cpb/typed_ref.py`).
 `lib/tests/test_typed_refs.py::test_verification_resolves_the_complete_context_set`
 and `::test_unsupported_contexts_participate_in_resolution_without_blocking_a_sibling`
 already exercise one of each. A lenient implementation that reports both as one
 generic "unresolved"/"denied" value — collapsing the two the way a caller of this
 library would if it caught only the shared `TypedRefError` base class — loses the
-distinction an operator needs to respond correctly: `context` requires a profile or
-deployment fix; `unimplemented` requires a verifier update; neither resolves by
-retrying, unlike `unavailable`. This is the same collapse-is-forbidden invariant as
-`verify-failure-mode-ref-v1`'s `collapsed-unreachable-and-invalid` negative vector
-(giskard09/argentum-core), applied here to CPB's three causes instead of that
-spec's four reason codes.
+distinction an operator needs to respond correctly: `context` needs a corrected
+reference or profile declaration, `unimplemented` needs a verifier update, and
+neither resolves by retrying, unlike `unavailable`.
 
 ## Representation contrast summary
 
