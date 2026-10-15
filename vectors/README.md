@@ -299,9 +299,9 @@ neither resolves by retrying, unlike `unavailable`.
 Two outcomes of `lib/cpb` still differ from -06. It raises
 `UnsupportedDigestContextError` for a context naming `cde-n`, which -06 Section
 5.3 makes Failed. It also checks that it can execute the selected context before
-it checks `digest_alg` and representation, so a mismatched reference to a context
-it cannot execute is reported as `unimplemented`, where -06 Section 9.1 makes it
-Failed.
+it checks `digest_alg`, representation and algorithm status, so a mismatched
+reference to a context it cannot execute is reported as `unimplemented`, where
+-06 Section 9.1 makes it Failed.
 
 ## Representation contrast summary
 

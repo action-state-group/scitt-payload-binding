@@ -341,12 +341,13 @@ the locations in {{test-vector-locations}} are unchanged.
   that an assembled pre-image selects. Previously, neither the Failed
   definition nor the processing steps covered this case ({{conventions}},
   {{comparability}}, #92, #5). An artifact that lacks a selected source
-  field is Failed on this ground only when the profile states no pre-image
-  for that case ({{derived-id}}). The processing steps in {{comparability}} now give
+  field is Failed on this ground only when the digest context states no
+  pre-image for that case ({{derived-id}}). The processing steps in {{comparability}} now give
   the Failed outcome for a permanently undefined or prohibited algorithm
   before they test the Unresolved causes, as {{algo-jcs-n}} and
   {{algo-cde-n}} already required, and {{conventions}} now states when a
-  selected context is valid for the reference.
+  selected context is valid for the reference and requires the context of
+  a Verified reference to be valid for it.
 
 * The CANONICAL-DIGEST definition ({{conventions}}) no longer makes field
   selection part of the canonicalization algorithm's definition.
@@ -358,8 +359,9 @@ the locations in {{test-vector-locations}} are unchanged.
   to the profile that declares the digest context. For the same reason, the
   Verified definition ({{conventions}}) now names the selected context's
   complete construction rather than its canonicalization and hash rules,
-  and {{iana-alg}} now states that a registration does not pin a field set,
-  an exclusion set, or the assembly of a pre-image.
+  {{comparability}} lists these as parameters that each digest context
+  states, and {{iana-alg}} now states that a registration does not pin a
+  field set, an exclusion set, or the assembly of a pre-image.
 
 * The Acknowledgments now credit contributions made through public review
   after the IETF 126 hackathon, and add Imran Siddique and Roel Schuurkes.
@@ -423,8 +425,9 @@ Digest Context:
   the field set selected; where the pre-image is assembled from selected
   fields, the member mapping that {{derived-id}} requires (the source
   location of each selected field, the name and nesting of the pre-image
-  member that carries it, and the name, nesting, and value of every other
-  pre-image member); the exclusion set applied; the canonicalization
+  member that carries it, the name, nesting, and value of every other
+  pre-image member, and any pre-image stated for a source that lacks a
+  selected field); the exclusion set applied; the canonicalization
   algorithm applied; any domain separation; the encoding of the pre-image;
   and the representation of the output. Two digest values are comparable
   only when their full digest contexts are established as compatible. A
@@ -501,8 +504,9 @@ Unresolved:
 Failed:
 : A typed-reference processing state. The reference is well-formed and exactly
   one authorized digest context is selected, but the declared algorithm or
-  representation conflicts with that context, the selected token is
-  permanently undefined or prohibited, the obtained artifact is not input
+  representation conflicts with that context, the canonicalization
+  algorithm that the selected context names is permanently undefined or
+  prohibited, the obtained artifact is not input
   that the selected context's construction accepts, or a recomputed digest
   differs from the supplied value.
 
@@ -802,7 +806,10 @@ untransformed payload and exclusion procedure defined above.
 Assembling the pre-image from selected source fields, rather than taking the
 payload minus its exclusion set, is such a transformation: the selected field
 set alone does not determine the pre-image. A pre-image member is a member of
-the structured value supplied to A, before canonicalization. The profile's
+the structured value supplied to A, before canonicalization. In this
+document, an assembled pre-image and the assembly of a pre-image refer to
+that structured value, not to the octet string that A produces from it.
+The profile's
 definition of that transformation MUST state, for each selected source field,
 its location in the source and the name and nesting of the pre-image member
 that carries it, and, for every pre-image member not taken from the source,
@@ -1003,9 +1010,10 @@ digest context and comparison representation.
 A consuming profile that accepts typed references MUST identify, by stable
 normative reference, every artifact-type declaration that it accepts. Each
 declaration MUST bind an exact `type` token to one or more digest contexts.
-Each context MUST state its preimage construction, canonicalization
-algorithm, hash function, exact `digest_alg` token, output representation,
-and a purpose label when required below. Where that construction assembles
+Each context MUST state its field selection or byte-boundary selector,
+exclusion set, any assembly of the pre-image, canonicalization algorithm,
+hash function, exact `digest_alg` token, output representation, and a
+purpose label when required below. Where the context assembles
 the pre-image from selected fields of the cited artifact, the context MUST
 state the members of that pre-image as {{derived-id}} requires of such an
 assembly. A deployment MAY select a subset of
@@ -1060,7 +1068,7 @@ cannot be obtained, the state is Unresolved (cause: `unavailable`). If the
 obtained artifact is not input that the selected context's construction
 accepts, the state is Failed: for example, an artifact that is not valid
 JSON for `jcs`, or one that lacks a source field that an assembled pre-image
-selects when the profile states no pre-image for that case
+selects when the context states no pre-image for that case
 ({{derived-id}}). Otherwise, the verifier MUST recompute the digest using
 the selected context and compare it byte-for-byte with `digest`. Equal
 values produce Verified; unequal values produce Failed. A deterministic
