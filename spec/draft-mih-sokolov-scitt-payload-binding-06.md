@@ -307,7 +307,7 @@ This document does not define:
 
 # Changes from -05 {#changes-05}
 
-This revision makes three normative changes and clarifies one definition.
+This revision makes three normative changes and one clarification.
 The wire format and the registry entries do not change, and the vectors at
 the locations in {{test-vector-locations}} are unchanged.
 
@@ -317,28 +317,33 @@ the locations in {{test-vector-locations}} are unchanged.
   implement the selected context's construction, the cause is
   `unimplemented`, whether or not the cited artifact can be obtained.
   Reporting the cause is now recommended, and a profile can define a
-  distinct disposition for each cause; a profile that defines a single
-  Unresolved disposition applies it to all three causes, and a profile that
-  defines distinct dispositions also defines one for an Unresolved reference
-  whose cause is not reported (#92, {{comparability}}).
+  distinct disposition for one or more causes; its Unresolved disposition
+  applies to every other cause and to an Unresolved reference whose cause
+  is not reported (#92, {{comparability}}).
 
 * {{derived-id}} now treats assembling the pre-image from selected source
-  fields as a transformation. Its definition has to state where each
-  selected field comes from in the source, the name and nesting of the
+  fields as a transformation. The profile's definition of that
+  transformation has to state where each selected field comes from in the
+  source, the name and nesting of the
   pre-image member that carries it, and the name, nesting, and value of every
   pre-image member not taken from the source. {{comparability}} asks the same
   of a digest context whose pre-image is assembled this way. In
-  {{conventions}}, the Digest Context definition now includes the name and
-  nesting of each member of such a pre-image, and the Derived Identifier
-  definition now includes the input that a profile-defined transformation
-  produces (#5).
+  {{conventions}}, the Digest Context definition now includes the member
+  mapping of such a pre-image, and the Derived Identifier definition now
+  includes the value that a profile-defined transformation produces (#5).
 
 * A reference whose cited artifact is obtained but is not input that the
   selected context's construction accepts is now Failed: for example, an
   artifact that is not valid JSON for `jcs`, or one that lacks a source field
   that an assembled pre-image selects. Previously, neither the Failed
   definition nor the processing steps covered this case ({{conventions}},
-  {{comparability}}, #92, #5).
+  {{comparability}}, #92, #5). An artifact that lacks a selected source
+  field is Failed on this ground only when the profile states no pre-image
+  for that case ({{derived-id}}). The processing steps in {{comparability}} now give
+  the Failed outcome for a permanently undefined or prohibited algorithm
+  before they test the Unresolved causes, as {{algo-jcs-n}} and
+  {{algo-cde-n}} already required, and {{conventions}} now states when a
+  selected context is valid for the reference.
 
 * The CANONICAL-DIGEST definition ({{conventions}}) no longer makes field
   selection part of the canonicalization algorithm's definition.
@@ -347,7 +352,9 @@ the locations in {{test-vector-locations}} are unchanged.
   payload class or digest context that names the algorithm. This
   clarification resolves a conflict with the `jcs` registration
   ({{algo-jcs}}), which already assigns the field set and the exclusion set
-  to the profile that declares the digest context.
+  to the profile that declares the digest context. For the same reason, the
+  Verified definition ({{conventions}}) now names the selected context's
+  complete construction rather than its canonicalization and hash rules.
 
 * The Acknowledgments now credit contributions made through public review
   after the IETF 126 hackathon, and add Imran Siddique and Roel Schuurkes.
@@ -400,17 +407,20 @@ Payload Class:
 Derived Identifier:
 : The content-address of a payload: the output of CANONICAL-DIGEST(A, v),
   where v is the payload value with its profile-declared exclusion set
-  removed, or the input that a profile-defined transformation produces
-  ({{derived-id}}). Verifiers MUST recompute the derived identifier from the payload
+  removed or, where the payload profile defines a transformation
+  ({{derived-id}}), the value that transformation produces. Verifiers MUST
+  recompute the derived identifier from the payload
   value; a carried derived-identifier value is advisory only and a mismatch
   is a defect.
 
 Digest Context:
 : The complete set of parameters that determine how a digest was computed:
-  the field set selected and, where the pre-image is assembled from selected
-  fields, the name and nesting of each pre-image member ({{derived-id}}), the
-  exclusion set applied, the canonicalization algorithm applied, any domain
-  separation, the encoding of the pre-image,
+  the field set selected; where the pre-image is assembled from selected
+  fields, the member mapping that {{derived-id}} requires (the source
+  location of each selected field, the name and nesting of the pre-image
+  member that carries it, and the name, nesting, and value of every other
+  pre-image member); the exclusion set applied; the canonicalization
+  algorithm applied; any domain separation; the encoding of the pre-image;
   and the representation of the output. Two digest values are comparable
   only when their full digest contexts are established as compatible. A
   payload class or artifact type MAY declare more than one digest context
@@ -470,11 +480,15 @@ Unresolved:
 : A typed-reference processing state. The reference is well-formed, but
   verification did not reach a Verified or Failed determination, for exactly
   one of three causes: the verifier cannot select exactly one authorized
-  digest context for the reference (`context`); exactly one otherwise valid
-  context was selected, but the verifier lacks the implementation needed to
-  execute its construction (`unimplemented`); or exactly one otherwise valid
-  context was selected and implemented, but the cited artifact could not be
-  obtained (`unavailable`). Retrying the same reference with the same
+  digest context for the reference (`context`); exactly one context that is
+  valid for the reference was selected, but the verifier lacks the
+  implementation needed to execute its construction (`unimplemented`); or
+  exactly one such context was selected and implemented, but the cited
+  artifact could not be obtained (`unavailable`). A selected context is
+  valid for the reference when the reference's `digest_alg` and the
+  representation of its `digest` agree with that context, and the
+  canonicalization algorithm that the context names is neither permanently
+  undefined nor prohibited ({{comparability}}). Retrying the same reference with the same
   verifier and profile configuration can resolve `unavailable`, but not
   `context` or `unimplemented`. An Unresolved reference is not evidence of a
   content binding, whatever its cause.
@@ -483,15 +497,18 @@ Failed:
 : A typed-reference processing state. The reference is well-formed and exactly
   one authorized digest context is selected, but the declared algorithm or
   representation conflicts with that context, the selected token is
-  permanently undefined or prohibited, the selected context's construction
-  cannot be applied to the obtained artifact, or a recomputed digest differs
-  from the supplied value.
+  permanently undefined or prohibited, the obtained artifact is not input
+  that the selected context's construction accepts, or a recomputed digest
+  differs from the supplied value.
 
 Verified:
 : A typed-reference processing state. The verifier selected exactly one
-  authorized digest context, obtained the cited artifact, applied that
-  context's canonicalization and hash rules, and obtained a digest equal to
-  the supplied value in the context's declared representation.
+  authorized digest context that is valid for the reference, obtained the
+  cited artifact, applied that context's complete construction to it (its
+  field selection or byte-boundary selector, exclusion set, any assembly of
+  the pre-image, canonicalization algorithm, domain separation, encoding of
+  the pre-image, and hash function), and obtained a digest equal to the
+  supplied value in the context's declared representation.
 
 Receipt:
 : A COSE structure produced by a Transparency Service that provides
@@ -779,11 +796,14 @@ untransformed payload and exclusion procedure defined above.
 
 Assembling the pre-image from selected source fields, rather than taking the
 payload minus its exclusion set, is such a transformation: the selected field
-set alone does not determine the pre-image. The profile's definition of that
-transformation MUST state, for each selected source field, its location in
-the source and the name and nesting of the pre-image member that carries it,
-and, for every pre-image member not taken from the source, its name, nesting,
-and value.
+set alone does not determine the pre-image. A pre-image member is a member of
+the structured value supplied to A, before canonicalization. The profile's
+definition of that transformation MUST state, for each selected source field,
+its location in the source and the name and nesting of the pre-image member
+that carries it, and, for every pre-image member not taken from the source,
+its name, nesting, and value. A source that lacks a selected field is not
+input that the transformation accepts, unless the profile's definition states
+the pre-image produced in that case.
 
 ## Representation {#representation}
 
@@ -981,8 +1001,8 @@ declaration MUST bind an exact `type` token to one or more digest contexts.
 Each context MUST state its preimage construction, canonicalization
 algorithm, hash function, exact `digest_alg` token, output representation,
 and a purpose label when required below. Where that construction assembles
-the preimage from selected fields of the cited artifact, the context MUST
-state the members of that preimage as {{derived-id}} requires of such an
+the pre-image from selected fields of the cited artifact, the context MUST
+state the members of that pre-image as {{derived-id}} requires of such an
 assembly. A deployment MAY select a subset of
 the declarations its consuming profile permits, but it MUST NOT redefine a
 token or any parameter of its cited declaration. CPB creates no artifact-type
@@ -1024,17 +1044,22 @@ algorithm agility and downgrade detection.
 
 The verifier MUST next check that the carried value uses the selected
 context's declared representation. A mismatch is Failed. If the
-representation matches and the context is valid but the verifier does not
-implement its construction, the state is Unresolved (cause:
-`unimplemented`), whether or not the cited artifact can be obtained. If the
-construction is implemented but the cited artifact cannot be obtained, the
-state is Unresolved (cause: `unavailable`). Otherwise, the verifier
-MUST recompute the digest using the selected context and compare it
-byte-for-byte with `digest`. If the obtained artifact is not input that the
-selected context's construction accepts (for example, it is not valid JSON
-for `jcs`, or it lacks a source field that an assembled pre-image selects),
-the state is Failed. Equal values produce Verified; unequal values
-produce Failed. A deterministic conversion
+canonicalization algorithm that the selected context names is permanently
+undefined or prohibited ({{algo-jcs-n}}, {{algo-cde-n}}), the state is
+Failed. A selected context that passes these three checks (`digest_alg`,
+representation, and algorithm status) is valid for the reference. If the
+verifier does not implement a valid context's construction, the state is
+Unresolved (cause: `unimplemented`), whether or not the cited artifact can
+be obtained. If the construction is implemented but the cited artifact
+cannot be obtained, the state is Unresolved (cause: `unavailable`). If the
+obtained artifact is not input that the selected context's construction
+accepts, the state is Failed: for example, an artifact that is not valid
+JSON for `jcs`, or one that lacks a source field that an assembled pre-image
+selects when the profile states no pre-image for that case
+({{derived-id}}). Otherwise, the verifier MUST recompute the digest using
+the selected context and compare it byte-for-byte with `digest`. Equal
+values produce Verified; unequal values produce Failed. A deterministic
+conversion
 is permitted only when the selected context expressly defines that conversion
 and its output comparison representation.
 
@@ -1057,11 +1082,10 @@ not validate.
 The consuming profile MUST define the disposition of every non-Verified
 state. It MUST NOT rely on an Unresolved, Failed, or Malformed reference as
 evidence of a content binding. A verifier SHOULD report the cause of each
-Unresolved reference. A profile MAY define a distinct disposition for each
-cause; a profile that does not define them applies its single Unresolved
-disposition to all three. A profile that defines distinct dispositions also
-defines the disposition of an Unresolved reference whose cause is not
-reported.
+Unresolved reference. A profile MAY define a distinct disposition for one
+or more causes. The profile's Unresolved disposition applies to every cause
+for which it defines no distinct disposition and to an Unresolved reference
+whose cause is not reported.
 
 ## Carriage Selection {#carriage-selection}
 
