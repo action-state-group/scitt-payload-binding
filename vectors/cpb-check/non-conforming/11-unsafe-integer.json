@@ -1,0 +1,17 @@
+{
+  "id": "cpb-check-nonconforming-11",
+  "description": "R violation: integer tokens in valid integer-token form whose value is outside [-(2^53-1), 2^53-1]. The canonicalizer refuses to digest them, so the checker MUST NOT report the record conforming. conforming-03 is the passing complement at exactly +/-(2^53-1).",
+  "expected_verdict": "non-conforming",
+  "expected_violations": [
+    {
+      "path": "$[\"n\"]",
+      "rule": "R"
+    },
+    {
+      "path": "$[\"m\"]",
+      "rule": "R"
+    }
+  ],
+  "record_raw": "{\"n\":9007199254740993,\"m\":-9007199254740992,\"ok\":9007199254740991}",
+  "note": "9007199254740993 = 2^53+1 and -9007199254740992 = -2^53. Bound: draft -06 jcs-n step 2 and vectors/CANONICALIZATION_DECLARATION.md section 2. Represent such values as exact decimal strings."
+}

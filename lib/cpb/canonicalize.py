@@ -14,7 +14,7 @@ from typing import Any
 
 import rfc8785
 
-from ._lex import RawViolation, lex
+from ._lex import MAX_SAFE_INTEGER, RawViolation, lex
 
 __all__ = [
     "FloatInDigestError",
@@ -35,7 +35,8 @@ __all__ = [
 # different digests from the same bytes. Historical draft -00 §3.1 forbids
 # floats in jcs-n digest-bearing
 # fields; this bound additionally rejects any integer outside the safe range.
-MAX_SAFE_INTEGER = 2**53 - 1  # 9007199254740991
+# Defined once in _lex (MAX_SAFE_INTEGER, imported above and re-exported) so
+# cpb-check's wire rule and this canonicalizer share one bound.
 
 
 class FloatInDigestError(ValueError):

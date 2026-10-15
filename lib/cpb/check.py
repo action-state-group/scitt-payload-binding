@@ -9,7 +9,9 @@ Phase 1 scope
   arrays) may have value null, [] or {}.  Array elements are exempt.
   Scope matches historical jcs-n normalize() exactly (draft -00 §3.1 step 1).
 - R  Wire-layer: every number token must be in integer-token form
-  ^(?:0|-?[1-9][0-9]*)$; no duplicate object keys; declared array order
+  ^(?:0|-?[1-9][0-9]*)$ with value in [-(2^53-1), 2^53-1] (the same bound
+  the canonicalizer enforces; draft -06 jcs-n step 2); no duplicate object
+  keys; declared array order
   where the profile states one (profile-specific, not yet wired — awaits the
   profile registry in Phase 2).
 
