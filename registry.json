@@ -57,7 +57,7 @@
           "purpose": "equivalence",
           "profile_version": "N/A",
           "algorithm": "jcs",
-          "field_set": "{action_id, outcome}, closed, assembled from the source as a top-level object: action_id carries the source's /action_id, outcome carries the source's /measurements/outcome_sha256, and there is no other member \u2014 every member is a string; a floating-point value is rejected rather than digested, and an integer whose magnitude exceeds 2^53\u22121 (the ECMAScript safe-integer bound) is rejected as a typed error rather than serialized",
+          "field_set": "{action_id, outcome}, closed \u2014 every member is a string; a floating-point value is rejected rather than digested, and an integer whose magnitude exceeds 2^53\u22121 (the ECMAScript safe-integer bound) is rejected as a typed error rather than serialized. Member mapping: the source is the action object that the mandate's action_hash claim commits to, and the pre-image is a top-level object whose only members are action_id and outcome, each copied unchanged from the source's same-named top-level member (/action_id, /outcome), as in src/scope_enforce.py action_hash_of and vector mm-kat-02. How a deployment builds the action object, for example src/mock_verifier.py taking outcome from an Action Evidence Package's /measurements/outcome_sha256, is outside this context",
           "exclusion_set": "none",
           "domain_separation": "none",
           "pre_image_encoding": "JCS UTF-8 octets (per jcs)",
@@ -68,5 +68,5 @@
       "consuming_profile": "action-state-group/scitt-cose @ 04cf97a8d143459b7dd4193ba4d8c065c3783071 \u2014 the hosted verification surface at verify.agentactioncapsule.org. It parses and renders this type under the name machine-mandate (hosted_profiles/machine_mandate.py, PROFILE_PARSERS[\"machine-mandate\"]), against fixtures copied byte-verbatim from tyche-institute/machine-mandate@524e6a3 \u2014 the same commit this entry's Reference pins. What it does not do, stated plainly so the Designated Expert can weigh it: it detects the profile by the owner-controlled VCT URI and by pinned fixture digests, not by resolving the type through this registry, and its own module text disclaims endorsement. Whether a deployment that consumes the vocabulary without resolving the artifact type satisfies Gate B is the DE's call, not the registrant's \u2014 and the registrant is the owner, which is why it is put this way rather than asserted."
     }
   },
-  "snapshot_sha256": "4639a3832d569a22d2ceea85be1b1c9dd19b7fbf370b09fb055c7b992766e00b"
+  "snapshot_sha256": "a266cd29456b355451526517b755029ca62a4f7adbba13cc1adb1050cac4f6f0"
 }

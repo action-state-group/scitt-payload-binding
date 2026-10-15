@@ -391,9 +391,15 @@ put this way rather than asserted.
 | Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
 |---|---|---|---|---|---|---|---|
 | `identifier` | N/A | `as-transmitted` | byte-boundary selector — the issuer-signed JWS component of the SD-JWT (RFC 7515 §7.1 compact serialization; the first `~`-separated component exactly as transmitted); everything after the first `~` is outside the pre-image | N/A (`as-transmitted` has no field set) | none | N/A (no separate encoding step) | `bare-hex` |
-| `equivalence` | N/A | `jcs` | `{action_id, outcome}`, closed, assembled from the source as a top-level object: `action_id` carries the source's `/action_id`, `outcome` carries the source's `/measurements/outcome_sha256`, and there is no other member — every member is a string; a floating-point value is rejected rather than digested, and an integer whose magnitude exceeds 2^53−1 (the ECMAScript safe-integer bound) is rejected as a typed error rather than serialized | none | none | JCS UTF-8 octets (per `jcs`) | `sha256-prefixed` |
+| `equivalence` | N/A | `jcs` | `{action_id, outcome}`, closed — every member is a string; a floating-point value is rejected rather than digested, and an integer whose magnitude exceeds 2^53−1 (the ECMAScript safe-integer bound) is rejected as a typed error rather than serialized. Member mapping: the source is the action object that the mandate's `action_hash` claim commits to, and the pre-image is a top-level object whose only members are `action_id` and `outcome`, each copied unchanged from the source's same-named top-level member (`/action_id`, `/outcome`), as in `src/scope_enforce.py` `action_hash_of` and vector `mm-kat-02`. How a deployment builds the action object, for example `src/mock_verifier.py` taking `outcome` from an Action Evidence Package's `/measurements/outcome_sha256`, is outside this context | none | none | JCS UTF-8 octets (per `jcs`) | `sha256-prefixed` |
 
 The `sha256-prefixed` value is carried in the in-document `action_hash` claim.
+
+**Correction (2026-10-15, owner).** The `equivalence` field-set cell now states
+the member mapping that CPB -06 Section 9.1 requires of a pre-image assembled
+from selected fields: its source, and the source member that each pre-image
+member carries. The construction, the pinned vectors, and their digests are
+unchanged.
 
 **Key ordering, for the record.** `jcs` sorts member names by UTF-16 code unit
 (RFC 8785 §3.2.3); the retired `json-sk-cp` sorted by Unicode code point. The two
