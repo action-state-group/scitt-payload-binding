@@ -35,7 +35,8 @@ submitted by itself. Its changes go out with the next revision that carries
 normative text.
 
 Revision -06 now carries normative text: the three causes of the Unresolved
-state (#92) and the member mapping of a pre-image assembled from selected
-source fields (#5). Its "Changes from -05" section lists every change. It is
-posted only after every author agrees to its final text. Until then, -05 is
-the operative normative revision.
+state (#92), the member mapping of a pre-image assembled from selected
+source fields (#5), and the Failed state for an obtained artifact that the
+selected context's construction does not accept. Its "Changes from -05"
+section lists every change. It is posted only after every author agrees to
+its final text. Until then, -05 is the operative normative revision.

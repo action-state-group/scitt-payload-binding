@@ -19,7 +19,7 @@ vectors/
   harness.py                        Cross-language conformance harness (both directions)
   jcs-n/kats/                       Known-Answer Tests for Algorithm jcs-n (§3.1)
   jcs-n/derived-id/                 Derived identifier construction (§4)
-  jcs-n/assembled-preimage/         Assembled pre-images: member mapping (§4, §13.2)
+  jcs-n/assembled-preimage/         Assembled pre-images: member mapping (-06 Sections 6 and 9.1)
   jcs/pass/                         Active plain-JCS algorithm — PASS
   jcs/fail/                         Active plain-JCS algorithm — MUST-FAIL
   as-transmitted/pass/              Exact named-production byte selection — PASS
@@ -274,12 +274,12 @@ rule.
 
 ### Unresolved cause taxonomy (issue #92)
 
-The Information Model (Section 4, Conventions and Definitions, and Section 9.1 of
--06) splits the Unresolved state into three causes: `context` (the verifier cannot
-select exactly one authorized digest context), `unimplemented` (a context was
-selected, but the verifier cannot execute its construction), and `unavailable` (a
-context was selected and implemented, but the cited artifact could not be
-obtained). Only `context` and `unimplemented` are within `lib/cpb`'s scope:
+CPB -06 (Section 4, Conventions and Definitions, and Section 9.1, Cross-Profile
+Comparability) splits the Unresolved state into three causes: `context` (the
+verifier cannot select exactly one authorized digest context), `unimplemented` (a
+context was selected, but the verifier cannot execute its construction), and
+`unavailable` (a context was selected and implemented, but the cited artifact
+could not be obtained). Only `context` and `unimplemented` are within `lib/cpb`'s scope:
 fetching the cited artifact happens before the library is called.
 
 `typed-ref-fail-07`'s `verification.cause` field (`"context"`) is the first vector
