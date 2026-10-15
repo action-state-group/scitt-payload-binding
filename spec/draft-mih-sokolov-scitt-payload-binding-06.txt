@@ -314,8 +314,8 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       distinct disposition for each cause; a profile that defines a
       single Unresolved disposition applies it to all three causes, and
       a profile that defines distinct dispositions also defines one for
-      an Unresolved reference whose cause is not reported (Section 9.1,
-      #92).
+      an Unresolved reference whose cause is not reported (#92,
+      Section 9.1).
 
    *  Section 6 now treats assembling the pre-image from selected source
       fields as a transformation.  Its definition has to state where

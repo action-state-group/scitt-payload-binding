@@ -320,7 +320,7 @@ the locations in {{test-vector-locations}} are unchanged.
   distinct disposition for each cause; a profile that defines a single
   Unresolved disposition applies it to all three causes, and a profile that
   defines distinct dispositions also defines one for an Unresolved reference
-  whose cause is not reported ({{comparability}}, #92).
+  whose cause is not reported (#92, {{comparability}}).
 
 * {{derived-id}} now treats assembling the pre-image from selected source
   fields as a transformation. Its definition has to state where each
