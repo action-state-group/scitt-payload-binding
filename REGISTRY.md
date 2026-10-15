@@ -391,7 +391,7 @@ put this way rather than asserted.
 | Purpose | Profile version | Algorithm | Field set | Exclusion set | Domain separation | Pre-image encoding | Representation |
 |---|---|---|---|---|---|---|---|
 | `identifier` | N/A | `as-transmitted` | byte-boundary selector — the issuer-signed JWS component of the SD-JWT (RFC 7515 §7.1 compact serialization; the first `~`-separated component exactly as transmitted); everything after the first `~` is outside the pre-image | N/A (`as-transmitted` has no field set) | none | N/A (no separate encoding step) | `bare-hex` |
-| `equivalence` | N/A | `jcs` | `{action_id, outcome}`, closed — every member is a string; a floating-point value is rejected rather than digested, and an integer whose magnitude exceeds 2^53−1 (the ECMAScript safe-integer bound) is rejected as a typed error rather than serialized | none | none | JCS UTF-8 octets (per `jcs`) | `sha256-prefixed` |
+| `equivalence` | N/A | `jcs` | `{action_id, outcome}`, closed, assembled from the source as a top-level object: `action_id` carries the source's `/action_id`, `outcome` carries the source's `/measurements/outcome_sha256`, and there is no other member — every member is a string; a floating-point value is rejected rather than digested, and an integer whose magnitude exceeds 2^53−1 (the ECMAScript safe-integer bound) is rejected as a typed error rather than serialized | none | none | JCS UTF-8 octets (per `jcs`) | `sha256-prefixed` |
 
 The `sha256-prefixed` value is carried in the in-document `action_hash` claim.
 
