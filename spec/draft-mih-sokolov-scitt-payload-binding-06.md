@@ -307,11 +307,30 @@ This document does not define:
 
 # Changes from -05 {#changes-05}
 
-This revision updates the Acknowledgments only. It makes no normative change,
-no registry entry changes, and the vectors at the locations in
-{{test-vector-locations}} are unchanged. The Acknowledgments now credit
-contributions made through public review after the IETF 126 hackathon, and
-add Imran Siddique.
+This revision makes two normative changes. The wire format and the registry
+entries do not change, and the vectors at the locations in
+{{test-vector-locations}} are unchanged.
+
+* The Unresolved state now names its three causes: `context`,
+  `unimplemented`, and `unavailable` ({{conventions}}). Each Unresolved
+  outcome in this document states its cause. When the verifier does not
+  implement the selected context's construction, the cause is
+  `unimplemented`, whether or not the cited artifact can be obtained.
+  Reporting the cause is now recommended, and a profile can define a
+  distinct disposition for each cause; a profile that does not applies its
+  single Unresolved disposition to all three ({{comparability}}, #92).
+
+* {{derived-id}} now treats assembling the pre-image from selected source
+  fields as a transformation, whose definition has to state the name and
+  nesting of each pre-image member and every member or constant not taken
+  from the source. {{comparability}} asks the same of a digest context whose
+  preimage construction is assembled this way (#5).
+
+* The Acknowledgments now credit contributions made through public review
+  after the IETF 126 hackathon, and add Imran Siddique and Roel Schuurkes.
+
+* The informative reference to {{I-D.ietf-scitt-receipts-ccf-profile}} now
+  cites its current revision.
 
 # Changes from -04 {#changes-04}
 
@@ -616,7 +635,8 @@ pre-cutoff vintage MAY a verifier apply the historical construction above.
 If the construction is available, its ordinary digest comparison determines
 whether the typed reference is Verified or Failed. A verifier that lacks an
 implementation of the otherwise eligible historical construction reports the
-typed reference as Unresolved (cause: `unimplemented`). A historical identifier MUST NOT be relabelled
+typed reference as Unresolved (cause: `unimplemented`). A historical
+identifier MUST NOT be relabelled
 to another algorithm token or recomputed under another algorithm.
 
 ## Algorithm cde-n (Withdrawn) {#algo-cde-n}
@@ -726,6 +746,13 @@ relative to field exclusion and algorithm A so that producer and verifier
 derive the same exact input. This document defines no such transform. Absent
 an applicable profile declaration, the producer and verifier MUST use the
 untransformed payload and exclusion procedure defined above.
+
+Assembling the pre-image from selected source fields, rather than taking the
+payload minus its exclusion set, is such a transformation: the selected field
+set alone does not determine the pre-image. Its definition MUST state the name
+and nesting of the pre-image member that carries each selected source field,
+and every member or constant in the pre-image that is not taken from the
+source.
 
 ## Representation {#representation}
 
@@ -922,7 +949,10 @@ normative reference, every artifact-type declaration that it accepts. Each
 declaration MUST bind an exact `type` token to one or more digest contexts.
 Each context MUST state its preimage construction, canonicalization
 algorithm, hash function, exact `digest_alg` token, output representation,
-and a purpose label when required below. A deployment MAY select a subset of
+and a purpose label when required below. Where that construction assembles
+the preimage from selected fields of the cited artifact, the context MUST
+state its preimage members as {{derived-id}} requires for such a
+transformation. A deployment MAY select a subset of
 the declarations its consuming profile permits, but it MUST NOT redefine a
 token or any parameter of its cited declaration. CPB creates no artifact-type
 registry and does not authorize discovery from an unspecified or mutable
@@ -1226,7 +1256,8 @@ weight.
 
 When an artifact type cited in an immutable coordinate has no uniquely
 resolvable, profile-authorized digest-context declaration, the reference is
-Unresolved (cause: `context`) and the consuming profile determines the disposition
+Unresolved (cause: `context`) and the consuming profile determines the
+disposition
 ({{comparability}}). A verifier MUST NOT invent a mapping or reinterpret an
 existing type token to make an earlier citation verifiable.
 
@@ -1745,7 +1776,8 @@ individually confirmed: Anton Sokolov (confirmed 2026-07-24), Iman Schrock
 Lee) (contributor attribution confirmed 2026-07-27), Tymofii Pidlisnyi (Agent Passport System,
 confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero, confirmed
 2026-07-25, email, with corrections), Imran Siddique (Opaque Systems,
-confirmed 2026-09-11, on-issue)\]:
+confirmed 2026-09-11, on-issue), Roel Schuurkes (Rul1an) (confirmed
+2026-09-13, on-issue)\]:
 
 * Anton Sokolov (Tyche Institute) — assurance-boundary discipline; the A2A
   boundary-seal instance in {{appendix-c}}.
@@ -1779,6 +1811,11 @@ confirmed 2026-09-11, on-issue)\]:
   the `digest_alg` consistency-declaration clarification and the withdrawal
   of `cde-n` (#36); and the verifier-behaviour rules for unregistered
   external artifact types (#35).
+
+* Roel Schuurkes (Rul1an): the assembled-pre-image finding: a declared field
+  set alone does not fix the digest where a pre-image is assembled from
+  selected source fields (#5), and the discriminating MUST-FAIL/PASS vector
+  pair with the checker categories that run the pair (#16).
 
 * Iman Schrock (EMILIA/EP) — confirmed 2026-07-24; wording narrowed at the
   contributor's request 2026-09-07 — the single-digest composition instance

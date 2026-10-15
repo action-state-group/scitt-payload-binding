@@ -27,9 +27,15 @@ archived one.
 
 ## Revision -06 is not posted on its own (decision, 2026-10-04)
 
-The working revision -06 differs from the posted -05 only in the
-Acknowledgments, a new "Changes from -05" section, and one updated
-informative reference; it makes no normative change. Every Datatracker
+When this was decided, the working revision -06 differed from the posted -05
+only in the Acknowledgments, a new "Changes from -05" section, and one updated
+informative reference; it made no normative change. Every Datatracker
 submission needs fresh agreement from every author, so -06 will not be
 submitted by itself. Its changes go out with the next revision that carries
-normative text. Until then, -05 is the operative normative revision.
+normative text.
+
+Revision -06 now carries normative text: the three causes of the Unresolved
+state (#92) and the member mapping of a pre-image assembled from selected
+source fields (#5). Its "Changes from -05" section lists every change. It is
+posted only after every author agrees to its final text. Until then, -05 is
+the operative normative revision.
