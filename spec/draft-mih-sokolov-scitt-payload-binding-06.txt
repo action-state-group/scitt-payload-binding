@@ -360,10 +360,11 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       exclusion set to the profile that declares the digest context.
       For the same reason, the Verified definition (Section 4) now names
       the selected context's complete construction rather than its
-      canonicalization and hash rules, Section 9.1 lists these as
-      parameters that each digest context states, and Section 15.1 now
-      states that a registration does not pin a field set, an exclusion
-      set, or the assembly of a pre-image.
+      canonicalization and hash rules, Section 9.1 now lists field
+      selection, the exclusion set, and any assembly of the pre-image
+      among the parameters that each digest context states, and
+      Section 15.1 now states that a registration does not pin a field
+      set, an exclusion set, or the assembly of a pre-image.
 
    *  The Acknowledgments now credit contributions made through public
       review after the IETF 126 hackathon, and add Imran Siddique and
@@ -383,7 +384,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
    *  The title is now "Canonicalization Declaration for SCITT Signed
       Statements".  CPB remains the working short name.
-
 
 
 
@@ -441,7 +441,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       digest was computed: the field set selected; where the pre-image
       is assembled from selected fields, the member mapping that
       Section 6 requires (the source location of each selected field,
-      the name and nesting of the pre-image member that carries it, the
+      the name and nesting of the pre-image member that carries it, and
 
 
 
@@ -450,12 +450,12 @@ Mih & Sokolov             Expires 30 March 2027                 [Page 8]
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
-      name, nesting, and value of every other pre-image member, and any
-      pre-image stated for a source that lacks a selected field); the
-      exclusion set applied; the canonicalization algorithm applied; any
-      domain separation; the encoding of the pre-image; and the
-      representation of the output.  Two digest values are comparable
-      only when their full digest contexts are established as
+      the name, nesting, and value of every other pre-image member) and
+      any assembled pre-image stated for a source that lacks a selected
+      field; the exclusion set applied; the canonicalization algorithm
+      applied; any domain separation; the encoding of the pre-image; and
+      the representation of the output.  Two digest values are
+      comparable only when their full digest contexts are established as
       compatible.  A payload class or artifact type MAY declare more
       than one digest context over the same payload, each serving a
       distinct purpose declared by the profile that defines the class or
@@ -537,7 +537,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
    Failed:  A typed-reference processing state.  The reference is well-
       formed and exactly one authorized digest context is selected, but
-      the declared algorithm or representation conflicts with that
+      the reference's digest_alg or representation conflicts with that
       context, the canonicalization algorithm that the selected context
       names is permanently undefined or prohibited, the obtained
       artifact is not input that the selected context's construction
@@ -830,8 +830,8 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    verified: the token names no defined algorithm and never will, so a
    verifier encountering it MUST fail closed — MUST NOT report the
    payload class or typed digest reference as verified.  For a typed
-   reference, the outcome is Failed because the selected token has no
-   algorithm definition.
+   reference, the outcome is Failed because the canonicalization
+   algorithm that the selected context names has no definition.
 
 
 
@@ -962,8 +962,8 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    the pre-image member that carries it, and, for every pre-image member
    not taken from the source, its name, nesting, and value.  A source
    that lacks a selected field is not input that the transformation
-   accepts, unless the profile's definition states the pre-image
-   produced in that case.
+   accepts, unless the profile's definition states the assembled pre-
+   image produced in that case.
 
 6.1.  Representation
 
@@ -1308,11 +1308,12 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    accepts.  Each declaration MUST bind an exact type token to one or
    more digest contexts.  Each context MUST state its field selection or
    byte-boundary selector, exclusion set, any assembly of the pre-image,
-   canonicalization algorithm, hash function, exact digest_alg token,
-   output representation, and a purpose label when required below.
-   Where the context assembles the pre-image from selected fields of the
-   cited artifact, the context MUST state the members of that pre-image
-   as Section 6 requires of such an assembly.  A deployment MAY select a
+   canonicalization algorithm, any domain separation, encoding of the
+   pre-image, hash function, exact digest_alg token, output
+   representation, and a purpose label when required below.  Where the
+   context assembles the pre-image from selected fields of the cited
+   artifact, the context MUST state the members of that pre-image as
+   Section 6 requires of such an assembly.  A deployment MAY select a
    subset of the declarations its consuming profile permits, but it MUST
    NOT redefine a token or any parameter of its cited declaration.  CPB
    creates no artifact-type registry and does not authorize discovery
@@ -1335,7 +1336,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       normative source leave the selection ambiguous, the reference is
       Unresolved (cause: context).  The verifier MUST NOT choose by
       entry order, apparent recency, or preferred algorithm.
-
 
 
 

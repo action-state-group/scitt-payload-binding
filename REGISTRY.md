@@ -395,7 +395,7 @@ put this way rather than asserted.
 
 The `sha256-prefixed` value is carried in the in-document `action_hash` claim.
 
-**Correction (2026-10-15, proposed by the co-editor; owner confirmation pending).** The `equivalence` field-set cell now states
+**Correction (2026-10-15, proposed; owner confirmation pending).** The `equivalence` field-set cell now states
 the member mapping that CPB -06 Section 9.1 requires of a pre-image assembled
 from selected fields: its source, and the source member that each pre-image
 member carries. The construction, the pinned vectors, and their digests are
