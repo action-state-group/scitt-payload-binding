@@ -190,7 +190,7 @@ This document is an individual submission. The intended venue is the SCITT
 Working Group (scitt@ietf.org). Named acknowledgments in this document were
 individually confirmed in writing by the named parties.
 
-Revision -05 changes the title, which was "Canonical Payload Binding: A
+Revision -05 changed the title, which had been "Canonical Payload Binding: A
 Signed Statement Construction Profile", so that it names what the document
 defines: how a Signed Statement declares the construction behind the digests
 it carries, rather than the payload those digests cover. The draft name and
@@ -200,6 +200,9 @@ until the adopting working group settles the short name and the title.
 
 The source of this document and the companion interop record are maintained
 at: https://github.com/action-state-group/scitt-payload-binding
+
+Issue and pull request numbers given without a repository name, such as
+#92, refer to that repository.
 
 --- middle
 
@@ -354,7 +357,9 @@ the locations in {{test-vector-locations}} are unchanged.
   ({{algo-jcs}}), which already assigns the field set and the exclusion set
   to the profile that declares the digest context. For the same reason, the
   Verified definition ({{conventions}}) now names the selected context's
-  complete construction rather than its canonicalization and hash rules.
+  complete construction rather than its canonicalization and hash rules,
+  and {{iana-alg}} now states that a registration does not pin a field set,
+  an exclusion set, or the assembly of a pre-image.
 
 * The Acknowledgments now credit contributions made through public review
   after the IETF 126 hackathon, and add Imran Siddique and Roel Schuurkes.
@@ -1405,14 +1410,19 @@ Each entry pins the pre-image construction it names, its hash function, and
 its output representation together as a single immutable triple, so that
 changing any one of the three requires registering a new token rather than
 reinterpreting an existing one — otherwise a token such as `jcs` would
-silently come to mean more than its name states.
+silently come to mean more than its name states. An entry does not pin a
+field set, an exclusion set, or the assembly of a pre-image from selected
+fields: the payload class or digest context that names the entry declares
+them ({{conventions}}).
 
 Registration template:
 
 * Name: A short ASCII identifier suitable for use in protocol fields.
 * Status: `Active`, `Reserved`, or `Withdrawn`.
 * Preimage construction: A normative description sufficient to implement the
-  canonicalization or byte-selection operation deterministically.
+  canonicalization or byte-selection operation deterministically. Field
+  selection, the exclusion set, and any assembly of the pre-image are not
+  part of it ({{conventions}}).
 * Hash function and typed-reference token: The hash function and the exact
   `digest_alg` string used by a digest context based on this entry.
 * COSE hash algorithm: The integer COSE Algorithms registry value used for
