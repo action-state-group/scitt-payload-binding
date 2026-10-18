@@ -5,11 +5,10 @@ Declaration for SCITT Signed Statements* — together with its registry material
 vectors and reference code. The document is an **individual IETF Internet-Draft**. It is not a
 Working Group document and it is not an RFC.
 
-It also carries **`draft-mih-sokolov-cose-det-encodings`** under `spec/cose/`,
-an individual Internet-Draft intended for the COSE Working Group. **This file governs both
-documents**, and in particular the submission rule below applies to each of them separately: a
-submission of either requires the agreement of every author of that document. Where a rule names
-"the draft", read it as the draft being changed.
+It formerly also carried the COSE draft now maintained as
+**`draft-mih-sokolov-cose-deterministic-encodings`** in its own repository,
+[`action-state-group/cose-deterministic-encodings`](https://github.com/action-state-group/cose-deterministic-encodings),
+which has its own governance; `spec/cose/` now holds only a pointer there.
 
 This file states how the project is run. It is modeled on the governance practice used across the
 sibling repositories, adapted to the fact that this document has **two authors**.
