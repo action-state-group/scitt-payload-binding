@@ -5,8 +5,8 @@
 SCITT                                                             S. Mih
 Internet-Draft                                  Action State Group, Inc.
 Intended status: Standards Track                              A. Sokolov
-Expires: 30 March 2027                                   Tyche Institute
-                                                       26 September 2026
+Expires: 29 April 2027                                   Tyche Institute
+                                                         26 October 2026
 
 
         Canonicalization Declaration for SCITT Signed Statements
@@ -53,9 +53,9 @@ Note to Readers
 
 
 
-Mih & Sokolov             Expires 30 March 2027                 [Page 1]
+Mih & Sokolov             Expires 29 April 2027                 [Page 1]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    The source of this document and the companion interop record are
@@ -80,7 +80,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 30 March 2027.
+   This Internet-Draft will expire on 29 April 2027.
 
 Copyright Notice
 
@@ -109,9 +109,9 @@ Table of Contents
 
 
 
-Mih & Sokolov             Expires 30 March 2027                 [Page 2]
+Mih & Sokolov             Expires 29 April 2027                 [Page 2]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
      5.3.  Algorithm cde-n (Withdrawn) . . . . . . . . . . . . . . .  15
@@ -165,9 +165,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                 [Page 3]
+Mih & Sokolov             Expires 29 April 2027                 [Page 3]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
 1.  Introduction
@@ -221,9 +221,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                 [Page 4]
+Mih & Sokolov             Expires 29 April 2027                 [Page 4]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    never inferred, whether from the shape of a payload or from a header
@@ -277,9 +277,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                 [Page 5]
+Mih & Sokolov             Expires 29 April 2027                 [Page 5]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    *  Artifact types and their digest contexts — which named categories
@@ -333,9 +333,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                 [Page 6]
+Mih & Sokolov             Expires 29 April 2027                 [Page 6]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    *  A reference whose cited artifact is obtained but is not input that
@@ -389,9 +389,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                 [Page 7]
+Mih & Sokolov             Expires 29 April 2027                 [Page 7]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
       revisions.  Section 16 follows the renumbered sections of
@@ -445,9 +445,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                 [Page 8]
+Mih & Sokolov             Expires 29 April 2027                 [Page 8]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
       declared a canonicalization algorithm (from the registry in
@@ -501,9 +501,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                 [Page 9]
+Mih & Sokolov             Expires 29 April 2027                 [Page 9]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
       from the entry rather than assuming them.  A(v) is the octet
@@ -557,9 +557,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 10]
+Mih & Sokolov             Expires 29 April 2027                [Page 10]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    Failed:  A typed-reference processing state.  The reference is well-
@@ -613,9 +613,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 11]
+Mih & Sokolov             Expires 29 April 2027                [Page 11]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
      +================+================================+=============+
@@ -669,9 +669,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 12]
+Mih & Sokolov             Expires 29 April 2027                [Page 12]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
       IEEE 754 double-precision values.  Two conforming implementations
@@ -725,9 +725,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 13]
+Mih & Sokolov             Expires 29 April 2027                [Page 13]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    1.  Before converting the input JSON text to a data model, reject a
@@ -781,9 +781,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 14]
+Mih & Sokolov             Expires 29 April 2027                [Page 14]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    construction described above, and a party citing that historical
@@ -837,9 +837,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 15]
+Mih & Sokolov             Expires 29 April 2027                [Page 15]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
 5.4.  Algorithm as-transmitted
@@ -893,9 +893,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 16]
+Mih & Sokolov             Expires 29 April 2027                [Page 16]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
       strength of an uncited description such as "the payload bytes."
@@ -949,9 +949,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 17]
+Mih & Sokolov             Expires 29 April 2027                [Page 17]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    before canonicalization.  In this document, an assembled pre-image
@@ -1005,9 +1005,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 18]
+Mih & Sokolov             Expires 29 April 2027                [Page 18]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
 7.  Envelope Conventions
@@ -1061,9 +1061,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 19]
+Mih & Sokolov             Expires 29 April 2027                [Page 19]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    The profile's derived-identifier exclusion set MUST NOT be applied to
@@ -1117,9 +1117,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 20]
+Mih & Sokolov             Expires 29 April 2027                [Page 20]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    A verifier MUST NOT report receipt-backed status without having
@@ -1173,9 +1173,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 21]
+Mih & Sokolov             Expires 29 April 2027                [Page 21]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    This section defines a typed digest reference as an abstract
@@ -1229,9 +1229,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 22]
+Mih & Sokolov             Expires 29 April 2027                [Page 22]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    +============+================+=============+======================+
@@ -1285,9 +1285,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 23]
+Mih & Sokolov             Expires 29 April 2027                [Page 23]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    These are the only members of the CPB information model.  A payload
@@ -1341,9 +1341,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 24]
+Mih & Sokolov             Expires 29 April 2027                [Page 24]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    *  A profile or deployment configuration containing duplicate (type,
@@ -1397,9 +1397,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 25]
+Mih & Sokolov             Expires 29 April 2027                [Page 25]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    The two values actually being compared must share an established
@@ -1453,9 +1453,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 26]
+Mih & Sokolov             Expires 29 April 2027                [Page 26]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    cpb-refs = [1*64 typed-digest-reference]
@@ -1509,9 +1509,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 27]
+Mih & Sokolov             Expires 29 April 2027                [Page 27]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    CBOR map keys MUST be unique as required by this protocol's
@@ -1565,9 +1565,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 28]
+Mih & Sokolov             Expires 29 April 2027                [Page 28]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    raw digest of the complete statement content is supplied instead, and
@@ -1621,9 +1621,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 29]
+Mih & Sokolov             Expires 29 April 2027                [Page 29]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    parameter is advisory only: it can help log tooling locate a record's
@@ -1677,9 +1677,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 30]
+Mih & Sokolov             Expires 29 April 2027                [Page 30]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    value.  Bare digests of low-entropy fields are not confidential.
@@ -1733,9 +1733,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 31]
+Mih & Sokolov             Expires 29 April 2027                [Page 31]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
 13.5.  Tamper Evidence and Runtime Honesty
@@ -1789,9 +1789,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 32]
+Mih & Sokolov             Expires 29 April 2027                [Page 32]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    A producer SHOULD omit cpb-refs or use a profile-defined confidential
@@ -1845,9 +1845,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 33]
+Mih & Sokolov             Expires 29 April 2027                [Page 33]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    Each entry pins the pre-image construction it names, its hash
@@ -1901,9 +1901,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 34]
+Mih & Sokolov             Expires 29 April 2027                [Page 34]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    The Designated Expert MUST verify that each required field is
@@ -1957,9 +1957,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 35]
+Mih & Sokolov             Expires 29 April 2027                [Page 35]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    A payload class or typed digest reference naming cde-n MUST NOT be
@@ -2013,9 +2013,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 36]
+Mih & Sokolov             Expires 29 April 2027                [Page 36]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
 16.  Related Work
@@ -2069,9 +2069,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 37]
+Mih & Sokolov             Expires 29 April 2027                [Page 37]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    [RFC6920] defines hash-based ni and nih names, URI/URL
@@ -2125,9 +2125,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 38]
+Mih & Sokolov             Expires 29 April 2027                [Page 38]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    [RFC8610]  Birkholz, H., Vigano, C., and C. Bormann, "Concise Data
@@ -2181,9 +2181,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 39]
+Mih & Sokolov             Expires 29 April 2027                [Page 39]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    [I-D.hillier-scitt-arp]
@@ -2237,9 +2237,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 40]
+Mih & Sokolov             Expires 29 April 2027                [Page 40]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    [I-D.mih-scitt-agent-action-capsule]
@@ -2293,9 +2293,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 41]
+Mih & Sokolov             Expires 29 April 2027                [Page 41]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    [RFC9162]  Laurie, B., Messeri, E., and R. Stradling, "Certificate
@@ -2349,9 +2349,9 @@ Appendix A.  Synthetic Registration Walkthrough
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 42]
+Mih & Sokolov             Expires 29 April 2027                [Page 42]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    Use Full-Content Mode (Section 7.1): wrap the complete payload,
@@ -2405,9 +2405,9 @@ Appendix B.  Synthetic Two-Slot Composition
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 43]
+Mih & Sokolov             Expires 29 April 2027                [Page 43]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    {
@@ -2461,9 +2461,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 44]
+Mih & Sokolov             Expires 29 April 2027                [Page 44]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
 Appendix C.  Field-Verified Instances
@@ -2517,9 +2517,9 @@ C.1.1.  Glyphzero Byte-Agreement — Algorithm Determinism
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 45]
+Mih & Sokolov             Expires 29 April 2027                [Page 45]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
 C.1.2.  GAR Session Block — Leaf Construction Rule
@@ -2573,9 +2573,9 @@ C.1.3.  A2A Boundary Seal — Derived Identifier as Protocol Gate
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 46]
+Mih & Sokolov             Expires 29 April 2027                [Page 46]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
 C.2.  Field Table — IETF 126 Participants
@@ -2629,9 +2629,9 @@ C.2.  Field Table — IETF 126 Participants
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 47]
+Mih & Sokolov             Expires 29 April 2027                [Page 47]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    +===========+=============+=================+======================+
@@ -2685,9 +2685,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 48]
+Mih & Sokolov             Expires 29 April 2027                [Page 48]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    interop-vectors/composition, with a SHA256SUMS manifest fixing the
@@ -2741,9 +2741,9 @@ Appendix D.  Profile-Owned Payload Carriage Example
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 49]
+Mih & Sokolov             Expires 29 April 2027                [Page 49]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
 Acknowledgments
@@ -2797,9 +2797,9 @@ Acknowledgments
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 50]
+Mih & Sokolov             Expires 29 April 2027                [Page 50]
 
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
+Internet-Draft     SCITT Canonicalization Declaration       October 2026
 
 
    *  Imran Siddique (Opaque Systems) — the plain-JCS subject-binding
@@ -2853,4 +2853,4 @@ Authors' Addresses
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 51]
+Mih & Sokolov             Expires 29 April 2027                [Page 51]
