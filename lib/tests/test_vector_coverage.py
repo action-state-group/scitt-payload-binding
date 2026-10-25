@@ -334,6 +334,7 @@ def _handle_purpose_absent_on_multi_context_type_envelope_carriage(v: dict) -> N
     assert "purpose" not in ref, "vector's whole point is an ABSENT purpose"
     with pytest.raises(_UnresolvableReferenceError):
         _resolve_digest_context_or_raise(ref.get("purpose"), digest_contexts)
+    assert v["verification"]["cause"] == "context"
 
 
 def _handle_profile_independence_violation(v: dict) -> None:

@@ -41,7 +41,8 @@
   "verification": {
     "carrier_result": "SIGNATURE VALID",
     "payload_hash_result": "VERIFIED",
-    "reference_result": "UNRESOLVED (target not included in this fixture)"
+    "reference_result": "UNRESOLVED (target not included in this fixture)",
+    "cause": "unavailable"
   },
   "provenance": "Deterministically generated from the same intentionally public Ed25519 test key as typed-ref-pass-03. The payload is SHA-256 over payload_preimage_hex; the reference remains a separate citation."
 }

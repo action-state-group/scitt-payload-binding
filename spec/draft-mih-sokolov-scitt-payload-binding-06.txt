@@ -437,11 +437,11 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       as Verified.
 
    Unresolved:  A typed-reference processing state.  The reference is
-      well-formed, but the verifier cannot select exactly one authorized
-      digest context or cannot obtain the cited artifact, or it lacks
-      the implementation needed to execute an otherwise valid digest
-      context.  An Unresolved reference is not evidence of a content
-      binding.
+      well-formed, but verification did not reach a Verified or Failed
+      determination, for exactly one of three causes: the verifier
+      cannot select exactly one authorized digest context for the
+      reference (context); exactly one context was selected, but the
+      verifier lacks the implementation needed to execute its
 
 
 
@@ -449,6 +449,13 @@ Mih & Sokolov             Expires 30 March 2027                 [Page 8]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
+
+      construction (unimplemented); or exactly one context was selected
+      and implemented, but the cited artifact could not be obtained
+      (unavailable).  Retrying the same reference later can resolve
+      unavailable, but not context or unimplemented.  An Unresolved
+      reference is not evidence of a content binding, whatever its
+      cause.
 
    Failed:  A typed-reference processing state.  The reference is well-
       formed and exactly one authorized digest context is selected, but
@@ -490,13 +497,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
    The identifiers registered by this document in the Canonicalization
    Algorithm Registry (Section 15.1) are:
-
-
-
-
-
-
-
 
 
 
@@ -698,9 +698,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    ordinary digest comparison determines whether the typed reference is
    Verified or Failed.  A verifier that lacks an implementation of the
    otherwise eligible historical construction reports the typed
-   reference as Unresolved.  A historical identifier MUST NOT be
-   relabelled to another algorithm token or recomputed under another
-   algorithm.
+   reference as Unresolved (cause: unimplemented).  A historical
+   identifier MUST NOT be relabelled to another algorithm token or
+   recomputed under another algorithm.
 
 5.3.  Algorithm cde-n (Withdrawn)
 
@@ -1152,22 +1152,22 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
    *  If exactly one context is accepted for type, purpose MAY be
       absent.  If it is present, it MUST exactly match that context's
-      declared purpose; otherwise the reference is Unresolved.
+      declared purpose; otherwise the reference is Unresolved (cause:
+      context).
 
    *  If multiple contexts are accepted for type, every context MUST
       have a distinct, non-empty purpose label and the reference MUST
       carry purpose.  An absent or non-matching value makes the
-      reference Unresolved.
+      reference Unresolved (cause: context).
 
    *  If no declaration matches, or declarations from more than one
       normative source leave the selection ambiguous, the reference is
-      Unresolved.  The verifier MUST NOT choose by entry order, apparent
-      recency, or preferred algorithm.
+      Unresolved (cause: context).  The verifier MUST NOT choose by
+      entry order, apparent recency, or preferred algorithm.
 
    *  A profile or deployment configuration containing duplicate (type,
       purpose) selections is invalid and MUST NOT be used for
       verification.
-
 
 
 
@@ -1198,14 +1198,16 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
    The verifier MUST next check that the carried value uses the selected
    context's declared representation.  A mismatch is Failed.  If the
-   representation matches but the cited artifact cannot be obtained, the
-   state is Unresolved.  If the context is valid but the verifier does
-   not implement its construction, the state is also Unresolved.
-   Otherwise, the verifier MUST recompute the digest using the selected
-   context and compare it byte-for-byte with digest.  Equal values
-   produce Verified; unequal values produce Failed.  A deterministic
-   conversion is permitted only when the selected context expressly
-   defines that conversion and its output comparison representation.
+   representation matches and the context is valid but the verifier does
+   not implement its construction, the state is Unresolved (cause:
+   unimplemented), whether or not the cited artifact can be obtained.
+   If the construction is implemented but the cited artifact cannot be
+   obtained, the state is Unresolved (cause: unavailable).  Otherwise,
+   the verifier MUST recompute the digest using the selected context and
+   compare it byte-for-byte with digest.  Equal values produce Verified;
+   unequal values produce Failed.  A deterministic conversion is
+   permitted only when the selected context expressly defines that
+   conversion and its output comparison representation.
 
    The citing record's own derived-identifier context need NOT be
    compatible with the referenced artifact's digest context; those
@@ -1222,9 +1224,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    contain an Unresolved or Failed reference; a Verified digest match
    does not authenticate an issuer whose signature did not validate.
 
-   The consuming profile MUST define the disposition of every non-
-   Verified state.  It MUST NOT rely on an Unresolved, Failed, or
-   Malformed reference as evidence of a content binding.
+
 
 
 
@@ -1233,6 +1233,13 @@ Mih & Sokolov             Expires 30 March 2027                [Page 22]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
+
+   The consuming profile MUST define the disposition of every non-
+   Verified state.  It MUST NOT rely on an Unresolved, Failed, or
+   Malformed reference as evidence of a content binding.  A verifier
+   SHOULD report the cause of each Unresolved reference.  A profile MAY
+   define a distinct disposition for each cause; a profile that does not
+   define them applies its single Unresolved disposition to all three.
 
 9.2.  Carriage Selection
 
@@ -1267,13 +1274,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    digest-value = tstr .size (1..128) / bstr .size (1..128)
 
    The integer keys have these meanings:
-
-
-
-
-
-
-
 
 
 
@@ -1550,10 +1550,10 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
    When an artifact type cited in an immutable coordinate has no
    uniquely resolvable, profile-authorized digest-context declaration,
-   the reference is Unresolved and the consuming profile determines the
-   disposition (Section 9.1).  A verifier MUST NOT invent a mapping or
-   reinterpret an existing type token to make an earlier citation
-   verifiable.
+   the reference is Unresolved (cause: context) and the consuming
+   profile determines the disposition (Section 9.1).  A verifier MUST
+   NOT invent a mapping or reinterpret an existing type token to make an
+   earlier citation verifiable.
 
 
 
