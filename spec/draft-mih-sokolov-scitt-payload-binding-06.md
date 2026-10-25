@@ -52,18 +52,18 @@ informative:
   I-D.ietf-scitt-receipts-ccf-profile:
   I-D.mih-scitt-agent-action-capsule:
     title: "An Agent Action Capsule Profile for SCITT"
-    date: 2026-08-28
+    date: 2026-09-26
     seriesinfo:
-      Internet-Draft: draft-mih-scitt-agent-action-capsule-04
+      Internet-Draft: draft-mih-scitt-agent-action-capsule-05
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
   I-D.hillier-scitt-arp:
     title: "Attestation Reconciliation Protocol"
-    date: 2026-08-13
+    date: 2026-10-23
     seriesinfo:
-      Internet-Draft: draft-hillier-scitt-arp-03
+      Internet-Draft: draft-hillier-scitt-arp-06
     author:
       - ins: J. Hillier
         name: Joel Hillier
@@ -100,9 +100,9 @@ informative:
         organization: Tyche Institute
   I-D.schrock-ep-authorization-receipts:
     title: "Authorization Receipts for High-Risk Agent Actions"
-    date: 2026-08-16
+    date: 2026-09-11
     seriesinfo:
-      Internet-Draft: draft-schrock-ep-authorization-receipts-12
+      Internet-Draft: draft-schrock-ep-authorization-receipts-13
     author:
       - ins: I. Schrock
         name: Iman Schrock
@@ -122,17 +122,17 @@ informative:
         name: Orie Steele
   I-D.le-scitt-derived-subjects:
     title: "SCITT Profile for Independently Derived Subjects"
-    date: 2026-08-22
+    date: 2026-09-11
     seriesinfo:
-      Internet-Draft: draft-le-scitt-derived-subjects-00
+      Internet-Draft: draft-le-scitt-derived-subjects-01
     author:
       - ins: T. Le
         name: Thanh Le
   I-D.le-comparing-derived-identifiers:
-    title: "Principles for Comparing Independently Derived Identifiers"
-    date: 2026-08-22
+    title: "A Framework for Comparing Independently Derived Identifiers"
+    date: 2026-09-07
     seriesinfo:
-      Internet-Draft: draft-le-comparing-derived-identifiers-00
+      Internet-Draft: draft-le-comparing-derived-identifiers-01
     author:
       - ins: T. Le
         name: Thanh Le
@@ -368,8 +368,15 @@ the locations in {{test-vector-locations}} are unchanged.
   after the IETF 126 hackathon, and add Imran Siddique, Roel Schuurkes, and
   Pablo Play.
 
-* The informative reference to {{I-D.ietf-scitt-receipts-ccf-profile}} now
-  cites its current revision.
+* The informative references to {{I-D.ietf-scitt-receipts-ccf-profile}},
+  {{I-D.mih-scitt-agent-action-capsule}}, {{I-D.hillier-scitt-arp}},
+  {{I-D.schrock-ep-authorization-receipts}}, {{I-D.le-scitt-derived-subjects}},
+  and {{I-D.le-comparing-derived-identifiers}} now cite their current
+  revisions. {{related}} follows the renumbered sections of
+  {{I-D.hillier-scitt-arp}} and the revised scope of
+  {{I-D.le-scitt-derived-subjects}}, and states the guarantee of
+  {{I-D.schrock-ep-authorization-receipts}} in that draft's words. The
+  example in {{appendix-d}} names the capsule profile's current revision.
 
 # Changes from -04 {#changes-04}
 
@@ -1525,7 +1532,7 @@ function.
 profile. CPB does not alter either format.
 
 {{I-D.hillier-scitt-arp}} independently derives a similar canonical claim
-construction in its Sections 3 and 4.1. Its Claim Hash uses its own
+construction in its Sections 4 and 5.1. Its Claim Hash uses its own
 normalization, deterministic encoding, and deployment-blinding rules. It is
 not byte-compatible with a CPB `jcs` identifier, and implementations MUST NOT
 substitute one construction for the other.
@@ -1537,8 +1544,8 @@ without claiming a shared label or wire format. CPB does not normatively
 depend on that document.
 
 {{I-D.le-scitt-derived-subjects}} derives a protected CWT `sub` value from an
-application-admitted structured Value. It explicitly does not derive that
-subject from the Statement payload or define generic payload binding. CPB
+application-admitted structured Value. It explicitly excludes the Statement
+payload as an implicit input and does not define generic payload binding. CPB
 instead derives identifiers for Statement content and binds digest references;
 it does not replace that document's subject-identity profile.
 
@@ -1561,8 +1568,8 @@ protocol.
 
 {{I-D.schrock-ep-authorization-receipts}} defines an authorization receipt
 that binds an enrolled approver key to one action before execution, and states
-that the receipt establishes only the guarantees of the verification profile
-it selects. CPB defines no approver enrolment and no authorization semantics:
+that the receipt establishes only the guarantees of the selected verification
+profile. CPB defines no approver enrolment and no authorization semantics:
 a Signed Statement constructed under this document carries no claim that the
 action it describes was authorized.
 
@@ -1831,7 +1838,7 @@ It is recorded in the AAC interop registry (INTEROP.md).
 
 This appendix is informative. Section 5.5.5 of
 {{I-D.mih-scitt-agent-action-capsule}} defines a payload-level `references`
-array. In revision -04, each entry's identity uses the profile-owned JSON
+array. In revision -05, each entry's identity uses the profile-owned JSON
 members `type`, `digest_alg`, and `digest`; the separate
 `citation_purpose` member describes why the Capsule cites the target. That
 field is not CPB's `purpose`, which selects a digest context.

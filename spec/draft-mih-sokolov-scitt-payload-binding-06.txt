@@ -101,7 +101,7 @@ Table of Contents
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   4
      1.1.  Out of Scope  . . . . . . . . . . . . . . . . . . . . . .   5
    2.  Changes from -05  . . . . . . . . . . . . . . . . . . . . . .   6
-   3.  Changes from -04  . . . . . . . . . . . . . . . . . . . . . .   7
+   3.  Changes from -04  . . . . . . . . . . . . . . . . . . . . . .   8
    4.  Conventions and Definitions . . . . . . . . . . . . . . . . .   8
    5.  Canonicalization Algorithm Registrations  . . . . . . . . . .  11
      5.1.  Algorithm jcs . . . . . . . . . . . . . . . . . . . . . .  12
@@ -370,8 +370,29 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       review after the IETF 126 hackathon, and add Imran Siddique, Roel
       Schuurkes, and Pablo Play.
 
-   *  The informative reference to [I-D.ietf-scitt-receipts-ccf-profile]
-      now cites its current revision.
+   *  The informative references to
+      [I-D.ietf-scitt-receipts-ccf-profile],
+      [I-D.mih-scitt-agent-action-capsule], [I-D.hillier-scitt-arp],
+      [I-D.schrock-ep-authorization-receipts],
+      [I-D.le-scitt-derived-subjects], and
+      [I-D.le-comparing-derived-identifiers] now cite their current
+      revisions.  Section 16 follows the renumbered sections of
+      [I-D.hillier-scitt-arp] and the revised scope of
+      [I-D.le-scitt-derived-subjects], and states the guarantee of
+      [I-D.schrock-ep-authorization-receipts] in that draft's words.
+      The example in Appendix D names the capsule profile's current
+      revision.
+
+
+
+
+
+
+
+Mih & Sokolov             Expires 30 March 2027                 [Page 7]
+
+Internet-Draft     SCITT Canonicalization Declaration     September 2026
+
 
 3.  Changes from -04
 
@@ -384,15 +405,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
    *  The title is now "Canonicalization Declaration for SCITT Signed
       Statements".  CPB remains the working short name.
-
-
-
-
-
-Mih & Sokolov             Expires 30 March 2027                 [Page 7]
-
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
-
 
    *  Section 5 is retitled "Canonicalization Algorithm Registrations".
       The active entries, jcs and as-transmitted, are restated as
@@ -430,6 +442,14 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       artifact types.
 
    Derived Identifier:  The content-address of a payload: the output of
+
+
+
+Mih & Sokolov             Expires 30 March 2027                 [Page 8]
+
+Internet-Draft     SCITT Canonicalization Declaration     September 2026
+
+
       CANONICAL-DIGEST(A, v), where v is the payload value with its
       profile-declared exclusion set removed or, where the payload
       profile defines a transformation (Section 6), the value that
@@ -442,14 +462,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       is assembled from selected fields, the member mapping that
       Section 6 requires (the source location of each selected field,
       the name and nesting of the pre-image member that carries it, and
-
-
-
-Mih & Sokolov             Expires 30 March 2027                 [Page 8]
-
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
-
-
       the name, nesting, and value of every other pre-image member) and
       any assembled pre-image stated for a source that lacks a selected
       field; the exclusion set applied; the canonicalization algorithm
@@ -486,6 +498,14 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       context that names A declares them (Section 6, Section 9.1).
 
    Signed Statement:  A COSE_Sign1 object [RFC9052] that carries a
+
+
+
+Mih & Sokolov             Expires 30 March 2027                 [Page 9]
+
+Internet-Draft     SCITT Canonicalization Declaration     September 2026
+
+
       payload, a protected header, and an optional unprotected header;
       defined in [RFC9943].
 
@@ -497,15 +517,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       does not establish this state.
 
    Issuer-Authenticated:  A state of a Signature-Valid Signed Statement
-
-
-
-
-Mih & Sokolov             Expires 30 March 2027                 [Page 9]
-
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
-
-
       for which the verifier's policy accepts the signing key as
       authorized for the asserted issuer.  This state authenticates
       issuer claims but does not make a cited artifact or typed
@@ -543,6 +554,14 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       artifact is not input that the selected context's construction
       accepts, or a recomputed digest differs from the supplied value.
 
+
+
+
+Mih & Sokolov             Expires 30 March 2027                [Page 10]
+
+Internet-Draft     SCITT Canonicalization Declaration     September 2026
+
+
    Verified:  A typed-reference processing state.  The verifier selected
       exactly one authorized digest context that is valid for the
       reference, obtained the cited artifact, applied that context's
@@ -553,15 +572,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       supplied value in the context's declared representation.
 
    Receipt:  A COSE structure produced by a Transparency Service that
-
-
-
-
-Mih & Sokolov             Expires 30 March 2027                [Page 10]
-
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
-
-
       provides verifiable evidence that a Signed Statement was
       registered; defined in [RFC9943] and format-governed by the
       Verifiable Data Structure of the service.
@@ -588,16 +598,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
    The identifiers registered by this document in the Canonicalization
    Algorithm Registry (Section 15.1) are:
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -2031,7 +2031,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    Receipt profile.  CPB does not alter either format.
 
    [I-D.hillier-scitt-arp] independently derives a similar canonical
-   claim construction in its Sections 3 and 4.1.  Its Claim Hash uses
+   claim construction in its Sections 4 and 5.1.  Its Claim Hash uses
    its own normalization, deterministic encoding, and deployment-
    blinding rules.  It is not byte-compatible with a CPB jcs identifier,
    and implementations MUST NOT substitute one construction for the
@@ -2044,11 +2044,11 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    does not normatively depend on that document.
 
    [I-D.le-scitt-derived-subjects] derives a protected CWT sub value
-   from an application-admitted structured Value.  It explicitly does
-   not derive that subject from the Statement payload or define generic
-   payload binding.  CPB instead derives identifiers for Statement
-   content and binds digest references; it does not replace that
-   document's subject-identity profile.
+   from an application-admitted structured Value.  It explicitly
+   excludes the Statement payload as an implicit input and does not
+   define generic payload binding.  CPB instead derives identifiers for
+   Statement content and binds digest references; it does not replace
+   that document's subject-identity profile.
 
    [I-D.le-comparing-derived-identifiers] gives general principles for
    fixing the comparison domain, equivalence relation, and complete
@@ -2082,7 +2082,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    [I-D.schrock-ep-authorization-receipts] defines an authorization
    receipt that binds an enrolled approver key to one action before
    execution, and states that the receipt establishes only the
-   guarantees of the verification profile it selects.  CPB defines no
+   guarantees of the selected verification profile.  CPB defines no
    approver enrolment and no authorization semantics: a Signed Statement
    constructed under this document carries no claim that the action it
    describes was authorized.
@@ -2188,9 +2188,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
    [I-D.hillier-scitt-arp]
               Hillier, J., "Attestation Reconciliation Protocol", Work
-              in Progress, Internet-Draft, draft-hillier-scitt-arp-03,
-              13 August 2026, <https://datatracker.ietf.org/doc/html/
-              draft-hillier-scitt-arp-03>.
+              in Progress, Internet-Draft, draft-hillier-scitt-arp-06,
+              23 October 2026, <https://datatracker.ietf.org/doc/html/
+              draft-hillier-scitt-arp-06>.
 
    [I-D.ietf-scitt-receipts-ccf-profile]
               Birkholz, H., Delignat-Lavaud, A., Fournet, C., and A.
@@ -2201,18 +2201,18 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
               receipts-ccf-profile-06>.
 
    [I-D.le-comparing-derived-identifiers]
-              Le, T., "Principles for Comparing Independently Derived
+              Le, T., "A Framework for Comparing Independently Derived
               Identifiers", Work in Progress, Internet-Draft, draft-le-
-              comparing-derived-identifiers-00, 22 August 2026,
+              comparing-derived-identifiers-01, 7 September 2026,
               <https://datatracker.ietf.org/doc/html/draft-le-comparing-
-              derived-identifiers-00>.
+              derived-identifiers-01>.
 
    [I-D.le-scitt-derived-subjects]
               Le, T., "SCITT Profile for Independently Derived
               Subjects", Work in Progress, Internet-Draft, draft-le-
-              scitt-derived-subjects-00, 22 August 2026,
+              scitt-derived-subjects-01, 11 September 2026,
               <https://datatracker.ietf.org/doc/html/draft-le-scitt-
-              derived-subjects-00>.
+              derived-subjects-01>.
 
    [I-D.lee-orprg-permit-receipts]
               Lee, Y., "Permit Receipts for Permit-Before-Commit
@@ -2245,9 +2245,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    [I-D.mih-scitt-agent-action-capsule]
               Mih, S., "An Agent Action Capsule Profile for SCITT", Work
               in Progress, Internet-Draft, draft-mih-scitt-agent-action-
-              capsule-04, 28 August 2026,
+              capsule-05, 26 September 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
-              agent-action-capsule-04>.
+              agent-action-capsule-05>.
 
    [I-D.nobuo-scitt-protected-object-binding]
               Aoki, N., "SCITT Statement Relationship and Protected
@@ -2266,9 +2266,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    [I-D.schrock-ep-authorization-receipts]
               Schrock, I., "Authorization Receipts for High-Risk Agent
               Actions", Work in Progress, Internet-Draft, draft-schrock-
-              ep-authorization-receipts-12, 16 August 2026,
+              ep-authorization-receipts-13, 11 September 2026,
               <https://datatracker.ietf.org/doc/html/draft-schrock-ep-
-              authorization-receipts-12>.
+              authorization-receipts-13>.
 
    [I-D.sokolov-rats-aep-composition]
               Sokolov, A., "Composing Application-Layer Action Evidence
@@ -2720,7 +2720,7 @@ Appendix D.  Profile-Owned Payload Carriage Example
 
    This appendix is informative.  Section 5.5.5 of
    [I-D.mih-scitt-agent-action-capsule] defines a payload-level
-   references array.  In revision -04, each entry's identity uses the
+   references array.  In revision -05, each entry's identity uses the
    profile-owned JSON members type, digest_alg, and digest; the separate
    citation_purpose member describes why the Capsule cites the target.
    That field is not CPB's purpose, which selects a digest context.
