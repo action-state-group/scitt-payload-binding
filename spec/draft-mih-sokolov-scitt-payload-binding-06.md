@@ -365,7 +365,8 @@ the locations in {{test-vector-locations}} are unchanged.
   field set, an exclusion set, or the assembly of a pre-image.
 
 * The Acknowledgments now credit contributions made through public review
-  after the IETF 126 hackathon, and add Imran Siddique and Roel Schuurkes.
+  after the IETF 126 hackathon, and add Imran Siddique, Roel Schuurkes, and
+  Pablo Play.
 
 * The informative reference to {{I-D.ietf-scitt-receipts-ccf-profile}} now
   cites its current revision.
@@ -1858,7 +1859,8 @@ Lee) (contributor attribution confirmed 2026-07-27), Tymofii Pidlisnyi (Agent Pa
 confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero, confirmed
 2026-07-25, email, with corrections), Imran Siddique (Opaque Systems,
 confirmed 2026-09-11, on-issue), Roel Schuurkes (Rul1an) (confirmed
-2026-09-13, on-issue)\]:
+2026-09-13, on-issue), Pablo Play (Rama) (confirmed 2026-10-15,
+on-PR)\]:
 
 * Anton Sokolov (Tyche Institute) — assurance-boundary discipline; the A2A
   boundary-seal instance in {{appendix-c}}.
@@ -1897,6 +1899,10 @@ confirmed 2026-09-11, on-issue), Roel Schuurkes (Rul1an) (confirmed
   set alone does not fix the digest where a pre-image is assembled from
   selected source fields (#5), and the discriminating MUST-FAIL/PASS vector
   pair with the checker categories that run the pair (#16).
+
+* Pablo Play (Rama) — the split of the Unresolved state into three
+  distinguishable causes (`context`, `unavailable`, `unimplemented`), each
+  with its own remediation (#92, #98).
 
 * Iman Schrock (EMILIA/EP) — confirmed 2026-07-24; wording narrowed at the
   contributor's request 2026-09-07 — the single-digest composition instance
