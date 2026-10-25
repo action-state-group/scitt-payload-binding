@@ -52,18 +52,18 @@ informative:
   I-D.ietf-scitt-receipts-ccf-profile:
   I-D.mih-scitt-agent-action-capsule:
     title: "An Agent Action Capsule Profile for SCITT"
-    date: 2026-08-28
+    date: 2026-09-26
     seriesinfo:
-      Internet-Draft: draft-mih-scitt-agent-action-capsule-04
+      Internet-Draft: draft-mih-scitt-agent-action-capsule-05
     author:
       - ins: S. Mih
         name: Steven Mih
         organization: Action State Group, Inc.
   I-D.hillier-scitt-arp:
     title: "Attestation Reconciliation Protocol"
-    date: 2026-08-13
+    date: 2026-10-23
     seriesinfo:
-      Internet-Draft: draft-hillier-scitt-arp-03
+      Internet-Draft: draft-hillier-scitt-arp-06
     author:
       - ins: J. Hillier
         name: Joel Hillier
@@ -100,9 +100,9 @@ informative:
         organization: Tyche Institute
   I-D.schrock-ep-authorization-receipts:
     title: "Authorization Receipts for High-Risk Agent Actions"
-    date: 2026-08-16
+    date: 2026-09-11
     seriesinfo:
-      Internet-Draft: draft-schrock-ep-authorization-receipts-12
+      Internet-Draft: draft-schrock-ep-authorization-receipts-13
     author:
       - ins: I. Schrock
         name: Iman Schrock
@@ -122,17 +122,17 @@ informative:
         name: Orie Steele
   I-D.le-scitt-derived-subjects:
     title: "SCITT Profile for Independently Derived Subjects"
-    date: 2026-08-22
+    date: 2026-09-11
     seriesinfo:
-      Internet-Draft: draft-le-scitt-derived-subjects-00
+      Internet-Draft: draft-le-scitt-derived-subjects-01
     author:
       - ins: T. Le
         name: Thanh Le
   I-D.le-comparing-derived-identifiers:
-    title: "Principles for Comparing Independently Derived Identifiers"
-    date: 2026-08-22
+    title: "A Framework for Comparing Independently Derived Identifiers"
+    date: 2026-09-07
     seriesinfo:
-      Internet-Draft: draft-le-comparing-derived-identifiers-00
+      Internet-Draft: draft-le-comparing-derived-identifiers-01
     author:
       - ins: T. Le
         name: Thanh Le
@@ -190,7 +190,7 @@ This document is an individual submission. The intended venue is the SCITT
 Working Group (scitt@ietf.org). Named acknowledgments in this document were
 individually confirmed in writing by the named parties.
 
-Revision -05 changes the title, which was "Canonical Payload Binding: A
+Revision -05 changed the title, which had been "Canonical Payload Binding: A
 Signed Statement Construction Profile", so that it names what the document
 defines: how a Signed Statement declares the construction behind the digests
 it carries, rather than the payload those digests cover. The draft name and
@@ -200,6 +200,9 @@ until the adopting working group settles the short name and the title.
 
 The source of this document and the companion interop record are maintained
 at: https://github.com/action-state-group/scitt-payload-binding
+
+Issue and pull request numbers given without a repository name, such as
+#92, refer to that repository.
 
 --- middle
 
@@ -307,11 +310,82 @@ This document does not define:
 
 # Changes from -05 {#changes-05}
 
-This revision updates the Acknowledgments only. It makes no normative change,
-no registry entry changes, and the vectors at the locations in
-{{test-vector-locations}} are unchanged. The Acknowledgments now credit
-contributions made through public review after the IETF 126 hackathon, and
-add Imran Siddique.
+This revision makes three normative changes and one clarification.
+The wire format and the registry entries do not change, and the vectors at
+the locations in {{test-vector-locations}} are unchanged.
+
+* The Unresolved state now names its three causes: `context`,
+  `unimplemented`, and `unavailable` ({{conventions}}). Each Unresolved
+  outcome in this document states its cause. When the verifier does not
+  implement the construction of a selected context that is valid for the
+  reference, the cause is `unimplemented`, whether or not the cited artifact
+  can be obtained. A retry with the same verifier and profile configuration
+  can resolve only `unavailable`.
+  Reporting the cause is now recommended, and a profile can define a
+  distinct disposition for one or more causes; its Unresolved disposition
+  applies to every other cause and to an Unresolved reference whose cause
+  is not reported (#92, {{comparability}}).
+
+* {{derived-id}} now treats assembling the pre-image from selected source
+  fields as a transformation. The profile's definition of that
+  transformation has to state where each selected field comes from in the
+  source, the name and nesting of the
+  pre-image member that carries it, and the name, nesting, and value of every
+  pre-image member not taken from the source. {{comparability}} asks the same
+  of a digest context whose pre-image is assembled this way. In
+  {{conventions}}, the Digest Context definition now includes the member
+  mapping of such a pre-image, and the Derived Identifier definition now
+  includes the value that a profile-defined transformation produces (#5).
+
+* A reference whose cited artifact is obtained but is not input that the
+  selected context's construction accepts is now Failed: for example, an
+  artifact that is not valid JSON for `jcs`, or one that lacks a source field
+  that an assembled pre-image selects. Previously, neither the Failed
+  definition nor the processing steps covered this case ({{conventions}},
+  {{comparability}}, #98, #5). An artifact that lacks a selected source
+  field is Failed on this ground only when the digest context states no
+  pre-image for that case ({{derived-id}}). After context selection, the
+  processing steps in {{comparability}} now give the Failed outcome for a
+  permanently undefined or prohibited algorithm before they test the
+  `unimplemented` and `unavailable` causes, as {{algo-jcs-n}} and
+  {{algo-cde-n}} already required, and {{conventions}} now states when a
+  selected context is valid for the reference and requires the context of
+  a Verified reference to be valid for it.
+
+* The CANONICAL-DIGEST definition ({{conventions}}) no longer makes field
+  selection part of the canonicalization algorithm's definition.
+  Normalization and encoding remain part of it; field selection, the
+  exclusion set, and any assembly of the pre-image are declared by the
+  payload class or digest context that names the algorithm. This
+  clarification resolves a conflict with the `jcs` registration
+  ({{algo-jcs}}), which already assigns the field set and the exclusion set
+  to the profile that declares the digest context. For the same reason, the
+  Verified definition ({{conventions}}) now names the selected context's
+  complete construction rather than its canonicalization and hash rules,
+  {{comparability}} now lists, in place of the preimage construction, the
+  field selection or byte-boundary selector, the exclusion set, any assembly
+  of the pre-image, any domain separation, and the encoding of the pre-image
+  among the parameters that each digest context states, {{algo-cde-n}} words
+  its Failed outcome in terms of the algorithm that the selected context
+  names, and {{iana-alg}} now states that a registration does not pin a
+  field set, an exclusion set, or the assembly of a pre-image.
+
+* The Note to Readers states that issue and pull request numbers given
+  without a repository name refer to the source repository.
+
+* The Acknowledgments now credit contributions made through public review
+  after the IETF 126 hackathon, and add Imran Siddique, Roel Schuurkes, and
+  Pablo Play.
+
+* The informative references to {{I-D.ietf-scitt-receipts-ccf-profile}},
+  {{I-D.mih-scitt-agent-action-capsule}}, {{I-D.hillier-scitt-arp}},
+  {{I-D.schrock-ep-authorization-receipts}}, {{I-D.le-scitt-derived-subjects}},
+  and {{I-D.le-comparing-derived-identifiers}} now cite their current
+  revisions. {{related}} follows the renumbered sections of
+  {{I-D.hillier-scitt-arp}} and the revised scope of
+  {{I-D.le-scitt-derived-subjects}}, and states the guarantee of
+  {{I-D.schrock-ep-authorization-receipts}} in that draft's words. The
+  example in {{appendix-d}} names the capsule profile's current revision.
 
 # Changes from -04 {#changes-04}
 
@@ -358,14 +432,21 @@ Payload Class:
 Derived Identifier:
 : The content-address of a payload: the output of CANONICAL-DIGEST(A, v),
   where v is the payload value with its profile-declared exclusion set
-  removed. Verifiers MUST recompute the derived identifier from the payload
+  removed or, where the payload profile defines a transformation
+  ({{derived-id}}), the value that transformation produces. Verifiers MUST
+  recompute the derived identifier from the payload
   value; a carried derived-identifier value is advisory only and a mismatch
   is a defect.
 
 Digest Context:
 : The complete set of parameters that determine how a digest was computed:
-  the field set selected, the exclusion set applied, the canonicalization
-  algorithm applied, any domain separation, the encoding of the pre-image,
+  the field set selected; where the pre-image is assembled from selected
+  fields, the member mapping that {{derived-id}} requires (the source
+  location of each selected field, the name and nesting of the pre-image
+  member that carries it, and the name, nesting, and value of every other
+  pre-image member) and any assembled pre-image stated for a source that
+  lacks a selected field; the exclusion set applied; the canonicalization
+  algorithm applied; any domain separation; the encoding of the pre-image;
   and the representation of the output. Two digest values are comparable
   only when their full digest contexts are established as compatible. A
   payload class or artifact type MAY declare more than one digest context
@@ -392,9 +473,11 @@ CANONICAL-DIGEST:
   registered by a later
   document MAY declare another digest function or encoding, and a verifier
   MUST read both from the entry rather than assuming them. A(v) is the
-  octet string produced by the algorithm applied to v; the specific
-  pre-image construction — field selection, normalization, and encoding —
-  is part of A's definition and is registered per {{iana-alg}}.
+  octet string produced by the algorithm applied to v. Normalization and
+  encoding are part of A's definition and are registered per {{iana-alg}}.
+  Field selection, the exclusion set, and any assembly of the pre-image are
+  not: the payload class or digest context that names A declares them
+  ({{derived-id}}, {{comparability}}).
 
 Signed Statement:
 : A COSE_Sign1 object {{RFC9052}} that carries a payload, a protected
@@ -423,26 +506,36 @@ Unresolved:
 : A typed-reference processing state. The reference is well-formed, but
   verification did not reach a Verified or Failed determination, for exactly
   one of three causes: the verifier cannot select exactly one authorized
-  digest context for the reference (`context`); exactly one context was
-  selected, but the verifier lacks the implementation needed to execute its
-  construction (`unimplemented`); or exactly one context was selected and
-  implemented, but the cited artifact could not be obtained (`unavailable`).
-  Retrying the same reference later can resolve `unavailable`, but not
+  digest context for the reference (`context`); exactly one context that is
+  valid for the reference was selected, but the verifier lacks the
+  implementation needed to execute its construction (`unimplemented`); or
+  exactly one such context was selected and implemented, but the cited
+  artifact could not be obtained (`unavailable`). A selected context is
+  valid for the reference when the reference's `digest_alg` and the
+  representation of its `digest` agree with that context, and the
+  canonicalization algorithm that the context names is neither permanently
+  undefined nor prohibited ({{comparability}}). Retrying the same reference with the same
+  verifier and profile configuration can resolve `unavailable`, but not
   `context` or `unimplemented`. An Unresolved reference is not evidence of a
   content binding, whatever its cause.
 
 Failed:
 : A typed-reference processing state. The reference is well-formed and exactly
-  one authorized digest context is selected, but the declared algorithm or
-  representation conflicts with that context, the selected token is
-  permanently undefined or prohibited, or a recomputed digest differs from
-  the supplied value.
+  one authorized digest context is selected, but the reference's
+  `digest_alg` or representation conflicts with that context, the canonicalization
+  algorithm that the selected context names is permanently undefined or
+  prohibited, the obtained artifact is not input
+  that the selected context's construction accepts, or a recomputed digest
+  differs from the supplied value.
 
 Verified:
 : A typed-reference processing state. The verifier selected exactly one
-  authorized digest context, obtained the cited artifact, applied that
-  context's canonicalization and hash rules, and obtained a digest equal to
-  the supplied value in the context's declared representation.
+  authorized digest context that is valid for the reference, obtained the
+  cited artifact, applied that context's complete construction to it (its
+  field selection or byte-boundary selector, exclusion set, any assembly of
+  the pre-image, canonicalization algorithm, domain separation, encoding of
+  the pre-image, and hash function), and obtained a digest equal to the
+  supplied value in the context's declared representation.
 
 Receipt:
 : A COSE structure produced by a Transparency Service that provides
@@ -616,7 +709,8 @@ pre-cutoff vintage MAY a verifier apply the historical construction above.
 If the construction is available, its ordinary digest comparison determines
 whether the typed reference is Verified or Failed. A verifier that lacks an
 implementation of the otherwise eligible historical construction reports the
-typed reference as Unresolved (cause: `unimplemented`). A historical identifier MUST NOT be relabelled
+typed reference as Unresolved (cause: `unimplemented`). A historical
+identifier MUST NOT be relabelled
 to another algorithm token or recomputed under another algorithm.
 
 ## Algorithm cde-n (Withdrawn) {#algo-cde-n}
@@ -634,7 +728,8 @@ A payload class or typed digest reference that names `cde-n` cannot be
 verified: the token names no defined algorithm and never will, so a
 verifier encountering it MUST fail closed — MUST NOT report the payload
 class or typed digest reference as verified. For a typed reference, the
-outcome is Failed because the selected token has no algorithm definition.
+outcome is Failed because the canonicalization algorithm that the selected
+context names has no definition.
 
 ## Algorithm as-transmitted {#algo-as-transmitted}
 
@@ -726,6 +821,20 @@ relative to field exclusion and algorithm A so that producer and verifier
 derive the same exact input. This document defines no such transform. Absent
 an applicable profile declaration, the producer and verifier MUST use the
 untransformed payload and exclusion procedure defined above.
+
+Assembling the pre-image from selected source fields, rather than taking the
+payload minus its exclusion set, is such a transformation: the selected field
+set alone does not determine the pre-image. A pre-image member is a member of
+the structured value supplied to A, before canonicalization. In this
+document, an assembled pre-image and the assembly of a pre-image refer to
+that structured value, not to the octet string that A produces from it.
+The profile's
+definition of that transformation MUST state, for each selected source field,
+its location in the source and the name and nesting of the pre-image member
+that carries it, and, for every pre-image member not taken from the source,
+its name, nesting, and value. A source that lacks a selected field is not
+input that the transformation accepts, unless the profile's definition states
+the assembled pre-image produced in that case.
 
 ## Representation {#representation}
 
@@ -920,9 +1029,14 @@ digest context and comparison representation.
 A consuming profile that accepts typed references MUST identify, by stable
 normative reference, every artifact-type declaration that it accepts. Each
 declaration MUST bind an exact `type` token to one or more digest contexts.
-Each context MUST state its preimage construction, canonicalization
-algorithm, hash function, exact `digest_alg` token, output representation,
-and a purpose label when required below. A deployment MAY select a subset of
+Each context MUST state its field selection or byte-boundary selector,
+exclusion set, any assembly of the pre-image, canonicalization algorithm,
+any domain separation, encoding of the pre-image, hash function, exact
+`digest_alg` token, output representation, and a purpose label when
+required below. Where the context assembles
+the pre-image from selected fields of the cited artifact, the context MUST
+state the members of that pre-image as {{derived-id}} requires of such an
+assembly. A deployment MAY select a subset of
 the declarations its consuming profile permits, but it MUST NOT redefine a
 token or any parameter of its cited declaration. CPB creates no artifact-type
 registry and does not authorize discovery from an unspecified or mutable
@@ -963,14 +1077,22 @@ algorithm agility and downgrade detection.
 
 The verifier MUST next check that the carried value uses the selected
 context's declared representation. A mismatch is Failed. If the
-representation matches and the context is valid but the verifier does not
-implement its construction, the state is Unresolved (cause:
-`unimplemented`), whether or not the cited artifact can be obtained. If the
-construction is implemented but the cited artifact cannot be obtained, the
-state is Unresolved (cause: `unavailable`). Otherwise, the verifier
-MUST recompute the digest using the selected context and compare it
-byte-for-byte with `digest`. Equal values produce Verified; unequal values
-produce Failed. A deterministic conversion
+canonicalization algorithm that the selected context names is permanently
+undefined or prohibited ({{algo-jcs-n}}, {{algo-cde-n}}), the state is
+Failed. A selected context that passes these three checks (`digest_alg`,
+representation, and algorithm status) is valid for the reference. If the
+verifier does not implement a valid context's construction, the state is
+Unresolved (cause: `unimplemented`), whether or not the cited artifact can
+be obtained. If the construction is implemented but the cited artifact
+cannot be obtained, the state is Unresolved (cause: `unavailable`). If the
+obtained artifact is not input that the selected context's construction
+accepts, the state is Failed: for example, an artifact that is not valid
+JSON for `jcs`, or one that lacks a source field that an assembled pre-image
+selects when the context states no pre-image for that case
+({{derived-id}}). Otherwise, the verifier MUST recompute the digest using
+the selected context and compare it byte-for-byte with `digest`. Equal
+values produce Verified; unequal values produce Failed. A deterministic
+conversion
 is permitted only when the selected context expressly defines that conversion
 and its output comparison representation.
 
@@ -993,9 +1115,10 @@ not validate.
 The consuming profile MUST define the disposition of every non-Verified
 state. It MUST NOT rely on an Unresolved, Failed, or Malformed reference as
 evidence of a content binding. A verifier SHOULD report the cause of each
-Unresolved reference. A profile MAY define a distinct disposition for each
-cause; a profile that does not define them applies its single Unresolved
-disposition to all three.
+Unresolved reference. A profile MAY define a distinct disposition for one
+or more causes. The profile's Unresolved disposition applies to every cause
+for which it defines no distinct disposition and to an Unresolved reference
+whose cause is not reported.
 
 ## Carriage Selection {#carriage-selection}
 
@@ -1226,7 +1349,8 @@ weight.
 
 When an artifact type cited in an immutable coordinate has no uniquely
 resolvable, profile-authorized digest-context declaration, the reference is
-Unresolved (cause: `context`) and the consuming profile determines the disposition
+Unresolved (cause: `context`) and the consuming profile determines the
+disposition
 ({{comparability}}). A verifier MUST NOT invent a mapping or reinterpret an
 existing type token to make an earlier citation verifiable.
 
@@ -1314,14 +1438,19 @@ Each entry pins the pre-image construction it names, its hash function, and
 its output representation together as a single immutable triple, so that
 changing any one of the three requires registering a new token rather than
 reinterpreting an existing one — otherwise a token such as `jcs` would
-silently come to mean more than its name states.
+silently come to mean more than its name states. An entry does not pin a
+field set, an exclusion set, or the assembly of a pre-image from selected
+fields: the payload class or digest context that names the entry declares
+them ({{conventions}}).
 
 Registration template:
 
 * Name: A short ASCII identifier suitable for use in protocol fields.
 * Status: `Active`, `Reserved`, or `Withdrawn`.
 * Preimage construction: A normative description sufficient to implement the
-  canonicalization or byte-selection operation deterministically.
+  canonicalization or byte-selection operation deterministically. Field
+  selection, the exclusion set, and any assembly of the pre-image are not
+  part of it ({{conventions}}).
 * Hash function and typed-reference token: The hash function and the exact
   `digest_alg` string used by a digest context based on this entry.
 * COSE hash algorithm: The integer COSE Algorithms registry value used for
@@ -1412,7 +1541,7 @@ function.
 profile. CPB does not alter either format.
 
 {{I-D.hillier-scitt-arp}} independently derives a similar canonical claim
-construction in its Sections 3 and 4.1. Its Claim Hash uses its own
+construction in its Sections 4 and 5.1. Its Claim Hash uses its own
 normalization, deterministic encoding, and deployment-blinding rules. It is
 not byte-compatible with a CPB `jcs` identifier, and implementations MUST NOT
 substitute one construction for the other.
@@ -1424,8 +1553,8 @@ without claiming a shared label or wire format. CPB does not normatively
 depend on that document.
 
 {{I-D.le-scitt-derived-subjects}} derives a protected CWT `sub` value from an
-application-admitted structured Value. It explicitly does not derive that
-subject from the Statement payload or define generic payload binding. CPB
+application-admitted structured Value. It explicitly excludes the Statement
+payload as an implicit input and does not define generic payload binding. CPB
 instead derives identifiers for Statement content and binds digest references;
 it does not replace that document's subject-identity profile.
 
@@ -1448,8 +1577,8 @@ protocol.
 
 {{I-D.schrock-ep-authorization-receipts}} defines an authorization receipt
 that binds an enrolled approver key to one action before execution, and states
-that the receipt establishes only the guarantees of the verification profile
-it selects. CPB defines no approver enrolment and no authorization semantics:
+that the receipt establishes only the guarantees of the selected verification
+profile. CPB defines no approver enrolment and no authorization semantics:
 a Signed Statement constructed under this document carries no claim that the
 action it describes was authorized.
 
@@ -1718,7 +1847,7 @@ It is recorded in the AAC interop registry (INTEROP.md).
 
 This appendix is informative. Section 5.5.5 of
 {{I-D.mih-scitt-agent-action-capsule}} defines a payload-level `references`
-array. In revision -04, each entry's identity uses the profile-owned JSON
+array. In revision -05, each entry's identity uses the profile-owned JSON
 members `type`, `digest_alg`, and `digest`; the separate
 `citation_purpose` member describes why the Capsule cites the target. That
 field is not CPB's `purpose`, which selects a digest context.
@@ -1745,7 +1874,9 @@ individually confirmed: Anton Sokolov (confirmed 2026-07-24), Iman Schrock
 Lee) (contributor attribution confirmed 2026-07-27), Tymofii Pidlisnyi (Agent Passport System,
 confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero, confirmed
 2026-07-25, email, with corrections), Imran Siddique (Opaque Systems,
-confirmed 2026-09-11, on-issue)\]:
+confirmed 2026-09-11, on-issue), Roel Schuurkes (Rul1an) (confirmed
+2026-09-13, on-issue), Pablo Play (Rama) (confirmed 2026-10-15,
+on-PR)\]:
 
 * Anton Sokolov (Tyche Institute) — assurance-boundary discipline; the A2A
   boundary-seal instance in {{appendix-c}}.
@@ -1779,6 +1910,15 @@ confirmed 2026-09-11, on-issue)\]:
   the `digest_alg` consistency-declaration clarification and the withdrawal
   of `cde-n` (#36); and the verifier-behaviour rules for unregistered
   external artifact types (#35).
+
+* Roel Schuurkes (Rul1an): the assembled-pre-image finding: a declared field
+  set alone does not fix the digest where a pre-image is assembled from
+  selected source fields (#5), and the discriminating MUST-FAIL/PASS vector
+  pair with the checker categories that run the pair (#16).
+
+* Pablo Play (Rama) — the split of the Unresolved state into three
+  distinguishable causes (`context`, `unavailable`, `unimplemented`), each
+  with its own remediation (#92, #98).
 
 * Iman Schrock (EMILIA/EP) — confirmed 2026-07-24; wording narrowed at the
   contributor's request 2026-09-07 — the single-digest composition instance

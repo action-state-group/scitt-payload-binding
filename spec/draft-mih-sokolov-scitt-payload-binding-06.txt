@@ -40,14 +40,14 @@ Note to Readers
    SCITT Working Group (scitt@ietf.org).  Named acknowledgments in this
    document were individually confirmed in writing by the named parties.
 
-   Revision -05 changes the title, which was "Canonical Payload Binding:
-   A Signed Statement Construction Profile", so that it names what the
-   document defines: how a Signed Statement declares the construction
-   behind the digests it carries, rather than the payload those digests
-   cover.  The draft name and the short name CPB are unchanged.  CPB
-   remains the working short name, used by the cpb-refs header parameter
-   and by the companion registry record and code, until the adopting
-   working group settles the short name and the title.
+   Revision -05 changed the title, which had been "Canonical Payload
+   Binding: A Signed Statement Construction Profile", so that it names
+   what the document defines: how a Signed Statement declares the
+   construction behind the digests it carries, rather than the payload
+   those digests cover.  The draft name and the short name CPB are
+   unchanged.  CPB remains the working short name, used by the cpb-refs
+   header parameter and by the companion registry record and code, until
+   the adopting working group settles the short name and the title.
 
 
 
@@ -61,6 +61,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    The source of this document and the companion interop record are
    maintained at: https://github.com/action-state-group/scitt-payload-
    binding
+
+   Issue and pull request numbers given without a repository name, such
+   as #92, refer to that repository.
 
 Status of This Memo
 
@@ -98,14 +101,11 @@ Table of Contents
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   4
      1.1.  Out of Scope  . . . . . . . . . . . . . . . . . . . . . .   5
    2.  Changes from -05  . . . . . . . . . . . . . . . . . . . . . .   6
-   3.  Changes from -04  . . . . . . . . . . . . . . . . . . . . . .   6
-   4.  Conventions and Definitions . . . . . . . . . . . . . . . . .   7
-   5.  Canonicalization Algorithm Registrations  . . . . . . . . . .   9
-     5.1.  Algorithm jcs . . . . . . . . . . . . . . . . . . . . . .  10
-     5.2.  Algorithm jcs-n (Withdrawn) . . . . . . . . . . . . . . .  11
-     5.3.  Algorithm cde-n (Withdrawn) . . . . . . . . . . . . . . .  13
-     5.4.  Algorithm as-transmitted  . . . . . . . . . . . . . . . .  14
-   6.  The Derived Identifier  . . . . . . . . . . . . . . . . . . .  15
+   3.  Changes from -04  . . . . . . . . . . . . . . . . . . . . . .   8
+   4.  Conventions and Definitions . . . . . . . . . . . . . . . . .   8
+   5.  Canonicalization Algorithm Registrations  . . . . . . . . . .  11
+     5.1.  Algorithm jcs . . . . . . . . . . . . . . . . . . . . . .  12
+     5.2.  Algorithm jcs-n (Withdrawn) . . . . . . . . . . . . . . .  13
 
 
 
@@ -114,53 +114,53 @@ Mih & Sokolov             Expires 30 March 2027                 [Page 2]
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
-     6.1.  Representation  . . . . . . . . . . . . . . . . . . . . .  16
-   7.  Envelope Conventions  . . . . . . . . . . . . . . . . . . . .  16
-     7.1.  Full-Content Mode . . . . . . . . . . . . . . . . . . . .  17
-     7.2.  Hash Envelope Mode  . . . . . . . . . . . . . . . . . . .  17
-   8.  Statement-to-Receipt Binding  . . . . . . . . . . . . . . . .  18
-     8.1.  Leaf Construction . . . . . . . . . . . . . . . . . . . .  18
-   9.  Typed Digest References (Information Model) . . . . . . . . .  19
-     9.1.  Cross-Profile Comparability . . . . . . . . . . . . . . .  21
-     9.2.  Carriage Selection  . . . . . . . . . . . . . . . . . . .  23
-     9.3.  Envelope Carriage . . . . . . . . . . . . . . . . . . . .  23
-     9.4.  Payload Carriage  . . . . . . . . . . . . . . . . . . . .  25
-     9.5.  Verification Scope  . . . . . . . . . . . . . . . . . . .  26
-   10. Profile Independence  . . . . . . . . . . . . . . . . . . . .  26
-   11. Discovery Mirror  . . . . . . . . . . . . . . . . . . . . . .  26
-   12. Extensibility and Cross-Cutting Facilities  . . . . . . . . .  27
-   13. Security Considerations . . . . . . . . . . . . . . . . . . .  27
-     13.1.  Preimages Are Bytes, Not Renderings  . . . . . . . . . .  27
-     13.2.  Low-Entropy Fields . . . . . . . . . . . . . . . . . . .  27
-     13.3.  Float Values and Digest Reproducibility  . . . . . . . .  28
-     13.4.  Immutable Coordinates  . . . . . . . . . . . . . . . . .  28
-     13.5.  Tamper Evidence and Runtime Honesty  . . . . . . . . . .  29
-     13.6.  Long-Term Verifiability Considerations . . . . . . . . .  29
-   14. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  29
-   15. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  30
-     15.1.  Canonicalization Algorithm Registry  . . . . . . . . . .  30
-       15.1.1.  Test Vector Locations  . . . . . . . . . . . . . . .  32
-     15.2.  COSE Header Parameters Registration  . . . . . . . . . .  33
-   16. Related Work  . . . . . . . . . . . . . . . . . . . . . . . .  34
-   17. References  . . . . . . . . . . . . . . . . . . . . . . . . .  35
-     17.1.  Normative References . . . . . . . . . . . . . . . . . .  35
-     17.2.  Informative References . . . . . . . . . . . . . . . . .  36
-   Appendix A.  Synthetic Registration Walkthrough . . . . . . . . .  39
-   Appendix B.  Synthetic Two-Slot Composition . . . . . . . . . . .  40
-   Appendix C.  Field-Verified Instances . . . . . . . . . . . . . .  42
-     C.1.  Deep Mechanism Instances  . . . . . . . . . . . . . . . .  42
-       C.1.1.  Glyphzero Byte-Agreement — Algorithm Determinism  . .  42
-       C.1.2.  GAR Session Block — Leaf Construction Rule  . . . . .  43
+     5.3.  Algorithm cde-n (Withdrawn) . . . . . . . . . . . . . . .  15
+     5.4.  Algorithm as-transmitted  . . . . . . . . . . . . . . . .  16
+   6.  The Derived Identifier  . . . . . . . . . . . . . . . . . . .  17
+     6.1.  Representation  . . . . . . . . . . . . . . . . . . . . .  18
+   7.  Envelope Conventions  . . . . . . . . . . . . . . . . . . . .  19
+     7.1.  Full-Content Mode . . . . . . . . . . . . . . . . . . . .  19
+     7.2.  Hash Envelope Mode  . . . . . . . . . . . . . . . . . . .  19
+   8.  Statement-to-Receipt Binding  . . . . . . . . . . . . . . . .  20
+     8.1.  Leaf Construction . . . . . . . . . . . . . . . . . . . .  21
+   9.  Typed Digest References (Information Model) . . . . . . . . .  21
+     9.1.  Cross-Profile Comparability . . . . . . . . . . . . . . .  24
+     9.2.  Carriage Selection  . . . . . . . . . . . . . . . . . . .  26
+     9.3.  Envelope Carriage . . . . . . . . . . . . . . . . . . . .  26
+     9.4.  Payload Carriage  . . . . . . . . . . . . . . . . . . . .  28
+     9.5.  Verification Scope  . . . . . . . . . . . . . . . . . . .  29
+   10. Profile Independence  . . . . . . . . . . . . . . . . . . . .  29
+   11. Discovery Mirror  . . . . . . . . . . . . . . . . . . . . . .  29
+   12. Extensibility and Cross-Cutting Facilities  . . . . . . . . .  30
+   13. Security Considerations . . . . . . . . . . . . . . . . . . .  30
+     13.1.  Preimages Are Bytes, Not Renderings  . . . . . . . . . .  30
+     13.2.  Low-Entropy Fields . . . . . . . . . . . . . . . . . . .  30
+     13.3.  Float Values and Digest Reproducibility  . . . . . . . .  31
+     13.4.  Immutable Coordinates  . . . . . . . . . . . . . . . . .  31
+     13.5.  Tamper Evidence and Runtime Honesty  . . . . . . . . . .  32
+     13.6.  Long-Term Verifiability Considerations . . . . . . . . .  32
+   14. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  32
+   15. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  33
+     15.1.  Canonicalization Algorithm Registry  . . . . . . . . . .  33
+       15.1.1.  Test Vector Locations  . . . . . . . . . . . . . . .  35
+     15.2.  COSE Header Parameters Registration  . . . . . . . . . .  36
+   16. Related Work  . . . . . . . . . . . . . . . . . . . . . . . .  37
+   17. References  . . . . . . . . . . . . . . . . . . . . . . . . .  38
+     17.1.  Normative References . . . . . . . . . . . . . . . . . .  38
+     17.2.  Informative References . . . . . . . . . . . . . . . . .  39
+   Appendix A.  Synthetic Registration Walkthrough . . . . . . . . .  42
+   Appendix B.  Synthetic Two-Slot Composition . . . . . . . . . . .  43
+   Appendix C.  Field-Verified Instances . . . . . . . . . . . . . .  45
+     C.1.  Deep Mechanism Instances  . . . . . . . . . . . . . . . .  45
+       C.1.1.  Glyphzero Byte-Agreement — Algorithm Determinism  . .  45
+       C.1.2.  GAR Session Block — Leaf Construction Rule  . . . . .  46
        C.1.3.  A2A Boundary Seal — Derived Identifier as Protocol
-               Gate  . . . . . . . . . . . . . . . . . . . . . . . .  43
-     C.2.  Field Table — IETF 126 Participants . . . . . . . . . . .  44
-     C.3.  Agreed and Scheduled  . . . . . . . . . . . . . . . . . .  46
-   Appendix D.  Profile-Owned Payload Carriage Example . . . . . . .  46
-   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  47
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  48
-
-
-
+               Gate  . . . . . . . . . . . . . . . . . . . . . . . .  46
+     C.2.  Field Table — IETF 126 Participants . . . . . . . . . . .  47
+     C.3.  Agreed and Scheduled  . . . . . . . . . . . . . . . . . .  49
+   Appendix D.  Profile-Owned Payload Carriage Example . . . . . . .  49
+   Acknowledgments . . . . . . . . . . . . . . . . . . . . . . . . .  50
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .  51
 
 
 
@@ -301,11 +301,105 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 2.  Changes from -05
 
-   This revision updates the Acknowledgments only.  It makes no
-   normative change, no registry entry changes, and the vectors at the
-   locations in Section 15.1.1 are unchanged.  The Acknowledgments now
-   credit contributions made through public review after the IETF 126
-   hackathon, and add Imran Siddique.
+   This revision makes three normative changes and one clarification.
+   The wire format and the registry entries do not change, and the
+   vectors at the locations in Section 15.1.1 are unchanged.
+
+   *  The Unresolved state now names its three causes: context,
+      unimplemented, and unavailable (Section 4).  Each Unresolved
+      outcome in this document states its cause.  When the verifier does
+      not implement the construction of a selected context that is valid
+      for the reference, the cause is unimplemented, whether or not the
+      cited artifact can be obtained.  A retry with the same verifier
+      and profile configuration can resolve only unavailable.  Reporting
+      the cause is now recommended, and a profile can define a distinct
+      disposition for one or more causes; its Unresolved disposition
+      applies to every other cause and to an Unresolved reference whose
+      cause is not reported (#92, Section 9.1).
+
+   *  Section 6 now treats assembling the pre-image from selected source
+      fields as a transformation.  The profile's definition of that
+      transformation has to state where each selected field comes from
+      in the source, the name and nesting of the pre-image member that
+      carries it, and the name, nesting, and value of every pre-image
+      member not taken from the source.  Section 9.1 asks the same of a
+      digest context whose pre-image is assembled this way.  In
+      Section 4, the Digest Context definition now includes the member
+      mapping of such a pre-image, and the Derived Identifier definition
+      now includes the value that a profile-defined transformation
+      produces (#5).
+
+
+
+
+
+Mih & Sokolov             Expires 30 March 2027                 [Page 6]
+
+Internet-Draft     SCITT Canonicalization Declaration     September 2026
+
+
+   *  A reference whose cited artifact is obtained but is not input that
+      the selected context's construction accepts is now Failed: for
+      example, an artifact that is not valid JSON for jcs, or one that
+      lacks a source field that an assembled pre-image selects.
+      Previously, neither the Failed definition nor the processing steps
+      covered this case (Section 4, Section 9.1, #98, #5).  An artifact
+      that lacks a selected source field is Failed on this ground only
+      when the digest context states no pre-image for that case
+      (Section 6).  After context selection, the processing steps in
+      Section 9.1 now give the Failed outcome for a permanently
+      undefined or prohibited algorithm before they test the
+      unimplemented and unavailable causes, as Section 5.2 and
+      Section 5.3 already required, and Section 4 now states when a
+      selected context is valid for the reference and requires the
+      context of a Verified reference to be valid for it.
+
+   *  The CANONICAL-DIGEST definition (Section 4) no longer makes field
+      selection part of the canonicalization algorithm's definition.
+      Normalization and encoding remain part of it; field selection, the
+      exclusion set, and any assembly of the pre-image are declared by
+      the payload class or digest context that names the algorithm.
+      This clarification resolves a conflict with the jcs registration
+      (Section 5.1), which already assigns the field set and the
+      exclusion set to the profile that declares the digest context.
+      For the same reason, the Verified definition (Section 4) now names
+      the selected context's complete construction rather than its
+      canonicalization and hash rules, Section 9.1 now lists, in place
+      of the preimage construction, the field selection or byte-boundary
+      selector, the exclusion set, any assembly of the pre-image, any
+      domain separation, and the encoding of the pre-image among the
+      parameters that each digest context states, Section 5.3 words its
+      Failed outcome in terms of the algorithm that the selected context
+      names, and Section 15.1 now states that a registration does not
+      pin a field set, an exclusion set, or the assembly of a pre-image.
+
+   *  The Note to Readers states that issue and pull request numbers
+      given without a repository name refer to the source repository.
+
+   *  The Acknowledgments now credit contributions made through public
+      review after the IETF 126 hackathon, and add Imran Siddique, Roel
+      Schuurkes, and Pablo Play.
+
+   *  The informative references to
+      [I-D.ietf-scitt-receipts-ccf-profile],
+      [I-D.mih-scitt-agent-action-capsule], [I-D.hillier-scitt-arp],
+      [I-D.schrock-ep-authorization-receipts],
+      [I-D.le-scitt-derived-subjects], and
+      [I-D.le-comparing-derived-identifiers] now cite their current
+
+
+
+Mih & Sokolov             Expires 30 March 2027                 [Page 7]
+
+Internet-Draft     SCITT Canonicalization Declaration     September 2026
+
+
+      revisions.  Section 16 follows the renumbered sections of
+      [I-D.hillier-scitt-arp] and the revised scope of
+      [I-D.le-scitt-derived-subjects], and states the guarantee of
+      [I-D.schrock-ep-authorization-receipts] in that draft's words.
+      The example in Appendix D names the capsule profile's current
+      revision.
 
 3.  Changes from -04
 
@@ -328,16 +422,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    *  Section 1.1 names payload formats, payload serialization, and
       payload structure, not only payload semantics.
 
-
-
-
-
-
-Mih & Sokolov             Expires 30 March 2027                 [Page 6]
-
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
-
-
    *  Section 1 opens on how a Signed Statement declares which
       derivation produced a digest it carries, adds the software supply
       chain as a motivating setting, and presents the agent action
@@ -357,6 +441,15 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    capitals, as shown here.
 
    Payload Class:  A named category of structured content that has
+
+
+
+
+Mih & Sokolov             Expires 30 March 2027                 [Page 8]
+
+Internet-Draft     SCITT Canonicalization Declaration     September 2026
+
+
       declared a canonicalization algorithm (from the registry in
       Section 15.1) and an exclusion set of fields that are omitted from
       the canonical form before the derived identifier is computed.  A
@@ -366,34 +459,31 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
    Derived Identifier:  The content-address of a payload: the output of
       CANONICAL-DIGEST(A, v), where v is the payload value with its
-      profile-declared exclusion set removed.  Verifiers MUST recompute
-      the derived identifier from the payload value; a carried derived-
-      identifier value is advisory only and a mismatch is a defect.
+      profile-declared exclusion set removed or, where the payload
+      profile defines a transformation (Section 6), the value that
+      transformation produces.  Verifiers MUST recompute the derived
+      identifier from the payload value; a carried derived-identifier
+      value is advisory only and a mismatch is a defect.
 
    Digest Context:  The complete set of parameters that determine how a
-      digest was computed: the field set selected, the exclusion set
-      applied, the canonicalization algorithm applied, any domain
-      separation, the encoding of the pre-image, and the representation
-      of the output.  Two digest values are comparable only when their
-      full digest contexts are established as compatible.  A payload
-      class or artifact type MAY declare more than one digest context
-      over the same payload, each serving a distinct purpose declared by
-      the profile that defines the class or type.  The declaration MUST
-      also state the exact digest_alg token and comparison
-      representation.  The contexts are independent and MUST NOT be
-      conflated.
+      digest was computed: the field set selected; where the pre-image
+      is assembled from selected fields, the member mapping that
+      Section 6 requires (the source location of each selected field,
+      the name and nesting of the pre-image member that carries it, and
+      the name, nesting, and value of every other pre-image member) and
+      any assembled pre-image stated for a source that lacks a selected
+      field; the exclusion set applied; the canonicalization algorithm
+      applied; any domain separation; the encoding of the pre-image; and
+      the representation of the output.  Two digest values are
+      comparable only when their full digest contexts are established as
+      compatible.  A payload class or artifact type MAY declare more
+      than one digest context over the same payload, each serving a
+      distinct purpose declared by the profile that defines the class or
+      type.  The declaration MUST also state the exact digest_alg token
+      and comparison representation.  The contexts are independent and
+      MUST NOT be conflated.
 
    RAW-DIGEST:  A function parameterized by a canonicalization algorithm
-
-
-
-
-
-Mih & Sokolov             Expires 30 March 2027                 [Page 7]
-
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
-
-
       A: for any such algorithm A and payload v, RAW-DIGEST(A, v) =
       H_A(A(v)), where A(v) is the canonical octet string and H_A is the
       hash function declared by A's entry in the Canonicalization
@@ -408,10 +498,20 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       by this document declares SHA-256 and 64-character lowercase
       hexadecimal; an entry registered by a later document MAY declare
       another digest function or encoding, and a verifier MUST read both
+
+
+
+Mih & Sokolov             Expires 30 March 2027                 [Page 9]
+
+Internet-Draft     SCITT Canonicalization Declaration     September 2026
+
+
       from the entry rather than assuming them.  A(v) is the octet
-      string produced by the algorithm applied to v; the specific pre-
-      image construction — field selection, normalization, and encoding
-      — is part of A's definition and is registered per Section 15.1.
+      string produced by the algorithm applied to v.  Normalization and
+      encoding are part of A's definition and are registered per
+      Section 15.1.  Field selection, the exclusion set, and any
+      assembly of the pre-image are not: the payload class or digest
+      context that names A declares them (Section 6, Section 9.1).
 
    Signed Statement:  A COSE_Sign1 object [RFC9052] that carries a
       payload, a protected header, and an optional unprotected header;
@@ -440,35 +540,44 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       well-formed, but verification did not reach a Verified or Failed
       determination, for exactly one of three causes: the verifier
       cannot select exactly one authorized digest context for the
-      reference (context); exactly one context was selected, but the
-      verifier lacks the implementation needed to execute its
+      reference (context); exactly one context that is valid for the
+      reference was selected, but the verifier lacks the implementation
+      needed to execute its construction (unimplemented); or exactly one
+      such context was selected and implemented, but the cited artifact
+      could not be obtained (unavailable).  A selected context is valid
+      for the reference when the reference's digest_alg and the
+      representation of its digest agree with that context, and the
+      canonicalization algorithm that the context names is neither
+      permanently undefined nor prohibited (Section 9.1).  Retrying the
+      same reference with the same verifier and profile configuration
+      can resolve unavailable, but not context or unimplemented.  An
+      Unresolved reference is not evidence of a content binding,
+      whatever its cause.
 
 
 
-Mih & Sokolov             Expires 30 March 2027                 [Page 8]
+
+Mih & Sokolov             Expires 30 March 2027                [Page 10]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
-      construction (unimplemented); or exactly one context was selected
-      and implemented, but the cited artifact could not be obtained
-      (unavailable).  Retrying the same reference later can resolve
-      unavailable, but not context or unimplemented.  An Unresolved
-      reference is not evidence of a content binding, whatever its
-      cause.
-
    Failed:  A typed-reference processing state.  The reference is well-
       formed and exactly one authorized digest context is selected, but
-      the declared algorithm or representation conflicts with that
-      context, the selected token is permanently undefined or
-      prohibited, or a recomputed digest differs from the supplied
-      value.
+      the reference's digest_alg or representation conflicts with that
+      context, the canonicalization algorithm that the selected context
+      names is permanently undefined or prohibited, the obtained
+      artifact is not input that the selected context's construction
+      accepts, or a recomputed digest differs from the supplied value.
 
    Verified:  A typed-reference processing state.  The verifier selected
-      exactly one authorized digest context, obtained the cited
-      artifact, applied that context's canonicalization and hash rules,
-      and obtained a digest equal to the supplied value in the context's
-      declared representation.
+      exactly one authorized digest context that is valid for the
+      reference, obtained the cited artifact, applied that context's
+      complete construction to it (its field selection or byte-boundary
+      selector, exclusion set, any assembly of the pre-image,
+      canonicalization algorithm, domain separation, encoding of the
+      pre-image, and hash function), and obtained a digest equal to the
+      supplied value in the context's declared representation.
 
    Receipt:  A COSE structure produced by a Transparency Service that
       provides verifiable evidence that a Signed Statement was
@@ -501,7 +610,10 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                 [Page 9]
+
+
+
+Mih & Sokolov             Expires 30 March 2027                [Page 11]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -557,7 +669,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 10]
+Mih & Sokolov             Expires 30 March 2027                [Page 12]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -613,7 +725,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 11]
+Mih & Sokolov             Expires 30 March 2027                [Page 13]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -669,7 +781,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 12]
+Mih & Sokolov             Expires 30 March 2027                [Page 14]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -718,14 +830,14 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    verified: the token names no defined algorithm and never will, so a
    verifier encountering it MUST fail closed — MUST NOT report the
    payload class or typed digest reference as verified.  For a typed
-   reference, the outcome is Failed because the selected token has no
-   algorithm definition.
+   reference, the outcome is Failed because the canonicalization
+   algorithm that the selected context names has no definition.
 
 
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 13]
+Mih & Sokolov             Expires 30 March 2027                [Page 15]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -781,7 +893,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 14]
+Mih & Sokolov             Expires 30 March 2027                [Page 16]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -830,17 +942,28 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    applicable profile declaration, the producer and verifier MUST use
    the untransformed payload and exclusion procedure defined above.
 
+   Assembling the pre-image from selected source fields, rather than
+   taking the payload minus its exclusion set, is such a transformation:
+   the selected field set alone does not determine the pre-image.  A
+   pre-image member is a member of the structured value supplied to A,
 
 
 
-
-
-
-
-Mih & Sokolov             Expires 30 March 2027                [Page 15]
+Mih & Sokolov             Expires 30 March 2027                [Page 17]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
+
+   before canonicalization.  In this document, an assembled pre-image
+   and the assembly of a pre-image refer to that structured value, not
+   to the octet string that A produces from it.  The profile's
+   definition of that transformation MUST state, for each selected
+   source field, its location in the source and the name and nesting of
+   the pre-image member that carries it, and, for every pre-image member
+   not taken from the source, its name, nesting, and value.  A source
+   that lacks a selected field is not input that the transformation
+   accepts, unless the profile's definition states the assembled pre-
+   image produced in that case.
 
 6.1.  Representation
 
@@ -872,6 +995,21 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    forms.  A wire type or textual form that is inconsistent with the
    uniquely selected digest context produces the Failed state.
 
+
+
+
+
+
+
+
+
+
+
+Mih & Sokolov             Expires 30 March 2027                [Page 18]
+
+Internet-Draft     SCITT Canonicalization Declaration     September 2026
+
+
 7.  Envelope Conventions
 
    Every CPB Signed Statement MUST be a tagged COSE_Sign1 structure
@@ -890,13 +1028,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    CPB assigns no meaning to non-critical header parameters defined
    elsewhere.  The closed extension policy for the inner cpb-refs map is
    specified in Section 9.3.
-
-
-
-Mih & Sokolov             Expires 30 March 2027                [Page 16]
-
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
-
 
 7.1.  Full-Content Mode
 
@@ -925,6 +1056,16 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    value.  If the COSE payload is detached, the externally supplied
    payload is this same raw digest value.
 
+
+
+
+
+
+Mih & Sokolov             Expires 30 March 2027                [Page 19]
+
+Internet-Draft     SCITT Canonicalization Declaration     September 2026
+
+
    The profile's derived-identifier exclusion set MUST NOT be applied to
    this Hash Envelope computation: RFC 9995 binds the complete statement
    content.  The derived identifier remains a separate computation over
@@ -944,15 +1085,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    also appear in the protected header.  As required by [RFC9995],
    labels 258 through 260 MUST NOT appear in the unprotected header, and
    content_type (label 3) MUST NOT appear in either header bucket.
-
-
-
-
-
-Mih & Sokolov             Expires 30 March 2027                [Page 17]
-
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
-
 
    The applicable payload profile MUST identify A and the complete
    preimage construction.  Label 258 selects only H_A; a verifier MUST
@@ -981,6 +1113,15 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    (VDS) of the Transparency Service; this profile imposes no VDS
    requirement.
 
+
+
+
+
+Mih & Sokolov             Expires 30 March 2027                [Page 20]
+
+Internet-Draft     SCITT Canonicalization Declaration     September 2026
+
+
    A verifier MUST NOT report receipt-backed status without having
    verified a Receipt from a Transparency Service under a key the
    verifier trusts.
@@ -1001,14 +1142,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    which one is its leaf input, and producer and verifier MUST use that
    same representation.  Algorithms registered later may have different
    output sizes.
-
-
-
-
-Mih & Sokolov             Expires 30 March 2027                [Page 18]
-
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
-
 
    For example, when that declaration selects RAW-DIGEST and the carried
    derived identifier is a 64-character hexadecimal string D, the leaf
@@ -1032,6 +1165,18 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    an external artifact — another record, an authorization document, a
    configuration object, or any other verifiable item — by its content-
    address without embedding it.
+
+
+
+
+
+
+
+
+Mih & Sokolov             Expires 30 March 2027                [Page 21]
+
+Internet-Draft     SCITT Canonicalization Declaration     September 2026
+
 
    This section defines a typed digest reference as an abstract
    information model: four members, their meaning, and their
@@ -1061,7 +1206,30 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 19]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih & Sokolov             Expires 30 March 2027                [Page 22]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1117,7 +1285,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 20]
+Mih & Sokolov             Expires 30 March 2027                [Page 23]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1138,14 +1306,18 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    A consuming profile that accepts typed references MUST identify, by
    stable normative reference, every artifact-type declaration that it
    accepts.  Each declaration MUST bind an exact type token to one or
-   more digest contexts.  Each context MUST state its preimage
-   construction, canonicalization algorithm, hash function, exact
-   digest_alg token, output representation, and a purpose label when
-   required below.  A deployment MAY select a subset of the declarations
-   its consuming profile permits, but it MUST NOT redefine a token or
-   any parameter of its cited declaration.  CPB creates no artifact-type
-   registry and does not authorize discovery from an unspecified or
-   mutable registry snapshot.
+   more digest contexts.  Each context MUST state its field selection or
+   byte-boundary selector, exclusion set, any assembly of the pre-image,
+   canonicalization algorithm, any domain separation, encoding of the
+   pre-image, hash function, exact digest_alg token, output
+   representation, and a purpose label when required below.  Where the
+   context assembles the pre-image from selected fields of the cited
+   artifact, the context MUST state the members of that pre-image as
+   Section 6 requires of such an assembly.  A deployment MAY select a
+   subset of the declarations its consuming profile permits, but it MUST
+   NOT redefine a token or any parameter of its cited declaration.  CPB
+   creates no artifact-type registry and does not authorize discovery
+   from an unspecified or mutable registry snapshot.
 
    The verifier MUST use type and, when present, purpose to select
    exactly one accepted context:
@@ -1165,18 +1337,18 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       Unresolved (cause: context).  The verifier MUST NOT choose by
       entry order, apparent recency, or preferred algorithm.
 
-   *  A profile or deployment configuration containing duplicate (type,
-      purpose) selections is invalid and MUST NOT be used for
-      verification.
 
 
 
 
-
-Mih & Sokolov             Expires 30 March 2027                [Page 21]
+Mih & Sokolov             Expires 30 March 2027                [Page 24]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
+
+   *  A profile or deployment configuration containing duplicate (type,
+      purpose) selections is invalid and MUST NOT be used for
+      verification.
 
    After selecting a context, the verifier MUST compare digest_alg with
    the exact token declared by that context.  Comparison is case-
@@ -1198,20 +1370,37 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
    The verifier MUST next check that the carried value uses the selected
    context's declared representation.  A mismatch is Failed.  If the
-   representation matches and the context is valid but the verifier does
-   not implement its construction, the state is Unresolved (cause:
-   unimplemented), whether or not the cited artifact can be obtained.
-   If the construction is implemented but the cited artifact cannot be
-   obtained, the state is Unresolved (cause: unavailable).  Otherwise,
-   the verifier MUST recompute the digest using the selected context and
-   compare it byte-for-byte with digest.  Equal values produce Verified;
-   unequal values produce Failed.  A deterministic conversion is
-   permitted only when the selected context expressly defines that
-   conversion and its output comparison representation.
+   canonicalization algorithm that the selected context names is
+   permanently undefined or prohibited (Section 5.2, Section 5.3), the
+   state is Failed.  A selected context that passes these three checks
+   (digest_alg, representation, and algorithm status) is valid for the
+   reference.  If the verifier does not implement a valid context's
+   construction, the state is Unresolved (cause: unimplemented), whether
+   or not the cited artifact can be obtained.  If the construction is
+   implemented but the cited artifact cannot be obtained, the state is
+   Unresolved (cause: unavailable).  If the obtained artifact is not
+   input that the selected context's construction accepts, the state is
+   Failed: for example, an artifact that is not valid JSON for jcs, or
+   one that lacks a source field that an assembled pre-image selects
+   when the context states no pre-image for that case (Section 6).
+   Otherwise, the verifier MUST recompute the digest using the selected
+   context and compare it byte-for-byte with digest.  Equal values
+   produce Verified; unequal values produce Failed.  A deterministic
+   conversion is permitted only when the selected context expressly
+   defines that conversion and its output comparison representation.
 
    The citing record's own derived-identifier context need NOT be
    compatible with the referenced artifact's digest context; those
    contexts govern different computations.
+
+
+
+
+
+Mih & Sokolov             Expires 30 March 2027                [Page 25]
+
+Internet-Draft     SCITT Canonicalization Declaration     September 2026
+
 
    The two values actually being compared must share an established
    comparison context.  Bare hexadecimal equality alone is not a join.
@@ -1224,22 +1413,14 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    contain an Unresolved or Failed reference; a Verified digest match
    does not authenticate an issuer whose signature did not validate.
 
-
-
-
-
-
-Mih & Sokolov             Expires 30 March 2027                [Page 22]
-
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
-
-
    The consuming profile MUST define the disposition of every non-
    Verified state.  It MUST NOT rely on an Unresolved, Failed, or
    Malformed reference as evidence of a content binding.  A verifier
    SHOULD report the cause of each Unresolved reference.  A profile MAY
-   define a distinct disposition for each cause; a profile that does not
-   define them applies its single Unresolved disposition to all three.
+   define a distinct disposition for one or more causes.  The profile's
+   Unresolved disposition applies to every cause for which it defines no
+   distinct disposition and to an Unresolved reference whose cause is
+   not reported.
 
 9.2.  Carriage Selection
 
@@ -1259,6 +1440,24 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    Section 15.2.  The parameter MUST NOT occur in the unprotected
    header.  Its value is defined by this CDDL [RFC8610]:
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+Mih & Sokolov             Expires 30 March 2027                [Page 26]
+
+Internet-Draft     SCITT Canonicalization Declaration     September 2026
+
+
    cpb-refs = [1*64 typed-digest-reference]
 
    typed-digest-reference = {
@@ -1274,21 +1473,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    digest-value = tstr .size (1..128) / bstr .size (1..128)
 
    The integer keys have these meanings:
-
-
-
-
-
-
-
-
-
-
-
-Mih & Sokolov             Expires 30 March 2027                [Page 23]
-
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
-
 
           +=====+============+=================================+
           | Key | Member     | CBOR type                       |
@@ -1322,6 +1506,14 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    or a new COSE header parameter; it MUST NOT be introduced through an
    unrecognized inner-map key.
 
+
+
+
+Mih & Sokolov             Expires 30 March 2027                [Page 27]
+
+Internet-Draft     SCITT Canonicalization Declaration     September 2026
+
+
    CBOR map keys MUST be unique as required by this protocol's
    application of [RFC8949].  A decoder MUST detect duplicate keys
    before any data-model conversion that could discard them.  Repeated
@@ -1332,19 +1524,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    Malformed, a verifier MUST NOT report another entry from that header
    value as Verified.  The COSE signature result remains independently
    reportable.
-
-
-
-
-
-
-
-
-
-Mih & Sokolov             Expires 30 March 2027                [Page 24]
-
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
-
 
    The CDDL constrains the data model, not the choice among CBOR
    serializations.  CPB imposes no deterministic-encoding or definite-
@@ -1383,6 +1562,14 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    specific requiredness beyond Section 9's information model.  In Full-
    Content Mode, the serialized reference data are part of the content
    supplied to COSE signature verification.  In Hash Envelope Mode, the
+
+
+
+Mih & Sokolov             Expires 30 March 2027                [Page 28]
+
+Internet-Draft     SCITT Canonicalization Declaration     September 2026
+
+
    raw digest of the complete statement content is supplied instead, and
    the reference data are covered only after the verifier obtains that
    content and validates the hash binding as specified in Section 7.2.
@@ -1390,17 +1577,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    processing in Section 9.1.  Appendix D describes one profile-owned
    example without defining its wire format here.  The prohibition on
    dual carriage in Section 9.2 still applies.
-
-
-
-
-
-
-
-Mih & Sokolov             Expires 30 March 2027                [Page 25]
-
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
-
 
 9.5.  Verification Scope
 
@@ -1442,6 +1618,14 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    mirrors the derived identifier of the record when the applicable
    payload profile defines that parameter's label, type, and processing.
    CPB does not assign a discovery label or wire encoding.  Any such
+
+
+
+Mih & Sokolov             Expires 30 March 2027                [Page 29]
+
+Internet-Draft     SCITT Canonicalization Declaration     September 2026
+
+
    parameter is advisory only: it can help log tooling locate a record's
    content-address without parsing the payload, but it carries no
    binding guarantee.
@@ -1450,13 +1634,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    content and recomputing its derived identifier under the applicable
    payload profile.  A mismatch is a defect in the record and MUST be
    reported.
-
-
-
-Mih & Sokolov             Expires 30 March 2027                [Page 26]
-
-Internet-Draft     SCITT Canonicalization Declaration     September 2026
-
 
    Section 3.11.2 of [I-D.birkholz-verifiable-agent-conversations]
    defines an unprotected trace-metadata map with optional content-hash
@@ -1497,22 +1674,15 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    digests.  A payload class SHOULD commit low-entropy fields under a
    per-issuer salt or via a selective-disclosure mechanism (see the SD-
    JWT commitment pattern in [RFC9901]) rather than digesting the bare
-   value.  Bare digests of low-entropy fields are not confidential.
 
 
 
-
-
-
-
-
-
-
-
-Mih & Sokolov             Expires 30 March 2027                [Page 27]
+Mih & Sokolov             Expires 30 March 2027                [Page 30]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
+
+   value.  Bare digests of low-entropy fields are not confidential.
 
 13.3.  Float Values and Digest Reproducibility
 
@@ -1563,9 +1733,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-
-
-Mih & Sokolov             Expires 30 March 2027                [Page 28]
+Mih & Sokolov             Expires 30 March 2027                [Page 31]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1621,7 +1789,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 29]
+Mih & Sokolov             Expires 30 March 2027                [Page 32]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1677,7 +1845,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 30]
+Mih & Sokolov             Expires 30 March 2027                [Page 33]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1687,7 +1855,10 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    immutable triple, so that changing any one of the three requires
    registering a new token rather than reinterpreting an existing one —
    otherwise a token such as jcs would silently come to mean more than
-   its name states.
+   its name states.  An entry does not pin a field set, an exclusion
+   set, or the assembly of a pre-image from selected fields: the payload
+   class or digest context that names the entry declares them
+   (Section 4).
 
    Registration template:
 
@@ -1698,7 +1869,8 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
    *  Preimage construction: A normative description sufficient to
       implement the canonicalization or byte-selection operation
-      deterministically.
+      deterministically.  Field selection, the exclusion set, and any
+      assembly of the pre-image are not part of it (Section 4).
 
    *  Hash function and typed-reference token: The hash function and the
       exact digest_alg string used by a digest context based on this
@@ -1729,11 +1901,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-
-
-
-
-Mih & Sokolov             Expires 30 March 2027                [Page 31]
+Mih & Sokolov             Expires 30 March 2027                [Page 34]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1789,7 +1957,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 32]
+Mih & Sokolov             Expires 30 March 2027                [Page 35]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1845,7 +2013,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 33]
+Mih & Sokolov             Expires 30 March 2027                [Page 36]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1863,7 +2031,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    Receipt profile.  CPB does not alter either format.
 
    [I-D.hillier-scitt-arp] independently derives a similar canonical
-   claim construction in its Sections 3 and 4.1.  Its Claim Hash uses
+   claim construction in its Sections 4 and 5.1.  Its Claim Hash uses
    its own normalization, deterministic encoding, and deployment-
    blinding rules.  It is not byte-compatible with a CPB jcs identifier,
    and implementations MUST NOT substitute one construction for the
@@ -1876,11 +2044,11 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    does not normatively depend on that document.
 
    [I-D.le-scitt-derived-subjects] derives a protected CWT sub value
-   from an application-admitted structured Value.  It explicitly does
-   not derive that subject from the Statement payload or define generic
-   payload binding.  CPB instead derives identifiers for Statement
-   content and binds digest references; it does not replace that
-   document's subject-identity profile.
+   from an application-admitted structured Value.  It explicitly
+   excludes the Statement payload as an implicit input and does not
+   define generic payload binding.  CPB instead derives identifiers for
+   Statement content and binds digest references; it does not replace
+   that document's subject-identity profile.
 
    [I-D.le-comparing-derived-identifiers] gives general principles for
    fixing the comparison domain, equivalence relation, and complete
@@ -1901,7 +2069,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 34]
+Mih & Sokolov             Expires 30 March 2027                [Page 37]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -1914,7 +2082,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    [I-D.schrock-ep-authorization-receipts] defines an authorization
    receipt that binds an enrolled approver key to one action before
    execution, and states that the receipt establishes only the
-   guarantees of the verification profile it selects.  CPB defines no
+   guarantees of the selected verification profile.  CPB defines no
    approver enrolment and no authorization semantics: a Signed Statement
    constructed under this document carries no claim that the action it
    describes was authorized.
@@ -1957,7 +2125,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 35]
+Mih & Sokolov             Expires 30 March 2027                [Page 38]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2013,38 +2181,38 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 36]
+Mih & Sokolov             Expires 30 March 2027                [Page 39]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
    [I-D.hillier-scitt-arp]
               Hillier, J., "Attestation Reconciliation Protocol", Work
-              in Progress, Internet-Draft, draft-hillier-scitt-arp-03,
-              13 August 2026, <https://datatracker.ietf.org/doc/html/
-              draft-hillier-scitt-arp-03>.
+              in Progress, Internet-Draft, draft-hillier-scitt-arp-06,
+              23 October 2026, <https://datatracker.ietf.org/doc/html/
+              draft-hillier-scitt-arp-06>.
 
    [I-D.ietf-scitt-receipts-ccf-profile]
               Birkholz, H., Delignat-Lavaud, A., Fournet, C., and A.
               Chamayou, "CCF Profile for COSE Receipts", Work in
               Progress, Internet-Draft, draft-ietf-scitt-receipts-ccf-
-              profile-05, 23 September 2026,
+              profile-06, 22 October 2026,
               <https://datatracker.ietf.org/doc/html/draft-ietf-scitt-
-              receipts-ccf-profile-05>.
+              receipts-ccf-profile-06>.
 
    [I-D.le-comparing-derived-identifiers]
-              Le, T., "Principles for Comparing Independently Derived
+              Le, T., "A Framework for Comparing Independently Derived
               Identifiers", Work in Progress, Internet-Draft, draft-le-
-              comparing-derived-identifiers-00, 22 August 2026,
+              comparing-derived-identifiers-01, 7 September 2026,
               <https://datatracker.ietf.org/doc/html/draft-le-comparing-
-              derived-identifiers-00>.
+              derived-identifiers-01>.
 
    [I-D.le-scitt-derived-subjects]
               Le, T., "SCITT Profile for Independently Derived
               Subjects", Work in Progress, Internet-Draft, draft-le-
-              scitt-derived-subjects-00, 22 August 2026,
+              scitt-derived-subjects-01, 11 September 2026,
               <https://datatracker.ietf.org/doc/html/draft-le-scitt-
-              derived-subjects-00>.
+              derived-subjects-01>.
 
    [I-D.lee-orprg-permit-receipts]
               Lee, Y., "Permit Receipts for Permit-Before-Commit
@@ -2069,7 +2237,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 37]
+Mih & Sokolov             Expires 30 March 2027                [Page 40]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2077,9 +2245,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    [I-D.mih-scitt-agent-action-capsule]
               Mih, S., "An Agent Action Capsule Profile for SCITT", Work
               in Progress, Internet-Draft, draft-mih-scitt-agent-action-
-              capsule-04, 28 August 2026,
+              capsule-05, 26 September 2026,
               <https://datatracker.ietf.org/doc/html/draft-mih-scitt-
-              agent-action-capsule-04>.
+              agent-action-capsule-05>.
 
    [I-D.nobuo-scitt-protected-object-binding]
               Aoki, N., "SCITT Statement Relationship and Protected
@@ -2098,9 +2266,9 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    [I-D.schrock-ep-authorization-receipts]
               Schrock, I., "Authorization Receipts for High-Risk Agent
               Actions", Work in Progress, Internet-Draft, draft-schrock-
-              ep-authorization-receipts-12, 16 August 2026,
+              ep-authorization-receipts-13, 11 September 2026,
               <https://datatracker.ietf.org/doc/html/draft-schrock-ep-
-              authorization-receipts-12>.
+              authorization-receipts-13>.
 
    [I-D.sokolov-rats-aep-composition]
               Sokolov, A., "Composing Application-Layer Action Evidence
@@ -2125,7 +2293,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 38]
+Mih & Sokolov             Expires 30 March 2027                [Page 41]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2181,7 +2349,7 @@ Appendix A.  Synthetic Registration Walkthrough
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 39]
+Mih & Sokolov             Expires 30 March 2027                [Page 42]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2237,7 +2405,7 @@ Appendix B.  Synthetic Two-Slot Composition
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 40]
+Mih & Sokolov             Expires 30 March 2027                [Page 43]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2293,7 +2461,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 41]
+Mih & Sokolov             Expires 30 March 2027                [Page 44]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2349,7 +2517,7 @@ C.1.1.  Glyphzero Byte-Agreement — Algorithm Determinism
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 42]
+Mih & Sokolov             Expires 30 March 2027                [Page 45]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2405,7 +2573,7 @@ C.1.3.  A2A Boundary Seal — Derived Identifier as Protocol Gate
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 43]
+Mih & Sokolov             Expires 30 March 2027                [Page 46]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2461,7 +2629,7 @@ C.2.  Field Table — IETF 126 Participants
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 44]
+Mih & Sokolov             Expires 30 March 2027                [Page 47]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2517,7 +2685,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 45]
+Mih & Sokolov             Expires 30 March 2027                [Page 48]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2552,7 +2720,7 @@ Appendix D.  Profile-Owned Payload Carriage Example
 
    This appendix is informative.  Section 5.5.5 of
    [I-D.mih-scitt-agent-action-capsule] defines a payload-level
-   references array.  In revision -04, each entry's identity uses the
+   references array.  In revision -05, each entry's identity uses the
    profile-owned JSON members type, digest_alg, and digest; the separate
    citation_purpose member describes why the Capsule cites the target.
    That field is not CPB's purpose, which selects a digest context.
@@ -2573,7 +2741,7 @@ Appendix D.  Profile-Owned Payload Carriage Example
 
 
 
-Mih & Sokolov             Expires 30 March 2027                [Page 46]
+Mih & Sokolov             Expires 30 March 2027                [Page 49]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2592,7 +2760,9 @@ Acknowledgments
    confirmed 2026-07-27), Tymofii Pidlisnyi (Agent Passport System,
    confirmed 2026-07-24, on-issue), Karthik Rampalli (Glyphzero,
    confirmed 2026-07-25, email, with corrections), Imran Siddique
-   (Opaque Systems, confirmed 2026-09-11, on-issue)]:
+   (Opaque Systems, confirmed 2026-09-11, on-issue), Roel Schuurkes
+   (Rul1an) (confirmed 2026-09-13, on-issue), Pablo Play (Rama)
+   (confirmed 2026-10-15, on-PR)]:
 
    *  Anton Sokolov (Tyche Institute) — assurance-boundary discipline;
       the A2A boundary-seal instance in Appendix C.
@@ -2627,9 +2797,7 @@ Acknowledgments
 
 
 
-
-
-Mih & Sokolov             Expires 30 March 2027                [Page 47]
+Mih & Sokolov             Expires 30 March 2027                [Page 50]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
@@ -2639,6 +2807,16 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       registration of jcs (#34); the digest_alg consistency-declaration
       clarification and the withdrawal of cde-n (#36); and the verifier-
       behaviour rules for unregistered external artifact types (#35).
+
+   *  Roel Schuurkes (Rul1an): the assembled-pre-image finding: a
+      declared field set alone does not fix the digest where a pre-image
+      is assembled from selected source fields (#5), and the
+      discriminating MUST-FAIL/PASS vector pair with the checker
+      categories that run the pair (#16).
+
+   *  Pablo Play (Rama) — the split of the Unresolved state into three
+      distinguishable causes (context, unavailable, unimplemented), each
+      with its own remediation (#92, #98).
 
    *  Iman Schrock (EMILIA/EP) — confirmed 2026-07-24; wording narrowed
       at the contributor's request 2026-09-07 — the single-digest
@@ -2675,14 +2853,4 @@ Authors' Addresses
 
 
 
-
-
-
-
-
-
-
-
-
-
-Mih & Sokolov             Expires 30 March 2027                [Page 48]
+Mih & Sokolov             Expires 30 March 2027                [Page 51]

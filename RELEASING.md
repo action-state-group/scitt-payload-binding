@@ -41,6 +41,7 @@ After posting `-NN`, the first edit that follows opens `-NN+1`.
 
 ```bash
 cd spec
+# set date: in the .md front matter to the posting day, then run make refresh-refs and make rebuild
 make refresh-refs      # re-fetch bibliography; a superseded I-D reference must not ride along
 make rebuild           # force a full rebuild -- never trust mtime after a merge or checkout
 make idnits            # nit check
