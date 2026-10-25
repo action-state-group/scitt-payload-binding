@@ -308,12 +308,14 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    *  The Unresolved state now names its three causes: context,
       unimplemented, and unavailable (Section 4).  Each Unresolved
       outcome in this document states its cause.  When the verifier does
-      not implement the selected context's construction, the cause is
-      unimplemented, whether or not the cited artifact can be obtained.
-      Reporting the cause is now recommended, and a profile can define a
-      distinct disposition for one or more causes; its Unresolved
-      disposition applies to every other cause and to an Unresolved
-      reference whose cause is not reported (#92, Section 9.1).
+      not implement the construction of a selected context that is valid
+      for the reference, the cause is unimplemented, whether or not the
+      cited artifact can be obtained.  A retry with the same verifier
+      and profile configuration can resolve only unavailable.  Reporting
+      the cause is now recommended, and a profile can define a distinct
+      disposition for one or more causes; its Unresolved disposition
+      applies to every other cause and to an Unresolved reference whose
+      cause is not reported (#92, Section 9.1).
 
    *  Section 6 now treats assembling the pre-image from selected source
       fields as a transformation.  The profile's definition of that
@@ -327,9 +329,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       now includes the value that a profile-defined transformation
       produces (#5).
 
-   *  A reference whose cited artifact is obtained but is not input that
-      the selected context's construction accepts is now Failed: for
-      example, an artifact that is not valid JSON for jcs, or one that
+
 
 
 
@@ -338,14 +338,18 @@ Mih & Sokolov             Expires 30 March 2027                 [Page 6]
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
+   *  A reference whose cited artifact is obtained but is not input that
+      the selected context's construction accepts is now Failed: for
+      example, an artifact that is not valid JSON for jcs, or one that
       lacks a source field that an assembled pre-image selects.
       Previously, neither the Failed definition nor the processing steps
-      covered this case (Section 4, Section 9.1, #92, #5).  An artifact
+      covered this case (Section 4, Section 9.1, #98, #5).  An artifact
       that lacks a selected source field is Failed on this ground only
       when the digest context states no pre-image for that case
-      (Section 6).  The processing steps in Section 9.1 now give the
-      Failed outcome for a permanently undefined or prohibited algorithm
-      before they test the Unresolved causes, as Section 5.2 and
+      (Section 6).  After context selection, the processing steps in
+      Section 9.1 now give the Failed outcome for a permanently
+      undefined or prohibited algorithm before they test the
+      unimplemented and unavailable causes, as Section 5.2 and
       Section 5.3 already required, and Section 4 now states when a
       selected context is valid for the reference and requires the
       context of a Verified reference to be valid for it.
@@ -360,11 +364,17 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       exclusion set to the profile that declares the digest context.
       For the same reason, the Verified definition (Section 4) now names
       the selected context's complete construction rather than its
-      canonicalization and hash rules, Section 9.1 now lists field
-      selection, the exclusion set, and any assembly of the pre-image
-      among the parameters that each digest context states, and
-      Section 15.1 now states that a registration does not pin a field
-      set, an exclusion set, or the assembly of a pre-image.
+      canonicalization and hash rules, Section 9.1 now lists, in place
+      of the preimage construction, the field selection or byte-boundary
+      selector, the exclusion set, any assembly of the pre-image, any
+      domain separation, and the encoding of the pre-image among the
+      parameters that each digest context states, Section 5.3 words its
+      Failed outcome in terms of the algorithm that the selected context
+      names, and Section 15.1 now states that a registration does not
+      pin a field set, an exclusion set, or the assembly of a pre-image.
+
+   *  The Note to Readers states that issue and pull request numbers
+      given without a repository name refer to the source repository.
 
    *  The Acknowledgments now credit contributions made through public
       review after the IETF 126 hackathon, and add Imran Siddique, Roel
@@ -376,16 +386,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       [I-D.schrock-ep-authorization-receipts],
       [I-D.le-scitt-derived-subjects], and
       [I-D.le-comparing-derived-identifiers] now cite their current
-      revisions.  Section 16 follows the renumbered sections of
-      [I-D.hillier-scitt-arp] and the revised scope of
-      [I-D.le-scitt-derived-subjects], and states the guarantee of
-      [I-D.schrock-ep-authorization-receipts] in that draft's words.
-      The example in Appendix D names the capsule profile's current
-      revision.
-
-
-
-
 
 
 
@@ -393,6 +393,13 @@ Mih & Sokolov             Expires 30 March 2027                 [Page 7]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
+
+      revisions.  Section 16 follows the renumbered sections of
+      [I-D.hillier-scitt-arp] and the revised scope of
+      [I-D.le-scitt-derived-subjects], and states the guarantee of
+      [I-D.schrock-ep-authorization-receipts] in that draft's words.
+      The example in Appendix D names the capsule profile's current
+      revision.
 
 3.  Changes from -04
 
@@ -434,14 +441,7 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
    capitals, as shown here.
 
    Payload Class:  A named category of structured content that has
-      declared a canonicalization algorithm (from the registry in
-      Section 15.1) and an exclusion set of fields that are omitted from
-      the canonical form before the derived identifier is computed.  A
-      payload class is declared by the payload profile that defines it;
-      this document does not maintain a registry of payload classes or
-      artifact types.
 
-   Derived Identifier:  The content-address of a payload: the output of
 
 
 
@@ -450,6 +450,14 @@ Mih & Sokolov             Expires 30 March 2027                 [Page 8]
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
+      declared a canonicalization algorithm (from the registry in
+      Section 15.1) and an exclusion set of fields that are omitted from
+      the canonical form before the derived identifier is computed.  A
+      payload class is declared by the payload profile that defines it;
+      this document does not maintain a registry of payload classes or
+      artifact types.
+
+   Derived Identifier:  The content-address of a payload: the output of
       CANONICAL-DIGEST(A, v), where v is the payload value with its
       profile-declared exclusion set removed or, where the payload
       profile defines a transformation (Section 6), the value that
@@ -490,14 +498,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       by this document declares SHA-256 and 64-character lowercase
       hexadecimal; an entry registered by a later document MAY declare
       another digest function or encoding, and a verifier MUST read both
-      from the entry rather than assuming them.  A(v) is the octet
-      string produced by the algorithm applied to v.  Normalization and
-      encoding are part of A's definition and are registered per
-      Section 15.1.  Field selection, the exclusion set, and any
-      assembly of the pre-image are not: the payload class or digest
-      context that names A declares them (Section 6, Section 9.1).
-
-   Signed Statement:  A COSE_Sign1 object [RFC9052] that carries a
 
 
 
@@ -506,6 +506,14 @@ Mih & Sokolov             Expires 30 March 2027                 [Page 9]
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
 
+      from the entry rather than assuming them.  A(v) is the octet
+      string produced by the algorithm applied to v.  Normalization and
+      encoding are part of A's definition and are registered per
+      Section 15.1.  Field selection, the exclusion set, and any
+      assembly of the pre-image are not: the payload class or digest
+      context that names A declares them (Section 6, Section 9.1).
+
+   Signed Statement:  A COSE_Sign1 object [RFC9052] that carries a
       payload, a protected header, and an optional unprotected header;
       defined in [RFC9943].
 
@@ -546,14 +554,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
       Unresolved reference is not evidence of a content binding,
       whatever its cause.
 
-   Failed:  A typed-reference processing state.  The reference is well-
-      formed and exactly one authorized digest context is selected, but
-      the reference's digest_alg or representation conflicts with that
-      context, the canonicalization algorithm that the selected context
-      names is permanently undefined or prohibited, the obtained
-      artifact is not input that the selected context's construction
-      accepts, or a recomputed digest differs from the supplied value.
-
 
 
 
@@ -561,6 +561,14 @@ Mih & Sokolov             Expires 30 March 2027                [Page 10]
 
 Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
+
+   Failed:  A typed-reference processing state.  The reference is well-
+      formed and exactly one authorized digest context is selected, but
+      the reference's digest_alg or representation conflicts with that
+      context, the canonicalization algorithm that the selected context
+      names is permanently undefined or prohibited, the obtained
+      artifact is not input that the selected context's construction
+      accepts, or a recomputed digest differs from the supplied value.
 
    Verified:  A typed-reference processing state.  The verifier selected
       exactly one authorized digest context that is valid for the
@@ -598,14 +606,6 @@ Internet-Draft     SCITT Canonicalization Declaration     September 2026
 
    The identifiers registered by this document in the Canonicalization
    Algorithm Registry (Section 15.1) are:
-
-
-
-
-
-
-
-
 
 
 

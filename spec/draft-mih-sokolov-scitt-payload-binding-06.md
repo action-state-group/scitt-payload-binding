@@ -317,8 +317,10 @@ the locations in {{test-vector-locations}} are unchanged.
 * The Unresolved state now names its three causes: `context`,
   `unimplemented`, and `unavailable` ({{conventions}}). Each Unresolved
   outcome in this document states its cause. When the verifier does not
-  implement the selected context's construction, the cause is
-  `unimplemented`, whether or not the cited artifact can be obtained.
+  implement the construction of a selected context that is valid for the
+  reference, the cause is `unimplemented`, whether or not the cited artifact
+  can be obtained. A retry with the same verifier and profile configuration
+  can resolve only `unavailable`.
   Reporting the cause is now recommended, and a profile can define a
   distinct disposition for one or more causes; its Unresolved disposition
   applies to every other cause and to an Unresolved reference whose cause
@@ -340,11 +342,12 @@ the locations in {{test-vector-locations}} are unchanged.
   artifact that is not valid JSON for `jcs`, or one that lacks a source field
   that an assembled pre-image selects. Previously, neither the Failed
   definition nor the processing steps covered this case ({{conventions}},
-  {{comparability}}, #92, #5). An artifact that lacks a selected source
+  {{comparability}}, #98, #5). An artifact that lacks a selected source
   field is Failed on this ground only when the digest context states no
-  pre-image for that case ({{derived-id}}). The processing steps in {{comparability}} now give
-  the Failed outcome for a permanently undefined or prohibited algorithm
-  before they test the Unresolved causes, as {{algo-jcs-n}} and
+  pre-image for that case ({{derived-id}}). After context selection, the
+  processing steps in {{comparability}} now give the Failed outcome for a
+  permanently undefined or prohibited algorithm before they test the
+  `unimplemented` and `unavailable` causes, as {{algo-jcs-n}} and
   {{algo-cde-n}} already required, and {{conventions}} now states when a
   selected context is valid for the reference and requires the context of
   a Verified reference to be valid for it.
@@ -359,10 +362,16 @@ the locations in {{test-vector-locations}} are unchanged.
   to the profile that declares the digest context. For the same reason, the
   Verified definition ({{conventions}}) now names the selected context's
   complete construction rather than its canonicalization and hash rules,
-  {{comparability}} now lists field selection, the exclusion set, and any
-  assembly of the pre-image among the parameters that each digest context
-  states, and {{iana-alg}} now states that a registration does not pin a
+  {{comparability}} now lists, in place of the preimage construction, the
+  field selection or byte-boundary selector, the exclusion set, any assembly
+  of the pre-image, any domain separation, and the encoding of the pre-image
+  among the parameters that each digest context states, {{algo-cde-n}} words
+  its Failed outcome in terms of the algorithm that the selected context
+  names, and {{iana-alg}} now states that a registration does not pin a
   field set, an exclusion set, or the assembly of a pre-image.
+
+* The Note to Readers states that issue and pull request numbers given
+  without a repository name refer to the source repository.
 
 * The Acknowledgments now credit contributions made through public review
   after the IETF 126 hackathon, and add Imran Siddique, Roel Schuurkes, and
