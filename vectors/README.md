@@ -120,6 +120,13 @@ Their `selected_bytes_hex` is an independently checked pin: the checker derives
 the bytes from the container and selector before hashing them, so a vector cannot
 self-certify by supplying only an asserted pre-image.
 
+COSE fixture bytes (`protected_header.bytes_hex`, `cose_sign1_bytes_hex`) use
+RFC 8949 Section 4.2.1 core deterministic encoding: definite lengths, shortest
+arguments, and map keys in the bytewise lexicographic order of their encodings.
+The checker decodes them strictly and requires each to equal its Section 4.2.1
+re-encoding. Encoders that follow the RFC 7049 "canonical" (length-first) order
+give different bytes when map keys mix major types.
+
 Dedicated `jcs` PASS vectors use `input_json` as the authoritative JSON source
 text and MUST carry an `input_data_model` review mirror. The checker parses the
 source with duplicate-name rejection and requires the mirror to match before it

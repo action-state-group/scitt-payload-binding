@@ -583,8 +583,9 @@ def decode_strict_cbor(data: bytes) -> object:
 
     The decoder is dependency-free for candidate-validate. It rejects trailing
     bytes, indefinite lengths, non-preferred integer/length encodings, duplicate
-    or out-of-order map keys, invalid UTF-8, unsupported floating/simple values,
-    and bounded-input violations. Maps remain ordered key/value pairs until all
+    map keys, map keys outside the bytewise lexicographic order of RFC 8949
+    Section 4.2.1, invalid UTF-8, unsupported floating/simple values, and
+    bounded-input violations. Maps remain ordered key/value pairs until all
     duplicate/order checks finish, so Python dict conversion can never erase a
     malformed duplicate. This is not a general-purpose CBOR implementation.
     """
@@ -651,9 +652,11 @@ def decode_strict_cbor(data: bytes) -> object:
                     raise ValueError("container-valued CBOR map keys are not permitted")
                 if any(_same_cbor_key(key, prior) for prior, _ in pairs):
                     raise ValueError(f"duplicate CBOR map key {key!r}")
-                if previous_key_encoding is not None and (
-                    len(key_encoding), key_encoding
-                ) <= (len(previous_key_encoding), previous_key_encoding):
+                # RFC 8949 Section 4.2.1: encoded keys strictly ascend bytewise.
+                if (
+                    previous_key_encoding is not None
+                    and key_encoding <= previous_key_encoding
+                ):
                     raise ValueError("CBOR map keys are not in deterministic order")
                 previous_key_encoding = key_encoding
                 value, offset = _decode(offset, depth + 1)
@@ -687,7 +690,11 @@ def _cbor_head(major: int, argument: int) -> bytes:
 
 
 def _encode_cbor_deterministic(value: object) -> bytes:
-    """Encode the same bounded CBOR subset using deterministic map ordering."""
+    """Encode the same bounded CBOR subset with RFC 8949 Section 4.2.1 key order.
+
+    Map keys are sorted in the bytewise lexicographic order of their encodings,
+    not the length-first order of RFC 8949 Section 4.2.3.
+    """
     if value is False:
         return b"\xf4"
     if value is True:
@@ -724,7 +731,7 @@ def _encode_cbor_deterministic(value: object) -> bytes:
         seen_keys.append(key)
         encoded_key = _encode_cbor_deterministic(key)
         encoded_items.append((encoded_key, _encode_cbor_deterministic(item)))
-    encoded_items.sort(key=lambda pair: (len(pair[0]), pair[0]))
+    encoded_items.sort(key=lambda pair: pair[0])
     return _cbor_head(5, len(encoded_items)) + b"".join(
         key + item for key, item in encoded_items
     )
@@ -2875,6 +2882,7 @@ def _run_self_tests() -> None:
         (bytes.fromhex("9f01ff"), "indefinite-length array"),
         (bytes.fromhex("a201010102"), "duplicate map key"),
         (bytes.fromhex("a202000100"), "out-of-order map keys"),
+        (bytes.fromhex("a2200019010200"), "length-first map key order"),
         (bytes.fromhex("0000"), "trailing CBOR item"),
     ):
         try:

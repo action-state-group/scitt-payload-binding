@@ -318,9 +318,13 @@ def _decode_item(
                 raise MalformedCborError("container-valued CBOR map keys are not permitted")
             if any(_same_key(key, prior) for prior, _ in pairs):
                 raise DuplicateCborKeyError(f"duplicate CBOR map key {key!r}")
-            if require_deterministic and prior_key_encoding is not None and (
-                len(key_encoding), key_encoding
-            ) <= (len(prior_key_encoding), prior_key_encoding):
+            # RFC 8949 Section 4.2.1: each encoded key sorts strictly after
+            # the previous one in bytewise lexicographic order.
+            if (
+                require_deterministic
+                and prior_key_encoding is not None
+                and key_encoding <= prior_key_encoding
+            ):
                 raise MalformedCborError("CBOR map keys are not in deterministic order")
             prior_key_encoding = key_encoding
             value, pos = _decode_item(
@@ -378,7 +382,11 @@ def _head(major: int, argument: int) -> bytes:
 
 
 def encode_deterministic_cbor(value: Any) -> bytes:
-    """Encode the definite-length CBOR types used by CPB and COSE fixtures."""
+    """Encode the definite-length CBOR types used by CPB and COSE fixtures.
+
+    Map keys are sorted in the bytewise lexicographic order of their
+    encodings, as RFC 8949 Section 4.2.1 requires.
+    """
 
     if value is False:
         return b"\xf4"
@@ -411,7 +419,9 @@ def encode_deterministic_cbor(value: Any) -> bytes:
             raise DuplicateCborKeyError(f"duplicate CBOR map key {key!r}")
         seen.append(key)
         encoded_pairs.append((encode_deterministic_cbor(key), encode_deterministic_cbor(item)))
-    encoded_pairs.sort(key=lambda pair: (len(pair[0]), pair[0]))
+    # Bytewise, not the length-first order of RFC 8949 Section 4.2.3.  The two
+    # can differ across major types: 258 (0x190102) sorts before -1 (0x20).
+    encoded_pairs.sort(key=lambda pair: pair[0])
     return _head(5, len(encoded_pairs)) + b"".join(k + v for k, v in encoded_pairs)
 
 
@@ -424,8 +434,8 @@ def decode_cose_sign1(
 
     CPB itself accepts RFC 8949 CBOR serialization.  Set
     ``require_deterministic`` only for byte-pinned reproducibility fixtures;
-    it rejects indefinite lengths, non-preferred arguments, and map-key order
-    that differs from deterministic encoding.
+    it rejects indefinite lengths, non-preferred arguments, and map keys that
+    are not in the bytewise lexicographic order of RFC 8949 Section 4.2.1.
     """
 
     if len(encoded) > MAX_COSE_BYTES:

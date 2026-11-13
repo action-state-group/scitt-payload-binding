@@ -399,6 +399,36 @@ def test_default_decoder_accepts_legal_non_deterministic_cbor(encoded: bytes) ->
     assert isinstance(decode_cose_sign1(encoded), CoseSign1)
 
 
+# RFC 8949 Section 4.2.1 sorts map keys bytewise by their encodings, so 258
+# (0x190102) precedes -1 (0x20).  The length-first order of Section 4.2.3 puts
+# the shorter -1 first; for integer and string keys the two orders differ only
+# across major types.
+@pytest.mark.parametrize(
+    "value",
+    [
+        {258: 0, -1: 0},
+        {-1: 0, 258: 0},
+        CborMap(((-1, 0), (258, 0))),
+    ],
+)
+def test_encoder_sorts_map_keys_bytewise_rfc8949_4_2_1(value: object) -> None:
+    assert encode_deterministic_cbor(value) == bytes.fromhex("a2190102002000")
+
+
+def test_deterministic_decoder_requires_bytewise_map_key_order() -> None:
+    # Tag(18), array(4), protected=bstr({258:0,-1:0}), {}, payload=b'', signature=b''.
+    bytewise = bytes.fromhex("d28447a2190102002000a04040")
+    length_first = bytes.fromhex("d28447a2200019010200a04040")
+
+    cose = decode_cose_sign1(bytewise, require_deterministic=True)
+    assert cose.protected_bytes == bytes.fromhex("a2190102002000")
+    assert cose.protected.keys() == (258, -1)
+    with pytest.raises(MalformedCborError, match="deterministic order"):
+        decode_cose_sign1(length_first, require_deterministic=True)
+    # Outside pinned fixtures the length-first map is ordinary valid CBOR.
+    assert decode_cose_sign1(length_first).protected.keys() == (-1, 258)
+
+
 def test_signature_structure_commits_to_protected_cpb_refs() -> None:
     original = decode_cose_sign1(_sign1(refs=[_reference()]))
     changed_reference = _reference()

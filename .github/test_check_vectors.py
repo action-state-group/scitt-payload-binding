@@ -666,9 +666,19 @@ def test_category_m_enforces_carrier_value_limits():
     [
         ("a201010102", "duplicate CBOR map key"),
         ("a202000100", "deterministic order"),
+        ("a2200019010200", "deterministic order"),  # length-first key order
         ("9f01ff", "indefinite-length"),
     ],
 )
 def test_category_m_strict_cbor_rejects_ambiguous_encodings(encoded, message):
     with pytest.raises(ValueError, match=message):
         check_vectors.decode_strict_cbor(bytes.fromhex(encoded))
+
+
+def test_strict_cbor_orders_map_keys_bytewise_per_rfc8949_section_4_2_1():
+    # 258 (0x190102) precedes -1 (0x20) bytewise; the length-first order of
+    # RFC 8949 Section 4.2.3 would put the shorter -1 first.
+    bytewise = bytes.fromhex("a2190102002000")
+    assert check_vectors._encode_cbor_deterministic({258: 0, -1: 0}) == bytewise
+    assert check_vectors._encode_cbor_deterministic({-1: 0, 258: 0}) == bytewise
+    assert check_vectors.decode_strict_cbor(bytewise).keys() == (258, -1)
