@@ -290,8 +290,8 @@ and registered in the normative Artifact Type Registry — see
 ## Proposed: `mesh-inference-exchange`
 
 **Owner:** Action State Group (`action-state-group/capsule-emit-mesh`)
-**Reference:** `action-state-group/capsule-emit-mesh` @ `9be03df` —
-`mesh_record_emitter.py`, `mesh_record_verifier.py` (the `x-mesh-lifecycle-v1`
+**Reference:** `action-state-group/capsule-emit-mesh` @ `9be03df`
+**Reference files:** `mesh_record_emitter.py`, `mesh_record_verifier.py` (the `x-mesh-lifecycle-v1`
 record); `plugins/capsule-producer/src/capsule.rs`,
 `plugins/admission-policy/src/capsule_emit.rs` (the generic
 `compute_attestation` sub-digest placement — see "Reasoning / tool-call
