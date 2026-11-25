@@ -1,5 +1,22 @@
 # CPB Provisional Artifact Type Registry
 
+> **Historical — not a registry.** This file is kept for its provenance
+> only. The "CPB Artifact Type Registry" it was written against appeared in
+> early CPB revisions and no longer exists: `draft-mih-sokolov-scitt-payload-binding-05`
+> (Out of Scope) states that artifact types and their digest contexts are
+> "owned by payload or consuming profiles and identified by stable
+> normative references. CPB defines no artifact-type registry." Nothing
+> below is registered, pending registration, or usable for verification.
+>
+> - **Semantics** (vocabulary, producer invariants, composition-level
+>   meaning) go to the Home-2 semantics registry,
+>   [`capsule-registry`](https://github.com/action-state-group/capsule-registry)
+>   (`REGISTRY.md`, under its `REGISTRATION-POLICY.md`).
+> - **Artifact types and digest contexts** are declared by the profile that
+>   owns them: for each entry below, the owner draft that the entry names.
+>
+> The rest of this file is unchanged from its last provisional revision.
+
 **Status.** This file tracks proposed entries for the CPB Artifact Type
 Registry (§11.2 of `draft-mih-sokolov-scitt-payload-binding-00`) that are
 under discussion with artifact-type owners. Entries here target **CPB -01 or
