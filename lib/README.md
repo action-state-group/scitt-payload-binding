@@ -24,6 +24,9 @@ Implements four CPB mechanisms with no payload-profile semantics:
 pip install -e ".[dev]"   # from this directory
 ```
 
+The distribution name is `scitt-payload-binding`; the import package is `cpb`
+and the command is `cpb-check`.
+
 ## 0.2 migration
 
 Version 0.2 makes content-address changes explicit rather than silently
