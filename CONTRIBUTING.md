@@ -62,6 +62,10 @@ No CLA is required — the DCO is the whole agreement.
 See `spec/Makefile` and the README. The committed `.xml` must be RFCXML v3
 (RFC 7991); the build converts kramdown-rfc's v2 output with `xml2rfc --v2v3`.
 
+## Before every push
+
+Run `scripts/check.sh` (about 23 s on an Apple-silicon Mac; needs `uv` and `kramdown-rfc` on PATH). It runs what CI runs on pull requests and main, for every path, except the DCO sign-off check, the neutrality term scan, which needs the `NEUTRALITY_TERMS` secret (the scanner's self-test runs), and the non-gating idnits step.
+
 ## Security
 
 Please report suspected vulnerabilities privately — see SECURITY.md. Do not open
