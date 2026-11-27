@@ -23,4 +23,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - run: pip install "pytest>=7"
+      # The scanner's own tests: without this step nothing runs them.
+      - run: python -m pytest .github/test_leak_lint.py -q
       - run: python .github/leak_lint.py .
