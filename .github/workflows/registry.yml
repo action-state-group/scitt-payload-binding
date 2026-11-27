@@ -9,8 +9,11 @@
 # registry.json, then commit both files together.
 name: registry
 
+# Push runs only on main: pull_request already covers PR branches with the
+# same paths, so a branch push would run the job a second time.
 on:
   push:
+    branches: [main]
     paths:
       - "REGISTRY.md"
       - ".github/gen_registry.py"

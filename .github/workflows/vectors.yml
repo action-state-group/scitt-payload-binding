@@ -4,11 +4,14 @@
 # change — a hand-authored vector that was never run is not a vector.
 name: vectors
 
+# Push runs only on main: pull_request already covers PR branches with the
+# same paths, so a branch push would run the job a second time.
 on:
   push:
-    paths: ["vectors/**", ".github/check_vectors.py", ".github/test_check_vectors.py", ".github/neutrality_scan.py"]
+    branches: [main]
+    paths: ["vectors/**", ".github/check_vectors.py", ".github/test_check_vectors.py", ".github/neutrality_scan.py", ".github/workflows/vectors.yml"]
   pull_request:
-    paths: ["vectors/**", ".github/check_vectors.py", ".github/test_check_vectors.py", ".github/neutrality_scan.py"]
+    paths: ["vectors/**", ".github/check_vectors.py", ".github/test_check_vectors.py", ".github/neutrality_scan.py", ".github/workflows/vectors.yml"]
 
 permissions:
   contents: read

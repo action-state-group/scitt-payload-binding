@@ -1,14 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # Run the CPB reference library unit tests and ruff linter.
-# Triggers on lib/ or vectors/ changes; a post-checkout guard skips test
-# steps when lib/ is absent (before PR #2 merges) without failing the job.
+# Triggers on lib/ or vectors/ changes. Push runs only on main: pull_request
+# already covers PR branches with the same paths, so a branch push would run
+# every job a second time.
 name: python
 
 on:
   push:
-    paths: ["lib/**", "vectors/**"]
+    branches: [main]
+    paths: ["lib/**", "vectors/**", ".github/workflows/python.yml"]
   pull_request:
-    paths: ["lib/**", "vectors/**"]
+    paths: ["lib/**", "vectors/**", ".github/workflows/python.yml"]
 
 permissions:
   contents: read
@@ -22,32 +24,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: check lib present
-        id: guard
-        run: |
-          if [ -f lib/pyproject.toml ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "lib/ not present — skipping python tests (pre-PR-#2)"
-          fi
-
       - uses: actions/setup-python@v5
-        if: steps.guard.outputs.present == 'true'
         with:
           python-version: "${{ matrix.python-version }}"
 
       - name: install
-        if: steps.guard.outputs.present == 'true'
         working-directory: lib
         run: pip install -e ".[dev]" "ruff>=0.4,<0.16"
 
       - name: ruff
-        if: steps.guard.outputs.present == 'true'
         working-directory: lib
         run: python -m ruff check .
 
       - name: pytest
-        if: steps.guard.outputs.present == 'true'
         working-directory: lib
         run: python -m pytest -q
